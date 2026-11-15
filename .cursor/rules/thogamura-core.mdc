@@ -1,0 +1,6 @@
+---
+description: ThogaMura shared architecture, coursework constraints and student ownership
+alwaysApply: true
+---
+
+Read `AGENTS.md` and `docs/ai/CONTEXT_PACK.md`. Use `docs/contracts/` for API changes. This repo is a Java networking assignment, so networking must remain explicit and independently demoable. Keep AI output focused and tested; do not replace member learning with full generated features.

@@ -1,0 +1,39 @@
+# Secrets / local configuration
+.env
+!.env.example
+**/.env.local
+**/.env.*.local
+*.jks
+*.p12
+*.pfx
+*.key
+*.pem
+!.gitkeep
+
+# Java
+**/target/
+*.class
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# Node / Next.js
+**/node_modules/
+**/.next/
+**/out/
+**/.turbo/
+**/coverage/
+*.tsbuildinfo
+
+# Editor / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Data and generated artifacts
+*.sql.dump
+*.db
+*.db.mv.db
+*.zip
+**/reports/generated/

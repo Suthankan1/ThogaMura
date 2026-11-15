@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --ink: #16304a;
+  --muted: #587180;
+  --canvas: #f4f8fa;
+  --teal: #117b80;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid #0b6aca;
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: absolute;
+  z-index: 50;
+  top: -4rem;
+  left: 1rem;
+  padding: 0.7rem 1rem;
+  background: #fff;
+  border-radius: 0.5rem;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+}

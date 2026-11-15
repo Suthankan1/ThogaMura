@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: thogamura-network-server
+  main:
+    web-application-type: none
+  datasource:
+    url: ${THOGAMURA_DB_URL:jdbc:postgresql://localhost:5432/thogamura}
+    username: ${THOGAMURA_DB_USER:thogamura}
+    password: ${THOGAMURA_DB_PASSWORD:}
+  flyway:
+    enabled: true
+
+# No server socket binds until each member implements the actual Java APIs.
