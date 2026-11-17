@@ -45,3 +45,13 @@
 - [ ] Authentication limitation explicitly accepted for coursework-only demo
 
 Use a new dated ADR section when changing a frozen contract, not an undocumented silent edit.
+
+## ADR-006 — Remove UDP discovery and define practical network features (2026-11-17, accepted as v2 design)
+
+**Problem:** In a fixed hostname/IP deployment, UDP auto-discovery provides little business value, and a standard web browser cannot implement Java UDP discovery. A same-machine gateway->warehouse socket hop also obscured the business reason for custom TCP/NIO.
+
+**Decision:** Model an actual **branch-side gateway -> central warehouse machine** topology. Use a configured warehouse host, not UDP discovery. Preserve M1 custom Java TCP commands and retries, M3 selector-based central change feed to multiple gateways, M4 concurrent PostgreSQL stock reservations, M5 JSSE validated TLS. Replace M2 with a **read-only supplier stock inquiry** using Java `URI`/`HttpURLConnection` to an independent supplier simulator for deterministic real network testing. No direct commercial supplier claim or automatic purchasing.
+
+**Security and scope:** TLS commands are mandatory. The existing unencrypted NIO invalidation port remains private-demo-LAN/firewall only and cannot be deployed over WAN until encrypted/authenticated. Browser auth/roles and public HTTPS are future work. No offline queue; no second inventory database.
+
+**Implementation state:** Design/documentation only; code and old UDP backlog need migration. Get lecturer approval for distinct M2 concept before student ownership assignment.

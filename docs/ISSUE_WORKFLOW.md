@@ -1,6 +1,6 @@
 # GitHub issue workflow
 
-This project uses issues for individual Java networking evidence and shared work. See `docs/TEAM_WORKLOADS.md` for concepts and `docs/ROADMAP.md` for dependency order.
+This project uses issues for individual Java networking evidence and shared work. Design v2 replaces M2 UDP auto-discovery with read-only Java URL/HTTP supplier availability (see `docs/NETWORK_FEATURES_V2.md`). Issues #15–#17 are historical superseded tasks; do not assign them. See `docs/TEAM_WORKLOADS.md` for concepts and `docs/ROADMAP.md` for dependency order.
 
 ## Today: plan without assignees
 
@@ -19,7 +19,7 @@ This project uses issues for individual Java networking evidence and shared work
 
 ## Working an issue
 
-1. Link the issue in a short branch/PR (e.g. `feat/m2-udp-discovery`).
+1. Link the issue in a short branch/PR (e.g. `feat/m2-supplier-http`).
 2. Explain the Java API and the precise input/output.
 3. Add tests, including failure and disconnect/race cases.
 4. Record **actual** commands/output, no invented green results.

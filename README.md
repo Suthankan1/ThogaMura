@@ -1,101 +1,101 @@
 # ThogaMura
 
-**LAN-first stock requests and warehouse fulfilment** — Java Network Programming, Assignment 02.
+**Branch-to-central-warehouse stock coordination** — Java Network Programming Assignment 02.
 
-> **Status: architecture and project scaffold, not a completed application.** The Spring Boot and Next.js skeletons do not yet implement stock requests or network listeners. Each networking feature must be written, tested and demonstrated by its assigned student.
+> **Status: starter project and revised v2 design, not a completed application.** The Spring Boot/Next.js scaffolds do not yet implement business endpoints, sockets, supplier integration or NIO notifications. Each student must build/test/demonstrate their own feature.
 
-## Why this project
+## Why it exists
 
-A small shop can request stock from a warehouse on the same local network. The server reserves stock without overselling; warehouse staff pick and dispatch an accepted request. Operators see changes promptly, retry safely after an uncertain network response and retain a persistent audit history.
+Shop/branch staff ask a central warehouse for stock. Two branches may compete for the last available items; an interrupted network request must be safely retried without a second reservation; all branch operators should promptly see state changes. When warehouse stock is unavailable, staff can check a **read-only supplier availability service** as an advisory next step. The coursework demo uses a separate synthetic supplier HTTP server; no commercial integration is implied.
 
 ## Stack
 
-| Area | Choice |
+| Layer | Technology |
 | --- | --- |
-| UI | Next.js App Router, React, TypeScript, Tailwind CSS |
-| Web bridge | Spring Boot REST + Server-Sent Events (SSE) |
-| Networking | Explicit Java `java.net` TCP, UDP, `SSLSocket` and Java NIO `SocketChannel`/`Selector` |
-| Network server | Spring Boot lifecycle hosting hand-written Java socket services |
-| Data | PostgreSQL, Spring JDBC, Flyway migrations |
-| Dev/test | Java 21, Maven, Node.js 22+, npm, Docker Compose, JUnit 5 |
+| Frontend | Next.js App Router, React, TypeScript, Tailwind |
+| Branch API bridge | Spring Boot REST/SSE |
+| Central Java networking | `java.net.Socket`/`ServerSocket`, `URI`/`HttpURLConnection`, `java.nio` channels/selectors, JSSE TLS |
+| Server/DB | Spring Boot Java socket server, Spring JDBC, Flyway, PostgreSQL |
+| Tests/development | Java 21, Maven, Node.js 22+, npm, Docker Compose, JUnit |
 
-## Architecture
+## Actual network topology
 
-```text
-Browser (Next.js :3000)
-          | HTTPS/HTTP REST + SSE
-          v
-API gateway (Spring Boot :8080)
-  |        |                  ^
-  |        +-- UDP discover --|      Java sockets live here, NOT in browser
-  |                          |
-  +-- TLS/TCP commands ------+----> Network server (Spring Boot host, no REST)
-  +<------ NIO change feed -------   - Command service TLS :7443
-                                    - NIO change feed :7444
-                                    - UDP discovery :7445
-                                    - PostgreSQL :5432 (server only)
+```mermaid
+flowchart LR
+    subgraph Branch["Branch laptop"]
+        Browser["Next.js browser"] -->|"HTTP / SSE"| Gateway["Spring Boot gateway"]
+    end
+    subgraph Warehouse["Warehouse laptop"]
+        Server["Java network server"] --> DB[("PostgreSQL")]
+    end
+    Gateway -->|"Java TLS/TCP commands"| Server
+    Server -->|"NIO change hints (private LAN)"| Gateway
+    Server -->|"Java HTTP/URL"| Supplier["Supplier simulator / API"]
 ```
 
-**Non-negotiable:** The gateway must use actual network sockets to speak to the network server, even when both processes run on the same laptop. It may not bypass the network demonstration by calling a Java service in-process or connecting directly to PostgreSQL.
+**Deployment:** Browser and gateway are together on the **branch-side** laptop; central Java socket server and database are on the **warehouse** laptop. NIO feed connects warehouse to branch gateways, is restricted to a **private demo LAN only**, and carries only change hints. Browsers refetch authoritative state through the TLS command path. **Do not expose plaintext NIO publicly.** Configured DNS/IP replaces pointless UDP discovery.
 
-## Project navigation
+## Five individually demonstrable contributions
 
-- [Start here](docs/START_HERE.md): group decisions and first setup.
-- [Project context](docs/PROJECT_CONTEXT.md): problem, users, scope and success criteria.
-- [Architecture](docs/ARCHITECTURE.md): components, message paths and runtime boundaries.
-- [Protocol v1](docs/contracts/NETWORK_PROTOCOL_V1.md) and [HTTP API](docs/contracts/HTTP_API_V1.md): shared contracts; freeze before parallel implementation.
-- [Frontend specification](docs/FRONTEND_PLAN.md): screens, states and accessibility.
-- [Backend specification](docs/BACKEND_PLAN.md): applications, data and transactions.
-- [Work ownership](docs/TEAM_WORKLOADS.md): five distinct assessed concepts.
-- [Implementation roadmap](docs/ROADMAP.md) and [test plan](docs/TEST_PLAN.md).
-- [AI working agreement](docs/ai/AI_COLLABORATION.md), [context pack](docs/ai/CONTEXT_PACK.md) and [prompt templates](docs/ai/PROMPT_TEMPLATES.md).
-- [Lecture mapping](docs/LECTURE_MAPPING.md), [report plan](docs/REPORT_OUTLINE.md) and [demo script](docs/DEMO_SCRIPT.md).
-- [Original group proposal](docs/proposal/ThogaMura_Group_Proposal.pdf) (historical stack; [revision note](docs/proposal/README.md)).
+| Member | Networking concept | Real feature |
+| --- | --- | --- |
+| M1 | Java raw TCP sockets | Framed branch-to-warehouse requests, ambiguous timeout/retry |
+| M2 | Java URI/URL + HTTP | Read-only supplier availability lookup via real separate HTTP endpoint |
+| M3 | Java NIO selectors/channels | Non-blocking change invalidation to multiple branch gateways |
+| M4 | ExecutorService and concurrency | Race-safe PostgreSQL stock reservation and durable request idempotency |
+| M5 | JSSE/TLS | Server certificate verification and secure command sockets |
 
-## Structure
+Each gets a success and failure network demonstration. See [Detailed v2 rationale](docs/NETWORK_FEATURES_V2.md), [workload ownership](docs/TEAM_WORKLOADS.md) and [assignment alignment](docs/ASSIGNMENT_ALIGNMENT.md). Lecturer approval is pending.
+
+## Docs
+
+- [Start here](docs/START_HERE.md)
+- [Problem and scope](docs/PROJECT_CONTEXT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Backend and data](docs/BACKEND_PLAN.md)
+- [Frontend and accessibility](docs/FRONTEND_PLAN.md)
+- [TCP/NIO protocol](docs/contracts/NETWORK_PROTOCOL_V1.md) and [HTTP API](docs/contracts/HTTP_API_V1.md)
+- [Five-week roadmap](docs/ROADMAP.md), [test matrix](docs/TEST_PLAN.md), [live demo](docs/DEMO_SCRIPT.md)
+- [AI collaboration](docs/ai/CONTEXT_PACK.md) and [agent rules](AGENTS.md)
+- [Original proposal](docs/proposal/README.md) (historical, superseded)
+- [Decision log](docs/decisions/DECISION_LOG.md)
+
+## Repository structure
 
 ```text
-ThogaMura/
-├── AGENTS.md / CLAUDE.md / GEMINI.md
-├── .agents/rules/       # Google Antigravity
-├── .cursor/rules/       # Cursor
-├── .github/             # Copilot + CI + PR template
-├── backend/
-│   ├── protocol/        # Shared message conventions
-│   ├── network-server/  # TCP, UDP, NIO, TLS, concurrency and database
-│   └── api-gateway/     # REST, SSE, socket clients
-├── frontend/            # Next.js App Router starter
-├── docs/                # Architecture, contracts, assignments, AI context
-├── scripts/
-├── compose.yaml         # Local PostgreSQL only
-└── .env.example
+backend/
+  protocol/        # shared command envelope
+  network-server/  # TCP/TLS, NIO feed, supplier HTTP, concurrency, PostgreSQL
+  api-gateway/     # Spring REST/SSE and Java TCP/NIO clients
+frontend/          # Next.js web UI
+docs/              # authoritative v2 specs, contracts and evidence instructions
+reports/           # final PDF report and observed demo evidence (later)
+compose.yaml       # local PostgreSQL development only
+.env.example       # development environment variables
 ```
 
-## First commands
+## First local commands
 
-Requirements: Java 21, Maven 3.9+, Node.js 22+, npm and Docker with Compose.
+Prerequisites: Java 21, Maven 3.9+, Node.js 22+, Docker Compose.
 
 ```bash
 cp .env.example .env
-# Edit .env and choose your own local-only PostgreSQL password first.
+# Set a unique local Postgres password in .env.
 docker compose up -d db
 mvn -f backend/pom.xml clean verify
 npm --prefix frontend ci
 npm --prefix frontend run dev
 ```
 
-The UI starter opens at http://localhost:3000. For gateway and network server processes see [Setup](docs/SETUP.md). At this stage the UI is an informational placeholder and the network server is **not** listening on socket ports.
+Next.js starter opens at http://localhost:3000. The starter has no stock request listeners/commands yet; commands above are **not** proof of end-to-end workflow. See [setup](docs/SETUP.md).
 
-## Course requirements
+## Group rules
 
-The assignment requires Java `java.net`, meaningful Java NIO usage, a distinct lecture networking feature per group member, and one ZIP containing the finished code plus one PDF report. See [Assignment alignment](docs/ASSIGNMENT_ALIGNMENT.md).
-
-## Team rules
-
-1. Freeze shared protocols first. Changing an envelope or field requires an ADR and review.
-2. One feature owner = own source, focused tests, failure demonstration and explanation.
-3. Small PRs, no generated full-feature dumps, no mixing unrelated work.
-4. No real customer data, credentials, keystores, passwords or database volumes in Git.
-5. Keep business invariants and network edge cases tested before polishing the UI.
+1. No real keys, user/customer data, `.env`, DB volumes or keystores committed.
+2. No shortcut from browser/gateway to DB. Commands cross actual Java TLS/TCP.
+3. A negative test and real cross-process demo for every student's lecture feature.
+4. M2 supplier simulator is a mock network **service**, not pretend static data in the production connector.
+5. Keep NIO port 7444 on private/demo LAN only. HTTPS + authorization + encrypted NIO feed required before real public deployment.
+6. Changes to contracts need ADR and group review. Avoid giant AI-generated work with unclear member ownership.
 
 Repository: https://github.com/Suthankan1/ThogaMura

@@ -1,58 +1,43 @@
-# Iterative build roadmap — suggested five weeks
+# Five-week implementation roadmap — v2 planning baseline
 
-This is a planning baseline, not a commitment to dates. Move from one verified vertical slice to the next. Do not generate the whole system in one AI prompt.
+Dates depend on team availability. None of the feature checkboxes below are claims of completed work. Freeze the networking concepts with the lecturer before assignment.
 
-## Week 1 — contract and thin transport
+## Week 1 — contracts and two-device topology
+- [ ] Approve the five distinct concepts; assign names/GitHub handles.
+- [ ] Agree on private LAN topology: branch laptop (Next/gateway) -> central warehouse laptop (network server/Postgres). Configure host/IP; no UDP discovery.
+- [ ] Freeze newline TCP protocol, request UUID semantics and read-only supplier HTTP contract.
+- [ ] M1 demonstrates raw PING over two JVMs; M4 DB migration/transaction prototype; M5 test certificates; M2 mock supplier service skeleton; M3 selector accept-loop skeleton.
+- [ ] Record current build status; starter is **not** a completed app.
+**Gate:** raw socket round trip and independently running mock supplier HTTP endpoint exist.
 
-- [ ] Assign students and lecturer-approve distinct concepts.
-- [ ] Freeze port plan, command types, requestId and framing.
-- [ ] Bootstrapped Maven modules, Next starter and PostgreSQL compose reviewed.
-- [ ] M1: first real command response between gateway JVM and network-server JVM.
-- [ ] M4: database schema, data fixtures and reservation design test.
-- [ ] M5: test-only certificate generation / trust plan.
-- [ ] Shared: decide whether gateway client certificates are required.
+## Week 2 — correct end-to-end reservation
+- [ ] M1 socket request framing/correlation, API gateway REST adapter and timeouts.
+- [ ] M4 PostgreSQL atomic reservations, persisted receipts and response replay.
+- [ ] Shared Next.js products/stock request screens.
+- [ ] M5 wraps the TCP command channel with trusted TLS; no plaintext fallback.
+**Gate:** branch browser -> Java TLS/TCP -> central DB accepts/rejects correctly after retry.
 
-**Gate:** a real Java socket packet crosses process boundaries; no stock logic needed yet.
+## Week 3 — differentiated network services
+- [ ] M2 uses Java `URI`/`HttpURLConnection` to query independent supplier mock when item stock is insufficient.
+- [ ] M3 NIO server connects multiple branch gateway subscribers and bridges small signals into SSE invalidation/refetch.
+- [ ] M4 implements PICKED/DISPATCHED and one stock movement.
+- [ ] Shared warehouse queue, history and advisory supplier widget.
+**Gate:** all five concepts have observable end-to-end paths.
 
-## Week 2 — first durable stock reservation
+## Week 4 — hardening and negative cases
+- [ ] M1 split/multiple frames, dropped acknowledgment, timeout and same-ID retry.
+- [ ] M2 supplier 404/503/timeout/bad-response handling; URL allowlisting.
+- [ ] M3 partial write, slow subscriber, disconnect/reconnect and fresh state.
+- [ ] M4 real concurrency, restart receipt replay and double-dispatch protection.
+- [ ] M5 untrusted/incorrect TLS identity, secrets/log review.
+- [ ] Private-LAN-only NIO and no insecure WAN exposure documented.
+**Gate:** each member's success+failure proof passed.
 
-- [ ] Product query, request submission and persisted accepted/rejected receipt.
-- [ ] Atomic reservation against concurrent calls; persisted idempotency.
-- [ ] Basic HTTP translation to/from TCP.
-- [ ] First Next.js product view + new request form.
-- [ ] Tests: oversubscription and duplicate requestId.
+## Week 5 — presentation and submission
+- [ ] Full clean-clone Java frontend builds, PostgreSQL and two-machine tests.
+- [ ] Capture real logs/screenshots, authored source evidence and limitations.
+- [ ] Report clearly distinguishes a mock supplier from a real external API.
+- [ ] Export report PDF and complete source to a single verified ZIP; one designated Moodle submission.
 
-**Gate:** submit from browser, server commits through network socket, refresh shows DB truth.
-
-## Week 3 — discovery, notifications and warehouse
-
-- [ ] M2: UDP discovery and manual host fallback.
-- [ ] M3: selector-based multi-subscriber notifications, gateway bridge to SSE.
-- [ ] Warehouse PICKED and DISPATCHED commands; movement history.
-- [ ] Next.js warehouse queue, request history and connection states.
-- [ ] Tests: 10 clients, reconnect, missed event/refetch, double dispatch.
-
-**Gate:** two-machine LAN workflow and one eventual-update demonstration.
-
-## Week 4 — security and hardening
-
-- [ ] M5: TLS validated command channel; negative certificate handshake.
-- [ ] M1: bounded framing and timeout/retry failure behavior.
-- [ ] M4: concurrent race + restart replay + atomic dispatch hardening.
-- [ ] Validate access boundaries, logging, secrets and graceful cleanup.
-- [ ] Stable UI states, screen reader/keyboard and mobile checks.
-
-**Gate:** all five independent feature demos and failure cases pass.
-
-## Week 5 — verification and submission
-
-- [ ] Full regression, build from clean clone, LAN rehearsal.
-- [ ] Screenshots and real test outputs for report, plus limitations.
-- [ ] Five students present their own code and evidence.
-- [ ] Export final PDF report under `reports/final/` (not yet included).
-- [ ] Create single course ZIP: complete source + PDF report, excluding secrets and build artifacts.
-- [ ] One designated member submits to Moodle.
-
-## Backlog convention
-
-Every task must have **owner**, **small observable behavior**, **test**, **manual demo**, and **merge acceptance**. Keep tracked progress in `docs/handoffs/` or GitHub issues. Avoid dates and completed checkboxes that have not been verified.
+## Task and evidence process
+Each issue gets an owner (once known), objective, small slice, tests, failure demo and review. Never merge automatically generated networking code without proving actual socket or HTTP communication.

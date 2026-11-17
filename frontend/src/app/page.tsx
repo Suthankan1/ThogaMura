@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const concepts = [
   { title: "TCP", detail: "Reliable command channel", who: "Member 1" },
-  { title: "UDP", detail: "Automatic server discovery", who: "Member 2" },
+  { title: "Java HTTP / URL", detail: "Supplier availability lookup", who: "Member 2" },
   { title: "Java NIO", detail: "Live change notifications", who: "Member 3" },
   { title: "Concurrency", detail: "Safe atomic reservations", who: "Member 4" },
   { title: "TLS", detail: "Validated secure sockets", who: "Member 5" },
@@ -19,7 +19,7 @@ export default function Home() {
           Stock requests, without the guesswork.
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-slate-200">
-          ThogaMura is planned as a LAN-first shop-to-warehouse stock
+          ThogaMura is planned as a LAN-first branch-to-warehouse stock
           request system powered by real Java networking.
         </p>
         <div className="mt-8 inline-flex rounded-full border border-amber-300/50 bg-amber-300/10 px-4 py-2 text-sm text-amber-200">

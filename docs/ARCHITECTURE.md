@@ -1,49 +1,60 @@
-# Architecture and trust boundaries
+# Architecture and trust boundaries — v2
 
-## Three application processes plus the database
+## Deployment roles (two-machine LAN demonstration)
 
-1. **Next.js UI** (`frontend/`): browser pages and states; consumes HTTP and SSE. It does not open raw TCP/UDP sockets or connect to PostgreSQL.
-2. **Spring Boot API gateway** (`backend/api-gateway/`): routes browser requests to a **real socket client**, translates results to HTTP, subscribes to NIO notifications and emits SSE invalidation events. Does not know JDBC.
-3. **Spring Boot network server** (`backend/network-server/`): hosts custom Java TLS/TCP command listener, UDP discovery responder, NIO change notifier, bounded worker pool and PostgreSQL transaction layer. It need not expose HTTP to the browser.
-4. **PostgreSQL**: accessed only by the network server; durable stock and request source of truth.
+1. **Branch machine:** Next.js browser UI (`frontend/`, port 3000) and Spring Boot API gateway (`backend/api-gateway/`, port 8080). Gateway exposes REST/SSE, holds configured warehouse host, and uses **Java TLS/TCP** to communicate with central server. It never accesses PostgreSQL directly.
+2. **Warehouse machine:** Spring Boot **Java network server** (`backend/network-server/`), custom `java.net` TLS/TCP listener, NIO selector change feed, bounded worker pool, stock persistence in PostgreSQL. No duplicate REST write path.
+3. **Supplier availability simulator:** separate lightweight HTTP process (planned; not yet implemented), configured URL, used by Member 2's central Java `HttpURLConnection` client for mock data. A real integration requires supplier API access and credentials not provided by this coursework.
 
-## Ports (defaults, configurable)
+This boundary is justified by **actual branch-to-warehouse process/machine separation**, not by claiming a raw TCP protocol is superior to HTTP.
 
-| Port | Protocol | Who connects | Purpose |
+## Architecture
+
+```text
+Branch browser --HTTP/SSE--> Branch gateway --JSSE TLS/TCP--> Central Java network server --> PostgreSQL
+                               ^                                  |
+                               |-- NIO version-only change feed --|
+                                                                  |
+                                             HTTP/HTTPS supplier availability lookup
+```
+
+## Ports (examples, configurable)
+
+| Port | Protocol | Direction | Notes |
 | --- | --- | --- | --- |
-| 3000 | HTTP | Browser | Next.js local development |
-| 8080 | HTTP / SSE | Browser | Gateway REST and change stream |
-| 7443 | TLS over TCP | Gateway | Inventory command channel |
-| 7444 | Unencrypted Java NIO TCP | Gateway | Minimal public-safe change version only |
-| 7445 | UDP | Gateway | LAN discovery; manual IP fallback |
-| 5432 | PostgreSQL | Network server only | Persistent data |
+| 3000 | HTTP | Browser -> Next.js | Dev only |
+| 8080 | HTTP/SSE | Browser -> branch gateway | Local demo only; HTTPS required on shared/untrusted network |
+| 7443 | TLS/TCP | Branch gateway -> central server | Stock business commands; certificate/identity validation mandatory |
+| 7444 | NIO TCP | Branch gateway -> central server | **Private/demo LAN only**, firewall-restricted, version-only invalidation; do not expose to internet |
+| 8090 | HTTP | Central -> supplier simulator | Test/demo stub only; production supplier connection would use HTTPS |
+| 5432 | PostgreSQL | Central Java server only | No browser/gateway DB access |
 
-The 7444 feed is **not confidential or authoritative**: it contains only a monotonically increasing version (not IDs, credentials or stock details). On each signal the gateway/browser fetches data via authenticated paths.
+**No UDP port or broadcast discovery**. `THOGAMURA_NETWORK_HOST` is explicitly configured via hostname or IP. TLS validation must be based on a trusted configured identity, not only a discovered IP.
 
-## Normal flow
+## Command workflow
 
-1. Shop operator submits a one-SKU request from Next.js.
-2. Browser sends `POST /api/v1/requests` to gateway with requestId and quantity.
-3. Gateway validates web envelope and sends newline-delimited JSON using a Java TLS socket client. Member 1 owns framing/command semantics; Member 5 owns TLS validation.
-4. Network server dispatches through bounded workers, enters database transaction, validates and atomically reserves inventory, writes durable request receipt.
-5. Server returns `ACCEPTED` or `REJECTED` on command socket. Gateway maps to HTTP response.
-6. Server publishes a version-only NIO change signal. Gateway emits SSE invalidation. Browser refetches via REST.
-7. Picker transitions an accepted request to `PICKED` and `DISPATCHED`. On dispatch, on-hand and reserved counts change together and movement is appended.
+1. Shop user submits one-SKU request through Next.js.
+2. Gateway sends framed JSON via TLS/TCP to warehouse server with a stable idempotency UUID.
+3. Server's bounded worker pool executes a PostgreSQL transaction that serializes competing stock decisions.
+4. The request and durable receipt commit; server sends original ACCEPTED/REJECTED result.
+5. NIO broadcaster emits only a monotonically increasing **change version** after commit; gateway re-emits browser SSE `stock-changed`.
+6. Browser refetches authoritative product/request data over REST -> TLS/TCP.
+7. Warehouse worker picks/dispatches; on dispatch both reserved and on-hand decrease, and a movement is inserted exactly once.
+8. If warehouse stock is insufficient, user may separately request an **advisory** supplier availability check. It does not reserve or modify stock.
 
-## Failure behavior
+## Failure and security boundaries
 
-- TCP can split or merge frames. Read until newline with UTF-8; bound each message (proposed 64 KiB).
-- A timeout after successful server commit is **ambiguous**, not failure: gateway retries using the **same requestId**.
-- Persist the requestId receipt and enforce uniqueness in PostgreSQL so server restart cannot reapply it.
-- Browser may miss NIO/SSE events. After reconnect and on page focus, fetch fresh state.
-- UDP discovery can fail on campus networks; expose manual server address setting.
-- Reject untrusted TLS certificates, protocol mismatches, unauthenticated write commands and malformed payloads.
-- Keep worker pools bounded and close/clean up sockets and channels.
+- TCP framing and timeouts: see `contracts/NETWORK_PROTOCOL_V1.md`. An ambiguous timeout is **not** confirmation of rejection; retry with the same requestId.
+- Server receipt and inventory changes must commit transactionally.
+- NIO delivery is best effort; SSE/browser must refetch on reconnect and page focus.
+- NIO 7444 is **not production-secure** on an untrusted network. Allow only the private demo network and do not carry any inventory, usernames, tokens or credentials on it. A WAN version needs an authenticated encrypted feed (TLS/SSLEngine or a correctly configured VPN).
+- Browser/API local dev HTTP is not production secure; require HTTPS and user auth before real use.
+- Supplier URL is server-configured and allowlisted, not arbitrary user input. Timeouts, non-200 and malformed results become UNKNOWN/UNAVAILABLE, never counterfeit stock values.
+- Do not commit private certificates or supplier credentials.
 
-## Operational safety
+## Invariants
 
-No demo secrets in Git. TLS keystore/truststore created per developer outside repository and referenced with env variables. Never disable certificate or hostname verification to make the demo pass. Local demo-only HTTP between browser and gateway is acceptable on localhost; never expose sensitive traffic over public unencrypted networks. Consider an HTTPS reverse proxy before any real use.
-
-## Architectural invariant
-
-**Web UI never bypasses the Java socket server to mutate stock.** The assessment call path remains visible, instrumentable and testable.
+- The central inventory DB is the only source of truth.
+- No bypass from browser to database or direct Spring HTTP mutation on central server.
+- Every member feature crosses a real process/network boundary and has one success + one failure demonstration.
+- Network features and design trade-offs are detailed in `NETWORK_FEATURES_V2.md`.

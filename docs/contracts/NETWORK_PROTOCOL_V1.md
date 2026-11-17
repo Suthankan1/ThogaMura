@@ -9,7 +9,7 @@ Transport is hand-written Java `java.net` TCP upgraded to validated TLS for busi
 - A TCP read is **not** a complete message; data can arrive split or combined. Handle partial frame accumulation and multiple frames per read.
 - Correlate every response via `requestId`; UUID v4 string chosen once per logical operation.
 - Validate `v: 1` and `type`. Unknown versions/types receive explicit error result.
-- Command data never enters UDP or the unauthenticated NIO signal channel.
+- Command data never enters the unauthenticated NIO signal channel.
 - Socket timeout: propose 3s connection and 5s command read for local demo; revise by measurement and document retry policy.
 
 ## Envelope
@@ -42,6 +42,7 @@ Rejected result:
 | `MARK_PICKED` | stockRequestId | PICKED or error |
 | `MARK_DISPATCHED` | stockRequestId | DISPATCHED or error |
 | `GET_MOVEMENTS` | optional page | immutable movements |
+| `GET_SUPPLIER_STOCK` | SKU only | read-only advisory supplier availability or UNKNOWN/UNAVAILABLE |
 
 `requestId` always identifies the **network command**; for state-transition commands `stockRequestId` identifies the original business request. Mutating calls may be retried with the same command requestId. Never reuse the same requestId for a different payload.
 
@@ -51,25 +52,27 @@ Error codes to implement: `VALIDATION_ERROR`, `NOT_FOUND`, `INSUFFICIENT_STOCK`,
 
 For every mutating command, the server persists unique command requestId, canonical payload fingerprint and original response in `command_receipts` in the same transaction as the stock/state change. A replay of identical requestId/payload returns that recorded result, including after restart; the same ID with different command type/payload returns `DUPLICATE_ID_CONFLICT`. The original `stock_requests` row is separate business state. Transaction races must handle concurrent duplicate receipts safely. Exact receipt implementation is Member 4's responsibility.
 
-## UDP discovery (Member 2)
+## Supplier HTTP adapter (Member 2)
 
-Datagram to port 7445 (broadcast or known local addresses), proposed UTF-8 packet:
+The branch gateway sends a regular TLS/TCP `GET_SUPPLIER_STOCK` command to the central server. The **central Java server** then calls a configured external supplier endpoint using `java.net.URI`, `URL` and `HttpURLConnection`. This is a separate protocol from the custom TCP command framing.
 
-```json
-{"v":1,"type":"DISCOVER","nonce":"client-generated-random-identifier"}
-```
-
-Server response echoes nonce:
+Example command:
 
 ```json
-{"v":1,"type":"HERE","nonce":"client-generated-random-identifier","service":"ThogaMura","commandPort":7443,"notificationPort":7444}
+{"v":1,"type":"GET_SUPPLIER_STOCK","requestId":"a11b5173-520e-4bb3-82a2-b6a4c3e02e9f","data":{"sku":"ITEM-008"}}
 ```
 
-Receiver trusts neither this packet nor claimed address. Server IP is determined from the datagram **source address**; TLS server identity must still be validated. Bound packet size (e.g. 1 KiB), retries/timeouts, manual-host fallback.
+Example advisory response:
+
+```json
+{"v":1,"type":"RESULT","requestId":"a11b5173-520e-4bb3-82a2-b6a4c3e02e9f","status":"AVAILABLE","data":{"sku":"ITEM-008","supplier":"Demo Supplier","reportedQuantity":20,"source":"MOCK_SUPPLIER"}}
+```
+
+When supplier is down, respond with `status: "UNAVAILABLE"` and a safe error code; **do not** turn a timeout into `reportedQuantity:0`. This read-only operation does not mutate warehouse stock or place orders. Supplier URL must be configured by operator, not supplied in the command body. For the demo, use a separate mock supplier HTTP process; outside localhost, HTTPS and certificate validation are required.
 
 ## Java NIO change feed (Member 3)
 
-A separate `ServerSocketChannel` / `Selector` multiplexes gateway subscribers on port 7444. It sends at most a minimal line such as:
+A separate `ServerSocketChannel` / `Selector` multiplexes branch gateway subscribers on port 7444 on a **restricted private demo LAN**. This port must never be exposed on untrusted networks before an encrypted/authenticated transport or VPN is added. It sends at most a minimal line such as:
 
 ```json
 {"v":1,"type":"CHANGED","version":42}

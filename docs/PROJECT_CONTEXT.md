@@ -2,43 +2,44 @@
 
 ## Problem
 
-Small shop and warehouse teams often pass stock requests via calls, chat or paper. Two people may unknowingly request the same remaining stock; messages may be lost; staff cannot tell which request was picked or dispatched; internet connectivity may be unreliable.
+Small shops and branch terminals ask a central warehouse for stock through chat, phone calls or paper. Simultaneous requests can exceed inventory; staff may not know whether a request submitted during a network interruption was accepted. Warehouse dispatch changes may not reach all branches promptly. When the warehouse lacks stock, staff need a truthful supplier availability inquiry.
 
 ## Proposed product
 
-**ThogaMura** is a small LAN-first stock request and warehouse fulfilment desktop/web application. A shop operator views product availability and requests quantity from the warehouse. A server atomically accepts and reserves stock or rejects the request. A warehouse operator marks it picked and dispatched. The system persists all transitions and announces changes to connected clients.
+**ThogaMura** is a **LAN-first branch-to-central-warehouse stock request and fulfillment system**. A shop operator submits a request, the central warehouse atomically reserves or rejects it, warehouse staff pick/dispatch it, and connected branch gateways receive non-sensitive live change hints. For an unavailable item, an optional supplier HTTP connector provides read-only availability for manual follow-up.
 
 ## Primary users
 
-- **Shop operator:** checks stock, creates and views own requests.
-- **Warehouse picker:** sees accepted requests; picks and dispatches.
-- **Supervisor/demo operator:** views stock and movement history.
+- **Shop/branch operator:** checks stock, creates/retries requests, sees status, checks supplier availability when warehouse stock is insufficient.
+- **Warehouse picker:** views accepted requests, picks and dispatches.
+- **Supervisor/demo operator:** reviews balances, command outcomes, and movement history.
 
-User roles are **proposed**, not evidence of actual customer validation.
+These roles are proposed; the MVP does not yet implement production human authorization.
 
 ## MVP success criteria
 
-1. Two computers on one local network operate through the web UI and gateway against one Java network server.
-2. A stock request gets a unique requestId and an accepted/rejected result.
-3. Competing reservations cannot oversubscribe stock.
-4. Retrying an already processed requestId does not reserve twice.
-5. Requests move to PICKED and DISPATCHED with a database movement record.
-6. Browser sees a change indicator, refetches and shows authoritative state.
-7. All five members demonstrate their assigned Java lecture concept and a failure case.
-8. Server restart preserves stock and request state.
+1. Branch UI/gateway and warehouse network server run on distinct devices/JVMs; all stock mutations cross real Java `java.net` sockets.
+2. Request gets one persistent UUID and an ACCEPTED/REJECTED decision; duplicate identical retry replays original decision.
+3. Concurrent requests cannot over-allocate stock; physical/reserved/available balances stay correct.
+4. PICKED and DISPATCHED transitions persist one movement and survive server restart.
+5. Java NIO notifies multiple branch gateways; browser refetches authoritative state after events or reconnect.
+6. Real Java `HttpURLConnection` contacts a separately running supplier stub, reports valid result or explicit unavailable/unknown.
+7. TLS handshake validates server identity and rejects a wrong/untrusted certificate.
+8. Each of five members demonstrates an individually authored lecture concept with a negative network case.
 
-## Not in MVP
+## Out of scope
 
-Full ERP, suppliers, purchasing, accounting, invoicing, payments, online cloud sync, mobile app, barcode hardware, AI/ML, complex RBAC, multi-warehouse, payment integration, background offline mutation queues.
+Full ERP, purchasing/payment, actual commercial supplier credentials/integration, automated reorder, accounting, invoicing, multiple warehouse ownership, offline mutation queues, hardware, mobile apps, AI and public internet deployment.
 
-## Assumptions and constraints
+## Assumptions
 
-- A single warehouse and single locally hosted authoritative PostgreSQL instance.
-- The local network may work without the internet, but Wi-Fi/router/server and electrical power must remain available.
-- A browser speaks HTTP/SSE only; Java `java.net` and `java.nio` are exercised in separate server-side JVMs.
-- Max one stock-keeping unit (SKU) per request for the first MVP. Multi-line orders are deferred.
-- No actual shop validation has been performed; confirm with a real user before claiming impact.
+- Single central warehouse + PostgreSQL; at least one shop/branch-side gateway.
+- Core demo uses a private LAN; a disconnected browser cannot mutate central stock until reconnected.
+- A static configured hostname/IP replaces unnecessary UDP discovery.
+- Standard browser communicates HTTP/SSE; only Java services use raw TCP/NIO.
+- One SKU per stock request in MVP.
+- No customer validation yet. Validate the workflow with a shop operator before claiming business impact.
 
-## Name
+## Design authority
 
-Provisional title: **ThogaMura** (Sinhala-inspired combination of wholesale/stock goods and watch/duty). Group should check spelling and consent before public branding.
+See `NETWORK_FEATURES_V2.md`, `ARCHITECTURE.md`, `TEAM_WORKLOADS.md`, and the two versioned contracts. Old PDF and UDP discovery tickets are historical; v2 is the active design.

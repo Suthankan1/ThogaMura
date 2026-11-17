@@ -3,7 +3,7 @@
 1. Title page: project, group names/student IDs, course and submission date.
 2. Problem statement, target users, assumptions and real-world relevance.
 3. Requirements: functional, non-functional and assignment criteria.
-4. Architecture: Next.js -> Spring Boot gateway -> Java TLS/TCP server; UDP/NIO; PostgreSQL.
+4. Architecture: Next.js -> Spring Boot gateway -> Java TLS/TCP warehouse server; NIO change feed; M2 Java HTTP/URL supplier adapter; PostgreSQL.
 5. Protocol contract: newline framing, requestId, error codes, TLS and NIO signaling.
 6. Module implementation: one distinct, named section **per member** with source/classes, APIs, screenshots and rationale.
 7. Data model and concurrency/idempotency rules.

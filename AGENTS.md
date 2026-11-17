@@ -1,6 +1,6 @@
 # ThogaMura — agent instructions (Codex and shared baseline)
 
-Read `README.md`, `docs/PROJECT_CONTEXT.md`, `docs/ARCHITECTURE.md`, `docs/TEAM_WORKLOADS.md`, and the relevant `docs/contracts/*` before changing implementation. Read `docs/ai/CONTEXT_PACK.md` for a fast task introduction.
+Read `README.md`, `docs/NETWORK_FEATURES_V2.md`, `docs/PROJECT_CONTEXT.md`, `docs/ARCHITECTURE.md`, `docs/TEAM_WORKLOADS.md`, and the relevant `docs/contracts/*` before changing implementation. Read `docs/ai/CONTEXT_PACK.md` for a fast task introduction.
 
 ## Hard requirements
 
@@ -8,8 +8,10 @@ Read `README.md`, `docs/PROJECT_CONTEXT.md`, `docs/ARCHITECTURE.md`, `docs/TEAM_
 - Browser cannot use Java sockets: Next.js -> Spring Boot gateway via HTTP/SSE -> **separate JVM process** over Java sockets -> PostgreSQL.
 - Only `network-server` accesses PostgreSQL. Never let the gateway/frontend shortcut inventory commands around socket transport.
 - Reserve stock in a single database transaction; preserve `available = on_hand - reserved >= 0`; persist request IDs and process retries idempotently.
-- Do not send stock/customer information over UDP discovery or the unencrypted NIO feed. Business commands go over validated TLS.
+- Do not send stock/customer information over the unencrypted NIO feed. The NIO feed must stay on a private/firewall-restricted demo LAN and cannot be exposed over WAN. Business commands go over validated TLS.
+- M2 is **HTTP/URL supplier stock inquiry**, not UDP auto-discovery. Use an independent mock supplier service for demos and a configured allowlisted URL; do not invent supplier results or implement automatic purchasing.
 - Treat every request as untrusted: bounded frames, validation, timeouts, no swallowing exceptions, no logging of credentials.
+- The deployed warehouse hostname/IP is configured: do not reintroduce UDP discovery without a new justified ADR.
 - Do not invent product requirements or change protocol v1 without documenting the decision and asking the team.
 
 ## Delivery workflow

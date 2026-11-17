@@ -4,12 +4,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "ThogaMura | Project Starter", template: "%s | ThogaMura" },
-  description: "LAN-first stock request and warehouse fulfilment — coursework scaffold",
+  description: "LAN-first branch-to-warehouse requests and supplier availability — coursework scaffold",
 };
 
 const links = [
   { href: "/", label: "Overview" },
   { href: "/products", label: "Products" },
+  { href: "/suppliers", label: "Suppliers" },
   { href: "/requests", label: "Requests" },
   { href: "/warehouse", label: "Warehouse" },
   { href: "/activity", label: "Activity" },
