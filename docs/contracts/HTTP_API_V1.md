@@ -52,6 +52,8 @@ Do **not** return `201` on a mock or optimistic result. Include an error code an
 
 ## Supplier availability mapping
 
+See `SUPPLIER_HTTP_V1.md` for the exact independent supplier mock request/response, response-size/timeouts and failure contract.
+
 Supplier lookup is **read-only and optional**; the central Java network server contacts a separately running HTTP supplier mock for demos (or an authorized configured supplier API in a real integration). Return a result with `sku`, `supplier`, `reportedQuantity` (only if known), and `source`/`checkedAt` when available. For 404/503, timeout or malformed response, return a distinct UNKNOWN/UNAVAILABLE error and display a safe message. Never claim that unknown equals zero. This endpoint cannot accept an arbitrary supplier URL and cannot reserve warehouse stock. Example:
 
 ```json

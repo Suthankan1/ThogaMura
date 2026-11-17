@@ -54,7 +54,7 @@ Each gets a success and failure network demonstration. See [Detailed v2 rational
 - [Architecture](docs/ARCHITECTURE.md)
 - [Backend and data](docs/BACKEND_PLAN.md)
 - [Frontend and accessibility](docs/FRONTEND_PLAN.md)
-- [TCP/NIO protocol](docs/contracts/NETWORK_PROTOCOL_V1.md) and [HTTP API](docs/contracts/HTTP_API_V1.md)
+- [TCP/NIO protocol](docs/contracts/NETWORK_PROTOCOL_V1.md), [HTTP API](docs/contracts/HTTP_API_V1.md), and [supplier HTTP contract](docs/contracts/SUPPLIER_HTTP_V1.md)
 - [Five-week roadmap](docs/ROADMAP.md), [test matrix](docs/TEST_PLAN.md), [live demo](docs/DEMO_SCRIPT.md)
 - [AI collaboration](docs/ai/CONTEXT_PACK.md) and [agent rules](AGENTS.md)
 - [Original proposal](docs/proposal/README.md) (historical, superseded)

@@ -15,7 +15,7 @@ Member numbers are placeholders, **not real assignments**. Confirm lecturer appr
 
 - **Concept:** Java `URI`, `URL`, `HttpURLConnection`/`HttpsURLConnection`, DNS host resolution, HTTP response codes/timeouts.
 - **Business reason:** warehouse rejects a request due to insufficient stock; staff can see an advisory availability/ETA from a separate supplier system.
-- **Build:** central-server outbound read-only HTTP connector to **configured** supplier URL, supplier contract, response validation and error mapping. Write a tiny independent mock supplier HTTP server for reliable grading, not a fake hard-coded return inside the same method.
+- **Build:** central-server outbound read-only HTTP connector to **configured** supplier URL, supplier contract (`contracts/SUPPLIER_HTTP_V1.md`), response validation and error mapping. Write a tiny independent mock supplier HTTP server for reliable grading, not a fake hard-coded return inside the same method.
 - **Owned:** `networkserver.integration.supplier`, supplier mock fixture, HTTP gateway adapter for `GET /suppliers/availability?sku=...`.
 - **Prove:** outgoing network HTTP request to separate process + successful answer; 404, 503, timeout and invalid JSON produce explicit unknown/unavailable.
 - **Security:** no arbitrary URL input/SSRF, no credentials in Git, use HTTPS in real integrations; supplier answer never changes central inventory.

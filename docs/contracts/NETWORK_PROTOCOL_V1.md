@@ -46,7 +46,7 @@ Rejected result:
 
 `requestId` always identifies the **network command**; for state-transition commands `stockRequestId` identifies the original business request. Mutating calls may be retried with the same command requestId. Never reuse the same requestId for a different payload.
 
-Error codes to implement: `VALIDATION_ERROR`, `NOT_FOUND`, `INSUFFICIENT_STOCK`, `INVALID_TRANSITION`, `DUPLICATE_ID_CONFLICT`, `UNSUPPORTED_VERSION`, `INTERNAL_ERROR`. Do not expose stack traces to clients.
+Error codes to implement: `VALIDATION_ERROR`, `NOT_FOUND`, `INSUFFICIENT_STOCK`, `INVALID_TRANSITION`, `DUPLICATE_ID_CONFLICT`, `UNSUPPORTED_VERSION`, `SUPPLIER_UNAVAILABLE`, `SUPPLIER_TIMEOUT`, `SUPPLIER_UNKNOWN`, `INTERNAL_ERROR`. Do not expose stack traces to clients.
 
 ## Durability and idempotency
 
@@ -54,7 +54,7 @@ For every mutating command, the server persists unique command requestId, canoni
 
 ## Supplier HTTP adapter (Member 2)
 
-The branch gateway sends a regular TLS/TCP `GET_SUPPLIER_STOCK` command to the central server. The **central Java server** then calls a configured external supplier endpoint using `java.net.URI`, `URL` and `HttpURLConnection`. This is a separate protocol from the custom TCP command framing.
+The mock contract is documented in `SUPPLIER_HTTP_V1.md`. The branch gateway sends a regular TLS/TCP `GET_SUPPLIER_STOCK` command to the central server. The **central Java server** then calls a configured external supplier endpoint using `java.net.URI`, `URL` and `HttpURLConnection`. This is a separate protocol from the custom TCP command framing.
 
 Example command:
 
