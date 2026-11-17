@@ -57,7 +57,7 @@ Each gets a success and failure network demonstration. See [Detailed v2 rational
 - [TCP/NIO protocol](docs/contracts/NETWORK_PROTOCOL_V1.md), [HTTP API](docs/contracts/HTTP_API_V1.md), and [supplier HTTP contract](docs/contracts/SUPPLIER_HTTP_V1.md)
 - [Five-week roadmap](docs/ROADMAP.md), [test matrix](docs/TEST_PLAN.md), [live demo](docs/DEMO_SCRIPT.md)
 - [AI collaboration](docs/ai/CONTEXT_PACK.md) and [agent rules](AGENTS.md)
-- [Original proposal](docs/proposal/README.md) (historical, superseded)
+- [Current five-member group proposal (LaTeX source)](docs/proposal/ThogaMura_Group_Proposal_v2.tex) and [historical draft](docs/proposal/README.md)
 - [Decision log](docs/decisions/DECISION_LOG.md)
 
 ## Repository structure
@@ -95,7 +95,7 @@ Next.js starter opens at http://localhost:3000. The starter has no stock request
 2. No shortcut from browser/gateway to DB. Commands cross actual Java TLS/TCP.
 3. A negative test and real cross-process demo for every student's lecture feature.
 4. M2 supplier simulator is a mock network **service**, not pretend static data in the production connector.
-5. Keep NIO port 7444 on private/demo LAN only. HTTPS + authorization + encrypted NIO feed required before real public deployment.
+5. Keep NIO port 7444 on a private/demo LAN only, enforced by host binding and firewall rules ([security issue #33](https://github.com/Suthankan1/ThogaMura/issues/33)). HTTPS + authorization + encrypted NIO feed are required before real public deployment.
 6. Changes to contracts need ADR and group review. Avoid giant AI-generated work with unclear member ownership.
 
 Repository: https://github.com/Suthankan1/ThogaMura
