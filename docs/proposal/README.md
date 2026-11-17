@@ -1,7 +1,15 @@
-# Historical group idea proposal
+# ThogaMura group proposals
 
-`ThogaMura_Group_Proposal.pdf` and the editable LaTeX source record the **original idea** discussed before choosing the implementation stack. That document proposed a Java Swing UI and embedded database.
+## Current: five-member network programming proposal (v2)
 
-**The current implementation plan supersedes those technology choices.** The team now prefers **Next.js + Spring Boot HTTP gateway + separate Spring Boot Java socket server + PostgreSQL**; authoritative sources are `../ARCHITECTURE.md`, `../FRONTEND_PLAN.md`, `../BACKEND_PLAN.md`, `../contracts/` and `../decisions/DECISION_LOG.md`.
+- [Editable LaTeX source](ThogaMura_Group_Proposal_v2.tex) — current five-member group presentation, real-world workflow, architecture, workload estimates, failure-path demonstrations and five-week roadmap.
+- The matching `ThogaMura_Group_Proposal_v2.pdf` was generated for team sharing on **17 November 2026**. The team lead can share the PDF directly. **This is an idea proposal, not the final implementation report required for Moodle.**
+- Canonical implementation specifications remain [NETWORK_FEATURES_V2.md](../NETWORK_FEATURES_V2.md), [TEAM_WORKLOADS.md](../TEAM_WORKLOADS.md), the [contracts](../contracts/) and [GitHub issue #1](https://github.com/Suthankan1/ThogaMura/issues/1).
 
-The original business problem remains useful, but its original UDP discovery allocation has been replaced by the M2 supplier HTTP/URL connector in `../NETWORK_FEATURES_V2.md`. The five-member workload split in the PDF is historical, not current. The original five lecture-concept workloads remain historical, but do not ask an AI to implement Swing/H2 from the old PDF unless the whole team changes the decision.
+All M1–M5 assignments are currently **unassigned** until member names and GitHub handles are confirmed. Lecturer approval is still required for the distinct concept split, especially M2 Java HTTP/URL programming. The Java NIO feed is version-only and private-LAN restricted; see [issue #33](https://github.com/Suthankan1/ThogaMura/issues/33).
+
+## Historical original (superseded)
+
+`ThogaMura_Group_Proposal.pdf` and `ThogaMura_Group_Proposal.tex` record the original brainstorm (Swing UI, embedded database and UDP discovery). Retain for historical context **only**. Do not implement that earlier stack or UDP work from these files.
+
+The agreed current stack is Next.js + Spring Boot branch gateway + separate Spring Boot Java network server + PostgreSQL, with Java TCP, HTTP/URL, NIO, concurrency and TLS split across five students.
