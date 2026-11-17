@@ -1,68 +1,68 @@
-# Five distinct member workloads
+# Five distinct networking workloads — v2
 
-**Replace Member 1–5 with actual names at kickoff.** Each member owns source, tests and a 60–90s live demonstration of one distinct lecture networking concept. UI, docs and report writing are shared; no member's sole assessed work is frontend polishing.
+Member numbers are placeholders, **not real assignments**. Confirm lecturer approval and replace with actual names tomorrow. Every member owns source, automated tests and an individual live demo of one lecture concept. UI/CI/report are shared, not a substitute for assessed networking.
 
-## Member 1 — TCP commands and reliability
+## M1 — TCP stock command delivery
 
-- **Lecture concept:** `java.net.Socket`, `ServerSocket`, streams, TCP lifecycle, timeouts and framing.
-- **Build:** newline-delimited JSON codec; command dispatcher and gateway client; request/response correlation, retry with same requestId, reconnect handling.
-- **Interfaces:** `NETWORK_PROTOCOL_V1.md` envelope, Member 4 reservation service, Member 5 TLS socket factory.
-- **Owned packages:** `network-server/.../transport/tcp` and `api-gateway/.../network/tcp`.
-- **Demo:** send request over real socket; force lost response; retry exact requestId; prove no second reservation.
-- **Tests:** partial frame, merged frames, oversized frame, interrupted connection, timeout, retry with same ID.
-- **Definition of done:** real two-JVM call, not a Spring method invocation.
+- **Concept:** Java `Socket`, `ServerSocket`, streams, TCP connection lifecycle, frame boundaries, timeouts.
+- **Business reason:** a branch gateway must send stock commands to a warehouse server on a separate machine; uncertain results must be safely retried.
+- **Build:** bounded newline-JSON framing, correlation, connect/read deadlines, socket cleanup, repeatable request UUID; integration with M4's durable receipts and M5's TLS socket factory.
+- **Owned:** `networkserver.transport.tcp`, `gateway.network.tcp`.
+- **Prove:** real two-JVM call, split and merged frames, timeout after warehouse commit followed by same-ID retry without duplicate reservation.
+- **Do not claim:** TCP by itself guarantees exactly-once application delivery.
 
-## Member 2 — UDP discovery
+## M2 — HTTP/URL supplier availability inquiry (replaces UDP)
 
-- **Lecture concept:** `DatagramSocket`, `DatagramPacket`, `InetAddress`, ports, receive timeout.
-- **Build:** network server discovery responder; gateway discovery client; nonce matching, bounded datagram parsing, manual IP fallback and status UI integration.
-- **Interfaces:** discovery packet in `NETWORK_PROTOCOL_V1.md`; returned port/host passed to Member 1 and Member 5.
-- **Owned packages:** `network-server/.../discovery` and `api-gateway/.../network/discovery`.
-- **Demo:** start with no configured server address; discover over LAN, then block UDP/broadcast and demonstrate manual fallback.
-- **Tests:** nonce mismatch, timeout, corrupted packet, multiple responders, port override.
-- **Security:** discovered endpoint is untrusted until TLS identity verification.
+- **Concept:** Java `URI`, `URL`, `HttpURLConnection`/`HttpsURLConnection`, DNS host resolution, HTTP response codes/timeouts.
+- **Business reason:** warehouse rejects a request due to insufficient stock; staff can see an advisory availability/ETA from a separate supplier system.
+- **Build:** central-server outbound read-only HTTP connector to **configured** supplier URL, supplier contract (`contracts/SUPPLIER_HTTP_V1.md`), response validation and error mapping. Write a tiny independent mock supplier HTTP server for reliable grading, not a fake hard-coded return inside the same method.
+- **Owned:** `networkserver.integration.supplier`, supplier mock fixture, HTTP gateway adapter for `GET /suppliers/availability?sku=...`.
+- **Prove:** outgoing network HTTP request to separate process + successful answer; 404, 503, timeout and invalid JSON produce explicit unknown/unavailable.
+- **Security:** no arbitrary URL input/SSRF, no credentials in Git, use HTTPS in real integrations; supplier answer never changes central inventory.
+- **Non-goals:** purchasing, payment, supplier account integration. Real supplier data is not available by default.
 
-## Member 3 — Java NIO notifications
+## M3 — NIO multi-gateway change signals
 
-- **Lecture concept:** `ServerSocketChannel`, `SocketChannel`, `Selector`, `SelectionKey`, `ByteBuffer`, non-blocking read/write.
-- **Build:** one selector loop for multiple subscribers; bounded write queues; only `CHANGED/version` frames; gateway subscriber; SSE invalidation to browser.
-- **Interfaces:** feed in `NETWORK_PROTOCOL_V1.md`, HTTP SSE in `HTTP_API_V1.md`.
-- **Owned packages:** `network-server/.../notifications` and `api-gateway/.../network/notifications`.
-- **Demo:** 10+ connected clients receive change after a committed request; disconnect some clients; server stays stable.
-- **Tests:** partial writes, slow subscriber, disconnect, multiple clients, missed event then authoritative refetch.
-- **Security:** no confidential stock or credentials on this unencrypted feed.
+- **Concept:** `ServerSocketChannel`, `SocketChannel`, `Selector`, `SelectionKey`, `ByteBuffer`, non-blocking partial I/O.
+- **Business reason:** several branch gateway instances need immediate warehouse change hints to refresh their operator browsers.
+- **Build:** one selector-based server, 10+ simulated gateway subscribers, bounded per-client buffers, `OP_WRITE` only for pending bytes, gateway subscriber/reconnect, SSE invalidation bridging.
+- **Owned:** `networkserver.notifications`, `gateway.network.notifications`.
+- **Prove:** genuine 10-client NIO network test, slow reader/partial write, disconnect and missed event followed by authoritative refetch.
+- **Security:** strictly private-LAN, version-only feed. No public exposure. Encrypted/authenticated feed required before WAN deployment.
+- **Do not claim:** NIO means events are durable or that 10 clients require selectors for performance.
 
-## Member 4 — Multithreading and atomic inventory
+## M4 — Concurrent reservations and durable idempotency
 
-- **Lecture concept:** `ExecutorService`, worker pools, synchronized/shared state, races and concurrent requests.
-- **Build:** bounded request execution; `product_stock` locking/conditional update; idempotent request persistence; PICKED and DISPATCHED transactional transitions; movement history.
-- **Interfaces:** command handler called by Member 1; persists via PostgreSQL. Member 3 gets notification **only after commit**.
-- **Owned packages:** `network-server/.../concurrent`, `.../inventory`, `.../persistence`.
-- **Demo:** 10 items available; two parallel requests ask 8 each; at most one succeeds; retry does not reserve twice.
-- **Tests:** barrier-synchronized race, duplicate requestId, conflicting payload, restart replay, double dispatch, invariant checks.
-- **Invariants:** `available = on_hand - reserved >= 0`; movement at most once per request.
+- **Concept:** `ExecutorService`, bounded worker pool/queues, threads, race conditions, shared-state synchronization.
+- **Business reason:** simultaneous branch stock requests cannot both reserve unavailable items.
+- **Build:** worker executor + transactional conditional stock update or `SELECT FOR UPDATE`; persisted requestId receipt and original result; PICKED/DISPATCHED state machine and one movement.
+- **Owned:** `networkserver.concurrent`, `networkserver.inventory`, `networkserver.persistence`.
+- **Prove:** from 10 available, parallel requests for 8 each yield at most one accept; restart, duplicate command, double dispatch and row constraint tests.
+- **Important:** Java synchronization is not a replacement for PostgreSQL transaction integrity.
 
-## Member 5 — Secure Java sockets and TLS
+## M5 — TLS trust and identity for commands
 
-- **Lecture concept:** `SSLServerSocket`, `SSLSocket`, JSSE, certificates, TLS handshake, truststores.
-- **Build:** secure command listener/client configuration, trust and hostname validation, test certificate generation docs, optional gateway mutual TLS, secure failure reporting.
-- **Interfaces:** wraps Member 1's existing stream/codec without rewriting command semantics.
-- **Owned packages:** `network-server/.../security` and `api-gateway/.../network/security`.
-- **Demo:** valid trusted TLS connection succeeds; untrusted/mismatched certificate or client identity is rejected; no plaintext fallback.
-- **Tests:** handshake success, invalid CA, wrong server identity, missing certificate (if mTLS enabled), sensitive-data log review.
-- **Security:** private keys remain outside repository; do not disable verification for convenience.
+- **Concept:** `SSLSocket`, `SSLServerSocket`, JSSE handshake, certificates/truststores and hostname verification.
+- **Business reason:** branch must verify central server identity and protect command data while it crosses the LAN.
+- **Build:** secure socket factories and configuration for M1's framed protocol; validated trust chain and server identity; optional mutual TLS if time allows; test certificate setup outside repository.
+- **Owned:** `networkserver.security`, `gateway.network.security`.
+- **Prove:** trusted connection completes an actual command; untrusted/wrong-name server fails closed; no plaintext fallback.
+- **Important:** TLS does not substitute for human authentication, roles or permission checks.
 
-## Shared work and fairness
+## Shared integration and fair ownership
 
-- Frontend route/UI components, README, continuous integration, database deployment and report are **shared/reviewed**, not replacement network concepts.
-- Each student should author and understand their own implementation. Two peer reviews for transport/security/concurrency integrations.
-- Use branches such as `feat/m1-tcp-framing`, `feat/m2-udp-discovery`; PRs target main after narrow tests.
-- Students can support one another but must retain clear assessed source and demonstration ownership.
+- Web UI: product list, request create, warehouse queue/history, supplier availability/unknown state, network health.
+- Spring Boot gateway: REST/SSE and TCP/TLS bridges, no database write shortcuts.
+- Documentation, reports, CI and two-machine LAN verification: shared.
+- Branch names: `feat/m1-tcp-commands`, `feat/m2-supplier-http`, `feat/m3-nio-feed`, `feat/m4-concurrency`, `feat/m5-tls`.
+- Each member attaches source/PR, real test command/output, observed success and negative scenario before declaring done.
 
 ## Dependency order
 
-1. Team freezes protocol and API shapes.
-2. M1 builds plain TCP transport loop with one PING-like round trip; M4 builds transactional domain service with unit tests.
-3. M2 and M3 build independently against frozen ports and version signal; M5 prepares certificate materials and can wrap M1's transport as soon as it exists.
-4. Gateway wire adapters integrate with HTTP routes and Next pages.
-5. All five rehearse their failure-mode demos on two LAN devices.
+1. Freeze v2 command and HTTP API contracts + supplier mock schema, choose local LAN deployment topology.
+2. M1 command PING over two JVMs; M4 DB transaction tests; M5 certificate fixtures in parallel.
+3. Integrate M1 + M4 + TLS into one browser-to-warehouse path.
+4. M2 supplier adapter and M3 NIO feed are independently testable against the established central server.
+5. Complete shared UI, integration tests, individual five demos and report.
+
+See `NETWORK_FEATURES_V2.md` for the explicit why, what and constraints.

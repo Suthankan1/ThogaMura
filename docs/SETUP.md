@@ -61,4 +61,4 @@ git diff --check
 
 ## Two-machine LAN demo
 
-Run server + PostgreSQL on the warehouse laptop; run gateway + browser on the shop laptop. Bind socket listeners to a suitable LAN interface, configure firewall rules for the small required ports, verify TLS server name/SAN and truststore, and use manual server IP when UDP broadcast is blocked. Use fictitious demo items; never expose PostgreSQL publicly.
+Run server + PostgreSQL on the warehouse laptop; run gateway + browser on the shop laptop. Bind socket listeners to a suitable LAN interface, configure firewall rules for the small required ports, verify TLS server name/SAN and truststore, and configure `THOGAMURA_SERVER_HOST` to the central machine's trusted hostname/IP; there is no UDP discovery in v2. Restrict NIO port 7444 to the private demo LAN and do **not** expose it publicly. Run the independent supplier HTTP stub on port 8090 only if testing M2. Use fictitious demo items; never expose PostgreSQL publicly.

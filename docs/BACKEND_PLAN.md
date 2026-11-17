@@ -1,54 +1,45 @@
-# Backend and persistence plan
+# Backend and persistence plan — v2
 
-## Modules
+## Three Maven modules
 
-- `backend/protocol`: protocol version constant and shared transport-neutral types; only add a DTO here if both JVMs require it.
-- `backend/network-server`: Spring Boot lifecycle, custom `java.net`/`java.nio` socket services, inventory application service, Spring JDBC transactions, Flyway.
-- `backend/api-gateway`: Spring MVC REST and SSE, validated DTOs, Java TLS client, Java NIO feed subscriber, UDP discovery client, configurable manual fallback. **No PostgreSQL dependency**.
+- `backend/protocol`: shared JSON envelope/requestId conventions; minimal shared DTOs.
+- `backend/api-gateway`: Spring MVC REST/SSE and raw Java TLS/TCP client; no JDBC, no database access. Branch-side runtime, `THOGAMURA_SERVER_HOST` configured (DNS/IP), no UDP client.
+- `backend/network-server`: Spring Boot lifecycle for Java raw socket server, NIO version feed, bounded executor, Spring JDBC, Flyway, PostgreSQL. Central warehouse runtime. **New M2 outbound HTTP supplier connector is here**, not in the browser.
 
-Spring Boot is a lifecycle/DI/transaction tool; assessed socket operations must be directly implemented with JDK networking APIs and visible in source.
+## Owner and packages
 
-## Package ownership proposal
-
-| Area | Package | Owner |
+| Owner | Package area (proposed `lk.thogamura` prefix) | Main responsibility |
 | --- | --- | --- |
-| TCP command framing, mapping, retries | `networkserver.transport.tcp` and `gateway.network.tcp` | Member 1 |
-| Discovery | `networkserver.discovery` and `gateway.network.discovery` | Member 2 |
-| NIO feed | `networkserver.notifications` and `gateway.network.notifications` | Member 3 |
-| Atomic reservation and worker pool | `networkserver.inventory`, `networkserver.persistence`, `networkserver.concurrent` | Member 4 |
-| TLS configuration, certificate verification and authorization gates | `networkserver.security` and `gateway.network.security` | Member 5 |
+| M1 | `networkserver.transport.tcp`, `gateway.network.tcp` | Framed TLS/TCP command semantics + retry |
+| M2 | `networkserver.integration.supplier` + `tools/supplier-mock` (planned) | `URI`, `URL`, `HttpURLConnection` availability lookup |
+| M3 | `networkserver.notifications`, `gateway.network.notifications` | NIO selector invalidation, SSE bridge |
+| M4 | `networkserver.inventory`, `...persistence`, `...concurrent` | Worker pool, atomic stock and receipts |
+| M5 | `networkserver.security`, `gateway.network.security` | JSSE socket transport and trust verification |
 
-Package paths are sketches; actual Java package prefix is `lk.thogamura`.
+Actual package paths should be agreed in first PR; no feature implementation exists in the starter yet.
 
-## Schema (starter migration)
+## Central stock database
 
-1. `product_stock`: SKU, name, on_hand, reserved; check constraints protect non-negative values and `reserved <= on_hand`.
-2. `stock_requests`: UUID request_id, SKU, quantity, status, timestamps. `request_id` is a durable uniqueness/receipt key.
-3. `stock_movements`: append-only dispatch movement, unique per request.
-4. `command_receipts`: durable original result for each mutating command requestId, including state transitions.
+Tables proposed in initial Flyway migration:
 
-Single SKU per stock request. Seed test data only in explicit development setup.
+1. `product_stock`: SKU, name, `on_hand`, `reserved`, checks `0 <= reserved <= on_hand`.
+2. `stock_requests`: request UUID, SKU, quantity, state, timestamps.
+3. `stock_movements`: append-only dispatch movement, one per request.
+4. `command_receipts`: unique mutating command UUID, canonical payload fingerprint, original response (including rejections).
 
-## Reservation transaction
+**Reservation:** check/replay durable receipt; transactionally lock or conditionally update `product_stock`; increment `reserved` if sufficient; persist request and receipt in one commit; publish NIO hint **after commit**.
 
-1. Begin transaction.
-2. Check if command requestId has a **durable processed receipt**. If it does, return the original stored outcome (including rejected results), even after restart. Conflicting body under the same ID is rejected.
-3. Lock stock row (`SELECT ... FOR UPDATE`) or use a conditional update guaranteeing `on_hand - reserved >= qty`.
-4. If enough stock, increment reserved and persist accepted request; otherwise persist rejected decision; persist corresponding `command_receipts` result atomically.
-5. Commit; only then publish NIO invalidation.
+**Dispatch:** only PICKED -> DISPATCHED; decrement both `on_hand` and `reserved` once, record one movement and receipt atomically. Thread synchronization alone is not a DB guarantee.
 
-**Important:** the initial schema has a status field for accepted/rejected, but the team must explicitly confirm the stored response shape and canonical replay behavior before implementing the reservation service.
+## Network integrations
 
-## Dispatch transaction
+- **M1 commands:** framed UTF-8 JSON over TCP, later wrapped with M5 JSSE. Connection errors leave results uncertain; no duplicate execution after retry.
+- **M2 supplier:** `GET_SUPPLIER_STOCK` is a read-only command; central Java code calls configured supplier HTTP endpoint with `URI.toURL().openConnection()` / `HttpURLConnection`; strict connect/read timeouts, HTTP status mapping, response-size bounds, parsed schema; no arbitrary user URLs and no automatic stock changes.
+- **M3 NIO:** nonblocking selector fanout of minimal `CHANGED/version` signals to branch gateways; private LAN only, reconnect/refetch through command channel.
+- **M5:** certificate-validated JSSE at command port; no insecure fallback.
 
-For one `PICKED` request: decrement on_hand and reserved together, transition to `DISPATCHED` and insert one movement row in the same transaction, together with command receipt. Duplicate dispatch with the same command ID replays original response and yields no second movement. Different command IDs are still guarded by state transition/unique movement.
+## Startup, readiness and boundaries
 
-## Threading model
+Central network server does not expose separate browser-facing stock REST routes. Gateway `GET /actuator/health` proves only gateway process alive; include distinct dependency/network status when implemented. One central DB only. Supplier mock is test/demo service, not a production dependency; inventory workflow remains functional when supplier unavailable.
 
-Command accept loop -> bounded `ExecutorService` -> request handler -> transaction. Graceful stop closes sockets, stops accepting, allows in-flight tasks to finish where safe, releases workers. Distinguish application concurrency correctness (DB transaction) from Java thread scheduling.
-
-## Operational endpoints
-
-Gateway: `GET /actuator/health` shows that the gateway JVM is alive, **not** that the network server works; add explicit `/api/v1/network-status` when implementing network checks.
-
-Network server: no browser HTTP endpoint; Java listeners are started as application lifecycle components when their owners implement them.
+See `NETWORK_FEATURES_V2.md` and `ARCHITECTURE.md`.

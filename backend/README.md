@@ -3,7 +3,7 @@
 Parent Maven reactor: `backend/pom.xml`.
 
 - `protocol`: shared wire constants/DTOs only.
-- `network-server`: Spring Boot host for real hand-written JDK TCP/UDP/NIO/TLS socket services and JDBC/PostgreSQL persistence.
+- `network-server`: Spring Boot host for real hand-written JDK TCP/NIO/TLS socket services, plus Java URL/HTTP supplier availability connector and JDBC/PostgreSQL persistence.
 - `api-gateway`: Spring MVC HTTP/SSE to/from hand-written JDK socket clients; **no database library**.
 
 Java target: 21. Spring Boot: 3.5.7. Commands:
