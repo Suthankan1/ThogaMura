@@ -1,10 +1,14 @@
 package lk.thogamura.networkserver.transport.tcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lk.thogamura.networkserver.inventory.StockReservationCommandHandler;
+import lk.thogamura.networkserver.inventory.StockReservationService;
 import lk.thogamura.protocol.ProtocolInfo;
 import lk.thogamura.protocol.tcp.TcpMessageCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.Map;
@@ -12,11 +16,13 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Default command dispatcher implementation handling the frozen diagnostic {@code PING} command.
+ * Default command dispatcher implementation handling the frozen diagnostic {@code PING}
+ * and transactional {@code REQUEST_STOCK} commands.
  *
- * <p>Supports registration of additional business command handlers (e.g. Member 4 stock operations)
- * without modifying TCP transport or socket management.</p>
+ * <p>Supports registration of additional business command handlers without modifying
+ * TCP transport or socket management.</p>
  */
+@Component
 public class DefaultCommandDispatcher implements CommandDispatcher {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultCommandDispatcher.class);
@@ -24,7 +30,24 @@ public class DefaultCommandDispatcher implements CommandDispatcher {
     private final Map<String, CommandHandler> handlers = new ConcurrentHashMap<>();
 
     public DefaultCommandDispatcher() {
+        this((StockReservationService) null);
+    }
+
+    @Autowired
+    public DefaultCommandDispatcher(@Autowired(required = false) StockReservationService stockReservationService) {
         registerHandler(ProtocolInfo.COMMAND_PING, this::handlePing);
+        if (stockReservationService != null) {
+            registerHandler(ProtocolInfo.COMMAND_REQUEST_STOCK, new StockReservationCommandHandler(stockReservationService));
+            logger.info("Registered command handler for '{}'", ProtocolInfo.COMMAND_REQUEST_STOCK);
+        }
+    }
+
+    public DefaultCommandDispatcher(StockReservationCommandHandler reservationHandler) {
+        registerHandler(ProtocolInfo.COMMAND_PING, this::handlePing);
+        if (reservationHandler != null) {
+            registerHandler(ProtocolInfo.COMMAND_REQUEST_STOCK, reservationHandler);
+            logger.info("Registered command handler for '{}'", ProtocolInfo.COMMAND_REQUEST_STOCK);
+        }
     }
 
     /**
