@@ -1,6 +1,7 @@
 package lk.thogamura.networkserver.transport.tcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lk.thogamura.networkserver.integration.supplier.SupplierCommandHandler;
 import lk.thogamura.protocol.ProtocolInfo;
 import lk.thogamura.protocol.tcp.TcpMessageCodec;
 import org.slf4j.Logger;
@@ -12,7 +13,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Default command dispatcher implementation handling the frozen diagnostic {@code PING} command.
+ * Default command dispatcher implementation handling the frozen diagnostic {@code PING}
+ * and advisory external {@code GET_SUPPLIER_STOCK} commands.
  *
  * <p>Supports registration of additional business command handlers (e.g. Member 4 stock operations)
  * without modifying TCP transport or socket management.</p>
@@ -24,7 +26,14 @@ public class DefaultCommandDispatcher implements CommandDispatcher {
     private final Map<String, CommandHandler> handlers = new ConcurrentHashMap<>();
 
     public DefaultCommandDispatcher() {
+        this(new SupplierCommandHandler());
+    }
+
+    public DefaultCommandDispatcher(SupplierCommandHandler supplierCommandHandler) {
         registerHandler(ProtocolInfo.COMMAND_PING, this::handlePing);
+        if (supplierCommandHandler != null) {
+            registerHandler(ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK, supplierCommandHandler);
+        }
     }
 
     /**
