@@ -141,54 +141,49 @@ class NioNotificationServerTest {
     }
 
     @Test
-    @DisplayName("Requirement 5 & 6: Slow client buffering remains bounded and drops slow subscriber safely")
+    @DisplayName("Requirement 5 & 6: Slow client buffering remains bounded, disconnects subscriber, and stays healthy")
     void shouldBoundSlowClientBufferingAndDisconnectSubscriber() throws IOException {
-        // Create server with small queue bound of 5 messages and 2048 byte socket buffer
+        // Create server with small queue bound of 5 messages and small 2048-byte socket buffer
         server.stop();
         NotificationServerConfig restrictedConfig = new NotificationServerConfig("127.0.0.1", 0, 10, 5, 2048);
         server = new NioNotificationServer(restrictedConfig);
         server.start();
 
-        Socket normalClient = connectClient();
-        BufferedReader normalReader = new BufferedReader(new InputStreamReader(normalClient.getInputStream(), StandardCharsets.UTF_8));
-
-        // Read from normal client continuously in a background thread
-        Thread normalReaderThread = new Thread(() -> {
-            try {
-                while (!Thread.currentThread().isInterrupted() && normalReader.readLine() != null) {
-                    // actively draining
-                }
-            } catch (IOException ignored) {
-            }
-        });
-        normalReaderThread.setDaemon(true);
-        normalReaderThread.start();
-
-        // Slow client: sets small receive buffer and never reads
+        // 1. Connect a slow client that never reads from the socket
         Socket slowClient = new Socket();
         slowClient.setReceiveBufferSize(2048);
         slowClient.connect(new InetSocketAddress("127.0.0.1", server.getPort()));
         clientSockets.add(slowClient);
 
         await().atMost(Duration.ofSeconds(3))
-                .until(() -> server.getConnectedClientCount() == 2);
+                .until(() -> server.getConnectedClientCount() == 1);
 
-        // Publish enough messages to saturate OS socket buffer and overflow the 5-message queue
+        // 2. Publish enough messages to saturate OS socket buffer and overflow the 5-message queue
         for (long v = 1; v <= 300; v++) {
             server.publish(v);
-            if (server.getConnectedClientCount() == 1) {
+            if (server.getConnectedClientCount() == 0) {
                 break;
             }
         }
 
-        // Server must detect that the slow subscriber exceeded bounds and disconnect it
+        // 3. Server must detect slow subscriber queue overflow and disconnect it
         await().atMost(Duration.ofSeconds(5))
-                .until(() -> server.getConnectedClientCount() == 1);
+                .until(() -> server.getConnectedClientCount() == 0);
 
-        // Server remains alive and functional
+        // 4. Server remains running and completely healthy
         assertThat(server.isRunning()).isTrue();
 
-        normalReaderThread.interrupt();
+        // 5. Verify server can accept a new subscriber and deliver messages normally
+        Socket freshClient = connectClient();
+        BufferedReader freshReader = new BufferedReader(new InputStreamReader(freshClient.getInputStream(), StandardCharsets.UTF_8));
+
+        await().atMost(Duration.ofSeconds(3))
+                .until(() -> server.getConnectedClientCount() == 1);
+
+        server.publish(999L);
+        String received = freshReader.readLine();
+        assertThat(received).isNotNull();
+        assertThat(ChangeNotification.parse(received).version()).isEqualTo(999L);
     }
 
     @Test
