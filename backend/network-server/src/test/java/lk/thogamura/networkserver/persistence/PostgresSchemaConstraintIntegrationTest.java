@@ -61,6 +61,10 @@ class PostgresSchemaConstraintIntegrationTest {
         }
 
         if (jdbcUrl == null || jdbcUrl.isBlank()) {
+            if (System.getProperty("DOCKER_API_VERSION") == null && System.getenv("DOCKER_API_VERSION") == null) {
+                System.setProperty("DOCKER_API_VERSION", "1.44");
+                System.setProperty("api.version", "1.44");
+            }
             postgresContainer = new PostgreSQLContainer<>("postgres:17-alpine")
                     .withDatabaseName("thogamura_test")
                     .withUsername("thogamura")
