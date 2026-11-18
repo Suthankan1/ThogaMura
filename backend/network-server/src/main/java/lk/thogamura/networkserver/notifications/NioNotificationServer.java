@@ -15,6 +15,8 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -236,6 +238,18 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
             }
         }
         return new InetSocketAddress(config.host(), config.port());
+    }
+
+    ClientSession getSession(SocketChannel channel) {
+        return connectedClients.get(channel);
+    }
+
+    Collection<ClientSession> getConnectedSessions() {
+        return Collections.unmodifiableCollection(connectedClients.values());
+    }
+
+    Selector getSelector() {
+        return selector;
     }
 
     /**
@@ -468,6 +482,7 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
             }
             connectedClients.remove(ch);
         }
+        session.clear();
         logger.debug("Closed subscriber session for {} (reason: {})", session.getRemoteAddress(), reason);
     }
 
