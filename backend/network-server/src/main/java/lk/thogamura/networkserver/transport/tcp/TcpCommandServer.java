@@ -298,4 +298,40 @@ public class TcpCommandServer {
     public int getActiveClientCount() {
         return activeSockets.size();
     }
+
+    /**
+     * Standalone CLI runner to launch the TCP command server in an independent JVM process.
+     *
+     * <p>Outputs {@code SERVER_READY:<port>} on stdout upon successful socket binding,
+     * allowing external orchestrators, separate JVM integration tests, and manual demonstrations
+     * to capture the allocated port and begin transmission.</p>
+     *
+     * @param args optional arguments: [port] [host]
+     * @throws IOException on startup or socket binding errors
+     */
+    public static void main(String[] args) throws IOException {
+        int port = args.length > 0 ? Integer.parseInt(args[0]) : ProtocolInfo.DEFAULT_TLS_COMMAND_PORT;
+        String host = args.length > 1 ? args[1] : "127.0.0.1";
+
+        TcpCommandServerConfig config = new TcpCommandServerConfig(host, port);
+        TcpCommandServer server = new TcpCommandServer(config);
+        server.start();
+
+        System.out.println("SERVER_READY:" + server.getPort());
+        System.out.flush();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
+
+        try {
+            while (server.isRunning()) {
+                int read = System.in.read();
+                if (read == -1) {
+                    break;
+                }
+            }
+        } catch (IOException ignored) {
+        } finally {
+            server.stop();
+        }
+    }
 }
