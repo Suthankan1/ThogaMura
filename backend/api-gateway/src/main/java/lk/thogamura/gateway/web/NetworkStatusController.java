@@ -1,10 +1,15 @@
 package lk.thogamura.gateway.web;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lk.thogamura.gateway.network.notifications.NotificationSubscriberLifecycle;
 import lk.thogamura.gateway.network.notifications.SubscriberStatus;
+import lk.thogamura.gateway.network.tcp.CommandTransportException;
+import lk.thogamura.gateway.network.tcp.TcpCommandClient;
 import lk.thogamura.gateway.sse.SseNotificationBroadcaster;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,18 +36,21 @@ public class NetworkStatusController {
     private final boolean subscriberEnabled;
     private final Optional<NotificationSubscriberLifecycle> subscriberLifecycle;
     private final SseNotificationBroadcaster sseBroadcaster;
+    private final Optional<TcpCommandClient> tcpCommandClient;
 
     public NetworkStatusController(
             @Value("${thogamura.notifications.subscriber.host:127.0.0.1}") String centralHost,
             @Value("${thogamura.notifications.subscriber.port:7444}") int nioPort,
             @Value("${thogamura.notifications.subscriber.enabled:false}") boolean subscriberEnabled,
             @Autowired(required = false) NotificationSubscriberLifecycle subscriberLifecycle,
-            SseNotificationBroadcaster sseBroadcaster) {
+            SseNotificationBroadcaster sseBroadcaster,
+            @Autowired(required = false) TcpCommandClient tcpCommandClient) {
         this.centralHost = centralHost;
         this.nioPort = nioPort;
         this.subscriberEnabled = subscriberEnabled;
         this.subscriberLifecycle = Optional.ofNullable(subscriberLifecycle);
         this.sseBroadcaster = sseBroadcaster;
+        this.tcpCommandClient = Optional.ofNullable(tcpCommandClient);
     }
 
     @GetMapping("/network-status")
@@ -89,5 +97,46 @@ public class NetworkStatusController {
         status.put("tlsCommand", tlsCommand);
 
         return status;
+    }
+
+    /**
+     * Executes a real Java TCP diagnostic PING command to the central warehouse server
+     * via {@link TcpCommandClient}, returning the correlated PONG result.
+     *
+     * <p>Enforces Issue #9 and Member 1 diagnostic round-trip requirements.
+     * Fails cleanly with HTTP 503 if the warehouse command server is stopped or unreachable.</p>
+     */
+    @GetMapping("/ping")
+    public ResponseEntity<Map<String, Object>> pingWarehouseCommandServer() {
+        if (tcpCommandClient.isEmpty()) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("status", "UNAVAILABLE");
+            body.put("code", "CLIENT_NOT_CONFIGURED");
+            body.put("message", "TcpCommandClient is not configured on this gateway");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+        }
+
+        TcpCommandClient client = tcpCommandClient.get();
+        String host = client.getConfig().getHost();
+        int port = client.getConfig().getPort();
+
+        try {
+            JsonNode response = client.ping();
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("status", "PONG");
+            body.put("requestId", response.path("requestId").asText());
+            body.put("serverTime", response.path("data").path("serverTime").asText());
+            body.put("warehouseHost", host);
+            body.put("warehousePort", port);
+            return ResponseEntity.ok(body);
+        } catch (CommandTransportException e) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("status", "UNAVAILABLE");
+            body.put("code", "WAREHOUSE_UNAVAILABLE");
+            body.put("message", "Warehouse command server is unreachable: " + e.getMessage());
+            body.put("warehouseHost", host);
+            body.put("warehousePort", port);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+        }
     }
 }

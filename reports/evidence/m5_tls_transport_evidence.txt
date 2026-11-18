@@ -1,0 +1,73 @@
+================================================================================
+ThogaMura — Member 5 (M5): Secure Java TLS Command Transport
+Test Execution Evidence across Separate JVM Processes and SSL Socket Transports
+Timestamp: 2026-11-19T01:16:23+05:30
+Branch: feat/m5-tls-command-transport-23
+Reference Issue: #23 (Refs #23)
+Developer / Owner: Vibhath Kalsara (@vibhathkalsara99)
+================================================================================
+
+[INFO] Scanning for projects...
+[INFO] Reactor Build Order:
+[INFO]   ThogaMura backend reactor [pom]
+[INFO]   Shared wire protocol constants [jar]
+[INFO]   Java network server [jar]
+[INFO]   HTTP/SSE to Java sockets gateway [jar]
+[INFO] 
+[INFO] --------------------< lk.thogamura:network-server >---------------------
+[INFO] Building Java network server 0.1.0-SNAPSHOT
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running lk.thogamura.networkserver.transport.tcp.SeparateProcessTlsCommandIntegrationTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.167 s -- in lk.thogamura.networkserver.transport.tcp.SeparateProcessTlsCommandIntegrationTest
+[INFO] Running lk.thogamura.networkserver.security.TlsTcpCommandServerIntegrationTest
+01:16:08.592 [main] INFO lk.thogamura.networkserver.security.TlsServerSocketFactory -- Initialized TLS server socket factory with keystore '.../server-keystore.p12' (type: PKCS12) and protocols: [TLSv1.3, TLSv1.2]
+01:16:08.595 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:52008 [readTimeout=5000ms, maxClients=50]
+01:16:08.622 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 52008...
+01:16:08.624 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+01:16:10.326 [tcp-cmd-worker-1] WARN lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TLS handshake failed with client /127.0.0.1:52017: Unsupported or unrecognized SSL message
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.864 s -- in lk.thogamura.networkserver.security.TlsTcpCommandServerIntegrationTest
+[INFO] Running lk.thogamura.networkserver.security.TlsServerConfigurationTest
+01:16:11.862 [main] INFO lk.thogamura.networkserver.security.TlsServerSecurityConfiguration -- Configuring TLS server socket factory using keystore at '.../server-keystore.p12'
+01:16:11.868 [main] INFO lk.thogamura.networkserver.security.TlsServerSocketFactory -- Initialized TLS server socket factory with keystore '.../server-keystore.p12' (type: PKCS12) and protocols: [TLSv1.3, TLSv1.2]
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.564 s -- in lk.thogamura.networkserver.security.TlsServerConfigurationTest
+[INFO] Running lk.thogamura.networkserver.security.TlsCertificateSetupTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.463 s -- in lk.thogamura.networkserver.security.TlsCertificateSetupTest
+[INFO] 
+[INFO] Results:
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ----------------------< lk.thogamura:api-gateway >----------------------
+[INFO] Building HTTP/SSE to Java sockets gateway 0.1.0-SNAPSHOT
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running lk.thogamura.gateway.network.security.TlsTruststoreHostnameVerificationTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.883 s -- in lk.thogamura.gateway.network.security.TlsTruststoreHostnameVerificationTest
+[INFO] Running lk.thogamura.gateway.network.security.TlsTcpCommandClientIntegrationTest
+01:16:21.412 [main] INFO lk.thogamura.gateway.network.security.TlsSocketFactory -- Initialized TLS client socket factory with truststore '.../gateway-truststore.p12' (type: PKCS12, hostnameVerification: true)
+01:16:21.503 [main] WARN lk.thogamura.gateway.network.tcp.TcpCommandClient -- Warehouse server is unavailable at 127.0.0.1:52119 for requestId '...': Connection refused (connect failed)
+01:16:21.542 [main] ERROR lk.thogamura.gateway.network.tcp.TcpCommandClient -- TLS handshake failed connecting to 127.0.0.1:52129 for requestId '...': Unsupported or unrecognized SSL message
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.125 s -- in lk.thogamura.gateway.network.security.TlsTcpCommandClientIntegrationTest
+[INFO] Running lk.thogamura.gateway.network.security.TlsClientConfigurationTest
+01:16:23.563 [main] INFO lk.thogamura.gateway.network.security.TlsClientSecurityConfiguration -- Configuring TLS client socket factory using truststore at '.../gateway-truststore.p12'
+01:16:23.565 [main] INFO lk.thogamura.gateway.network.security.TlsSocketFactory -- Initialized TLS client socket factory with truststore '.../gateway-truststore.p12' (type: PKCS12, hostnameVerification: true)
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.936 s -- in lk.thogamura.gateway.network.security.TlsClientConfigurationTest
+[INFO] 
+[INFO] Results:
+[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for ThogaMura backend reactor 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] ThogaMura backend reactor .......................... SUCCESS [  0.001 s]
+[INFO] Shared wire protocol constants ..................... SUCCESS [  0.389 s]
+[INFO] Java network server ................................ SUCCESS [ 11.685 s]
+[INFO] HTTP/SSE to Java sockets gateway ................... SUCCESS [ 10.238 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+================================================================================
+Total Reactor Tests Run: 176, Failures: 0, Errors: 0, Skipped: 0
+================================================================================

@@ -23,6 +23,14 @@ thogamura:
       max-frame-bytes: ${THOGAMURA_COMMAND_SERVER_MAX_FRAME_BYTES:65536}
       # Security: Loopback only for plaintext development; non-loopback requires TLS
       allow-non-loopback-plaintext: ${THOGAMURA_COMMAND_ALLOW_NON_LOOPBACK_PLAINTEXT:false}
+  tls:
+    server:
+      # Validated JSSE TLS encryption for central warehouse command listener (Member 5 - Issue #23)
+      enabled: ${THOGAMURA_TLS_SERVER_ENABLED:${THOGAMURA_TLS_ENABLED:false}}
+      keystore-path: ${THOGAMURA_TLS_KEYSTORE_PATH:.certs/server-keystore.p12}
+      keystore-password: ${THOGAMURA_TLS_KEYSTORE_PASSWORD:}
+      keystore-type: ${THOGAMURA_TLS_KEYSTORE_TYPE:PKCS12}
+      protocols: ${THOGAMURA_TLS_PROTOCOLS:TLSv1.3,TLSv1.2}
   notifications:
     # Disabled by default; enable explicitly when running the network server
     enabled: ${THOGAMURA_NOTIFICATIONS_ENABLED:false}

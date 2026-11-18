@@ -1,14 +1,12 @@
 package lk.thogamura.networkserver.integration.supplier;
 
-import lk.thogamura.networkserver.transport.tcp.CommandDispatcher;
-import lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Spring configuration providing supplier connector and command dispatcher beans.
+ * Spring configuration providing supplier connector beans.
  */
 @Configuration
 public class SupplierConfiguration {
@@ -34,11 +32,5 @@ public class SupplierConfiguration {
     @ConditionalOnMissingBean
     public SupplierCommandHandler supplierCommandHandler(SupplierHttpClient supplierHttpClient) {
         return new SupplierCommandHandler(supplierHttpClient);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public CommandDispatcher commandDispatcher(SupplierCommandHandler supplierCommandHandler) {
-        return new DefaultCommandDispatcher(supplierCommandHandler);
     }
 }

@@ -198,6 +198,9 @@ public class TcpCommandClient {
                     new InetSocketAddress(config.getHost(), config.getPort()),
                     config.getConnectTimeoutMs()
             );
+            if (socket instanceof javax.net.ssl.SSLSocket sslSocket) {
+                sslSocket.startHandshake();
+            }
             return socket;
         } catch (ConnectException | UnknownHostException | NoRouteToHostException e) {
             closeQuietly(socket);
@@ -216,6 +219,16 @@ public class TcpCommandClient {
             throw new CommandTimeoutException(
                     "Connection timed out after " + config.getConnectTimeoutMs() + "ms connecting to "
                             + config.getHost() + ":" + config.getPort(),
+                    requestId,
+                    e
+            );
+        } catch (javax.net.ssl.SSLException e) {
+            closeQuietly(socket);
+            logger.error("TLS handshake failed connecting to {}:{} for requestId '{}': {}",
+                    config.getHost(), config.getPort(), requestId, e.getMessage(), e);
+            throw new CommandTransportException(
+                    "TLS handshake failed connecting to warehouse server at " + config.getHost() + ":"
+                            + config.getPort() + ": " + e.getMessage(),
                     requestId,
                     e
             );
@@ -265,6 +278,36 @@ public class TcpCommandClient {
             try {
                 socket.close();
             } catch (IOException ignored) {}
+        }
+    }
+
+    /**
+     * Standalone CLI runner to execute a command from the API Gateway client in an independent JVM process.
+     *
+     * <p>Usage: {@code java -cp ... TcpCommandClient [host] [port] [command]}</p>
+     *
+     * @param args optional arguments: [0]=host (default: 127.0.0.1), [1]=port (default: 7443), [2]=command (default: PING)
+     */
+    public static void main(String[] args) {
+        String host = args.length > 0 ? args[0] : "127.0.0.1";
+        int port = args.length > 1 ? Integer.parseInt(args[1]) : ProtocolInfo.DEFAULT_TLS_COMMAND_PORT;
+        String command = args.length > 2 ? args[2] : ProtocolInfo.COMMAND_PING;
+
+        long pid = ProcessHandle.current().pid();
+        System.out.println("GATEWAY_CLIENT_READY: PID=" + pid + " target=" + host + ":" + port);
+        System.out.flush();
+
+        TcpCommandClientConfig config = new TcpCommandClientConfig(host, port);
+        TcpCommandClient client = new TcpCommandClient(config);
+
+        try {
+            String requestId = UUID.randomUUID().toString();
+            System.out.println("CLIENT_REQUEST_DISPATCHED: requestId=" + requestId + " type=" + command);
+            JsonNode response = client.sendCommand(command, requestId, null);
+            System.out.println("CLIENT_RESPONSE_RECEIVED: " + response.toString());
+        } catch (Exception e) {
+            System.err.println("CLIENT_COMMAND_FAILED: " + e.getMessage());
+            System.exit(1);
         }
     }
 }

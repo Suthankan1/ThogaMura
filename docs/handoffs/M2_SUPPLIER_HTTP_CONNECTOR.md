@@ -233,7 +233,7 @@ All tests run automated in Maven without relying on external third-party service
 ### 6.2 Full Build Execution Output
 ```text
 [INFO] Reactor Summary for ThogaMura backend reactor 0.1.0-SNAPSHOT:
-[INFO] 
+[INFO]
 [INFO] ThogaMura backend reactor .......................... SUCCESS [  0.044 s]
 [INFO] Shared wire protocol constants ..................... SUCCESS [  1.351 s]
 [INFO] Java network server ................................ SUCCESS [ 15.032 s]

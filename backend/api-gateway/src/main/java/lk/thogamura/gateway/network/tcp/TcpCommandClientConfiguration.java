@@ -26,7 +26,9 @@ public class TcpCommandClientConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public TcpCommandClient tcpCommandClient(TcpCommandClientConfig config) {
-        return new TcpCommandClient(config, SocketFactory.getDefault());
+    public TcpCommandClient tcpCommandClient(
+            TcpCommandClientConfig config,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) SocketFactory socketFactory) {
+        return new TcpCommandClient(config, (socketFactory != null) ? socketFactory : SocketFactory.getDefault());
     }
 }
