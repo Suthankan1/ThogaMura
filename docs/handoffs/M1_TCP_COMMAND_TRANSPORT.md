@@ -1,10 +1,12 @@
-# Member 1 Handoff — Real Java TCP Command Transport (Issue #7)
+# Member 1 Handoff — Real Java TCP Command Transport & Gateway Round Trip (Issues #7 & #9)
 
 - **Owner:** Member 1 (@sankharavindu — Sankha Ravindu)
 - **Role:** Java TCP Networking
 - **Module:** `backend/network-server` (`lk.thogamura.networkserver.transport.tcp`) and `backend/api-gateway` (`lk.thogamura.gateway.network.tcp`)
-- **Status:** Complete (Verified with automated unit, socket integration, and separate-JVM process tests)
-- **Reference Issue:** [#7 — [M1][W2] Implement real TCP command server and gateway socket client](https://github.com/Suthankan1/ThogaMura/issues/7)
+- **Status:** Complete (Verified with automated unit, socket integration, separate-JVM process tests, and live gateway-to-warehouse multi-process round-trip)
+- **Reference Issues:** 
+  - [#7 — [M1][W2] Implement real TCP command server and gateway socket client](https://github.com/Suthankan1/ThogaMura/issues/7)
+  - [#9 — [SHARED][W1] Demonstrate first gateway-to-network-server round trip](https://github.com/Suthankan1/ThogaMura/issues/9)
 - **Contracts:** [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md) (v1.0.0 Frozen), [HTTP_API_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/HTTP_API_V1.md), [SECURITY_AND_LIMITATIONS.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/SECURITY_AND_LIMITATIONS.md)
 
 ---
@@ -165,11 +167,87 @@ Output:
 
 ---
 
-## 6. Test Verification & Actual Results
+## 6. Real-Process Gateway-to-Warehouse Demonstration (Issue #9)
+
+Issue #9 verifies the fundamental architecture seam between the Spring Boot Gateway (`api-gateway`) and the Warehouse Command Server (`network-server`) across distinct operating system processes over loopback TCP sockets.
+
+A reusable demonstration script is provided at `scripts/demo_tcp_roundtrip.sh`.
+
+### 6.1 Observed Execution Evidence:
+
+```text
+==================================================================
+  ThogaMura Issue #9 — Real Gateway-to-Warehouse TCP Round Trip   
+  Member 1: Sankha Ravindu (@sankharavindu)                       
+==================================================================
+[1] Starting Warehouse Command Server (Process A) on 127.0.0.1:7445...
+--> Warehouse Command Server started with PID: 29119
+--> Server is listening on 127.0.0.1:7445
+
+[2] Starting Spring Boot Gateway (Process B) on port 8085 targeting warehouse 127.0.0.1:7445...
+--> Spring Boot Gateway started with PID: 29127
+--> Gateway application is ready on port 8085
+
+==================================================================
+  STEP 1: Real TCP Socket PING/PONG Round-Trip                    
+==================================================================
+Client JVM PID: 29127 (Spring Boot Gateway on :8085)
+Server JVM PID: 29119 (Warehouse Command Server on :7445)
+
+Request: HTTP GET http://127.0.0.1:8085/api/v1/ping
+--- Gateway HTTP Response ---
+HTTP/1.1 200 
+Content-Type: application/json
+
+{"status":"PONG","requestId":"2a29e7d4-c485-476c-9246-8e4949f5c8b4","serverTime":"2026-11-18T19:39:19.767711Z","warehouseHost":"127.0.0.1","warehousePort":7445}
+
+--- Server Logs (Connection & Command Dispatch) ---
+01:09:19.767 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'PING' (requestId: '2a29e7d4-c485-476c-9246-8e4949f5c8b4') from /127.0.0.1:63415
+
+==================================================================
+  STEP 2: Negative Test — Stop Warehouse Server (Kill Process A)  
+==================================================================
+Killing Warehouse Server PID: 29119...
+--> Warehouse server terminated.
+
+Request: HTTP GET http://127.0.0.1:8085/api/v1/ping
+--- Gateway HTTP Response (Failure Handled) ---
+HTTP/1.1 503 Service Unavailable
+Content-Type: application/json
+
+{"status":"UNAVAILABLE","code":"WAREHOUSE_UNAVAILABLE","message":"Warehouse command server is unreachable: Warehouse server is unavailable at 127.0.0.1:7445: Connection refused (connect failed)","warehouseHost":"127.0.0.1","warehousePort":7445}
+
+==================================================================
+  STEP 3: Recovery Test — Restart Warehouse Server                
+==================================================================
+Restarting Warehouse Command Server on 127.0.0.1:7445...
+--> Warehouse Server restarted with new PID: 29200
+
+Request: HTTP GET http://127.0.0.1:8085/api/v1/ping
+--- Gateway HTTP Response (Recovered) ---
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"status":"PONG","requestId":"6a4d8432-80dd-405a-bbb2-6624c82a43e7","serverTime":"2026-11-18T19:39:21.305787Z","warehouseHost":"127.0.0.1","warehousePort":7445}
+==================================================================
+  CLEANUP                                                         
+==================================================================
+All processes stopped cleanly.
+```
+
+### 6.2 Key Verification Points:
+1. **True OS Process Separation:** Process A (PID 29119) and Process B (PID 29127) are distinct operating system JVM processes exchanging framed JSON bytes over loopback TCP sockets (`127.0.0.1:7445`).
+2. **Zero Method Shortcut:** Spring Boot Gateway translates the incoming HTTP GET request into a TCP client dispatch (`TcpCommandClient.ping()`), which establishes an OS TCP socket connection to `127.0.0.1:7445`, writes the delimited frame, and correlates the response `requestId`.
+3. **Negative Failure Resilience:** When the warehouse server terminates, the gateway experiences a bounded TCP `ConnectException` and returns a clean HTTP `503 Service Unavailable` with `status: UNAVAILABLE` — **zero fabricated success response**.
+4. **Clean Socket Recovery:** Upon warehouse server restart (PID 29200), subsequent requests immediately succeed with newly generated correlation UUIDs.
+
+---
+
+## 7. Test Verification & Actual Results
 
 ### Full Backend Reactor Verification:
 ```bash
-TESTCONTAINERS_RYUK_DISABLED=true mvn -f backend/pom.xml clean test
+TESTCONTAINERS_RYUK_DISABLED=true mvn -f backend/pom.xml clean verify
 ```
 
 ### Actual Results:
@@ -178,36 +256,15 @@ TESTCONTAINERS_RYUK_DISABLED=true mvn -f backend/pom.xml clean test
  T E S T S
 -------------------------------------------------------
 [INFO] protocol: 21 tests passed (0 failures, 0 errors)
-[INFO] network-server: 39 tests passed (0 failures, 0 errors)
-[INFO] api-gateway: 56 tests passed (0 failures, 0 errors)
-[INFO] Total tests run: 116, Failures: 0, Errors: 0, Skipped: 0
+[INFO] network-server: 67 tests passed (0 failures, 0 errors)
+[INFO] api-gateway: 63 tests passed (0 failures, 0 errors)
+[INFO] Total tests run: 151, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
 
-### Specific Integration & Separate Process Scenarios Covered:
-1. `SeparateProcessTcpCommandIntegrationTest`:
-   - Spawns `TcpCommandServer` in a distinct OS process using `ProcessBuilder`.
-   - Asserts distinct PIDs (`serverPid != currentPid`).
-   - Exchanges `PING` and correlated `PONG` with ISO-8601 `serverTime` over real loopback TCP socket.
-   - Forcibly kills the server process and verifies immediate connection failure (`ConnectException`).
-2. `TcpCommandServerTest`:
-   - Enforces loopback security restriction on plaintext server binding.
-   - Detects and cleanly rejects oversized frames (> 64 KB) with `VALIDATION_ERROR`.
-   - Handles protocol version mismatch (`v: 2`) with `UNSUPPORTED_VERSION`.
-   - Handles multiple sequential commands on single persistent TCP connection.
-   - Handles abrupt client disconnects without worker thread or server socket crashes.
-3. `TcpCommandClientTest`:
-   - Enforces strict `requestId` correlation, throwing `CommandCorrelationException` on mismatch.
-   - Throws `ServerUnavailableException` when warehouse server is offline.
-   - Enforces bounded `SO_TIMEOUT` read timeout, throwing `CommandTimeoutException`.
-   - Detects premature server stream closure.
-4. `TcpCommandClientIntegrationTest`:
-   - Reassembles response frames fragmented across physical network packet boundaries.
-   - Verifies clean socket closure across successive requests with zero descriptor leaks.
-
 ---
 
-## 7. Next Integration Step
+## 8. Next Tasks
 
-- **Member 4 (@suthankan1):** Implement atomic inventory reservations (`REQUEST_STOCK`, `GET_PRODUCTS`, `MARK_PICKED`, `MARK_DISPATCHED`) by registering handlers with `CommandDispatcher`.
-- **Member 5 (@vibhathkalsara99):** Supply `SSLServerSocketFactory` and `SSLSocketFactory` to enable validated JSSE TLS on port 7443.
+- **Issue #11 — [M1][W2] Safe same-ID TCP retries:** Verify that retransmitting ambiguous requests with identical `requestId` UUIDs returns the original recorded outcome without creating duplicate database reservations.
+- **Member 5 (@vibhathkalsara99):** Wrap this validated TCP command socket channel in JSSE TLS with certificate and hostname validation on port 7443.
