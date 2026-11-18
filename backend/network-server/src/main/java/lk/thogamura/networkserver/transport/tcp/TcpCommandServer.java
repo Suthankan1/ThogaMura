@@ -24,6 +24,7 @@ import java.net.SocketTimeoutException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -150,6 +151,7 @@ public class TcpCommandServer {
      */
     private void handleClient(Socket socket) {
         String clientAddress = String.valueOf(socket.getRemoteSocketAddress());
+        logger.info("Accepted command socket connection from {}", clientAddress);
         try {
             socket.setSoTimeout(config.getReadTimeoutMs());
 
@@ -223,6 +225,8 @@ public class TcpCommandServer {
                     }
 
                     // Dispatch to business/diagnostic command handler
+                    logger.info("Dispatching command '{}' (requestId: '{}') from {}",
+                            requestNode.path("type").asText(), requestNode.path("requestId").asText(), clientAddress);
                     String responseJson = dispatcher.dispatch(requestNode);
                     writer.writeFrame(responseJson);
                 }
@@ -320,16 +324,21 @@ public class TcpCommandServer {
         System.out.println("SERVER_READY:" + server.getPort());
         System.out.flush();
 
-        Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
+        CountDownLatch shutdownLatch = new CountDownLatch(1);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            server.stop();
+            shutdownLatch.countDown();
+        }));
 
         try {
             while (server.isRunning()) {
                 int read = System.in.read();
                 if (read == -1) {
+                    shutdownLatch.await();
                     break;
                 }
             }
-        } catch (IOException ignored) {
+        } catch (Exception ignored) {
         } finally {
             server.stop();
         }
