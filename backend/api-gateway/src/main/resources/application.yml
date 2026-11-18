@@ -21,5 +21,12 @@ thogamura:
       initial-backoff-ms: ${THOGAMURA_NOTIFICATIONS_INITIAL_BACKOFF_MS:500}
       max-backoff-ms: ${THOGAMURA_NOTIFICATIONS_MAX_BACKOFF_MS:10000}
       backoff-multiplier: ${THOGAMURA_NOTIFICATIONS_BACKOFF_MULTIPLIER:2.0}
+    sse:
+      # Max concurrent SSE clients allowed before rejecting new subscriptions
+      max-emitters: ${THOGAMURA_SSE_MAX_EMITTERS:100}
+      # Timeout for SSE connections in ms (0 = infinite / no timeout)
+      emitter-timeout-ms: ${THOGAMURA_SSE_EMITTER_TIMEOUT_MS:0}
+      # Queue capacity for asynchronous broadcast dispatch
+      queue-capacity: ${THOGAMURA_SSE_QUEUE_CAPACITY:256}
 
 # No PostgreSQL datasource here. Network-server is the sole DB owner.
