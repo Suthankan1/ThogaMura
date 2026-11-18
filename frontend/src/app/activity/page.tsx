@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-import { ScaffoldNotice } from "@/components/ScaffoldNotice";
+import { ActivityStatusClient } from "./ActivityStatusClient";
 
-export const metadata: Metadata = { title: "Activity" };
+export const metadata: Metadata = { title: "Activity & Connection Status" };
 
 export default function ActivityPage() {
-  return <ScaffoldNotice
-    heading="Activity and connection status"
-    purpose="Review stock movement history and the status of the Java networking path."
-    plannedFeatures={["Persistent dispatch movement list", "Configured warehouse / TLS / NIO connection indicators", "Stale-data warning and explicit refresh action"]}
-  />;
+  return <ActivityStatusClient />;
 }
