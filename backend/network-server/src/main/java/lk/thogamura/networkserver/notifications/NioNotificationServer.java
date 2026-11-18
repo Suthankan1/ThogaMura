@@ -22,9 +22,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -532,6 +534,73 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
             } catch (IOException ignored) {
             }
             connectedClients.remove(sc);
+        }
+    }
+
+    /**
+     * Standalone interactive launcher for Member 3 Java NIO demonstrations.
+     *
+     * <p>Allows starting the pure JDK NIO notification server independently of
+     * the database or Spring Boot, with a console loop to broadcast controlled
+     * change versions to all connected subscribers.</p>
+     *
+     * @param args optional arguments: [port] [host]
+     */
+    public static void main(String[] args) {
+        int port = args.length > 0 ? Integer.parseInt(args[0]) : 7444;
+        String host = args.length > 1 ? args[1] : "127.0.0.1";
+
+        NotificationServerConfig config = NotificationServerConfig.of(host, port);
+        try (NioNotificationServer server = new NioNotificationServer(config)) {
+            server.start();
+
+            System.out.println("==================================================================");
+            System.out.println("  ThogaMura Java NIO Notification Server (Member 3)");
+            System.out.println("  Listening on: " + host + ":" + server.getPort());
+            System.out.println("  Allowed clients: " + (config.allowedClientAddresses().isEmpty() ? "LOOPBACK_ONLY" : config.allowedClientAddresses()));
+            System.out.println("  Max subscribers: " + config.maxClients());
+            System.out.println("==================================================================");
+            System.out.println("Commands:");
+            System.out.println("  <version>  : Publish a change version (e.g. 42)");
+            System.out.println("  status     : Show active subscriber count and last published version");
+            System.out.println("  quit       : Stop the server");
+            System.out.println("==================================================================");
+
+            CountDownLatch shutdownLatch = new CountDownLatch(1);
+            Runtime.getRuntime().addShutdownHook(new Thread(shutdownLatch::countDown, "nio-shutdown-hook"));
+
+            Scanner scanner = new Scanner(System.in);
+            if (!scanner.hasNextLine()) {
+                System.out.println("Running in non-interactive background mode (waiting for termination signal)...");
+                shutdownLatch.await();
+            } else {
+                do {
+                    String line = scanner.nextLine().trim();
+                    if (line.equalsIgnoreCase("quit") || line.equalsIgnoreCase("exit")) {
+                        break;
+                    }
+                    if (line.equalsIgnoreCase("status")) {
+                        System.out.println("Subscribers: " + server.getConnectedClientCount() +
+                                ", Last version: " + server.getLastPublishedVersion());
+                        continue;
+                    }
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+                    try {
+                        long v = Long.parseLong(line);
+                        server.publish(v);
+                        System.out.println("Published change version: " + v +
+                                " (sent to " + server.getConnectedClientCount() + " active subscriber(s))");
+                    } catch (NumberFormatException e) {
+                        System.out.println("Unknown command: '" + line + "'. Enter a numeric version or 'quit'.");
+                    }
+                } while (scanner.hasNextLine());
+            }
+            System.out.println("NioNotificationServer shutting down...");
+        } catch (Exception e) {
+            System.err.println("Failed to run NIO notification server: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

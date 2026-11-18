@@ -1,0 +1,211 @@
+================================================================================
+ThogaMura — Member 3 (Java NIO & Real-Time Notifications)
+End-to-End Integration & Multi-Process Demonstration Evidence Record
+================================================================================
+Timestamp: 2026-11-18T15:45:00+05:30
+Branch: test/m3-notification-integration-demo
+Developer: Suthankan Balenthiran (@Suthankan1) - Member 3 (M3)
+Repository: https://github.com/Suthankan1/ThogaMura
+
+1. PROCESS 1: Java NIO Notification Server Startup (Port 7444)
+--------------------------------------------------------------------------------
+Command:
+mvn -f backend/network-server/pom.xml exec:java
+
+Actual Console Output:
+15:43:59.179 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:7444
+15:43:59.179 [lk.thogamura.networkserver.notifications.NioNotificationServer.main()] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:7444 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+==================================================================
+  ThogaMura Java NIO Notification Server (Member 3)
+  Listening on: 127.0.0.1:7444
+  Allowed clients: [127.0.0.1]
+  Max subscribers: 100
+==================================================================
+Commands:
+  <version>  : Publish a change version (e.g. 42)
+  status     : Show active subscriber count and last published version
+  quit       : Stop the server
+==================================================================
+
+2. PROCESS 2: Spring Boot API Gateway Startup (Port 8080)
+--------------------------------------------------------------------------------
+Command:
+mvn -f backend/api-gateway/pom.xml spring-boot:run -Dspring-boot.run.arguments="--thogamura.notifications.subscriber.enabled=true"
+
+Actual Console Output:
+2026-11-18T15:44:07.511+05:30  INFO 11075 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:7444
+2026-11-18T15:44:07.511+05:30  INFO 11075 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:7444...
+2026-11-18T15:44:07.511+05:30  INFO 11075 --- [thogamura-api-gateway] [           main] .t.g.n.n.NotificationSubscriberLifecycle : NotificationSubscriberLifecycle started Gateway NIO subscriber for 127.0.0.1:7444
+2026-11-18T15:44:07.512+05:30  INFO 11075 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:7444
+2026-11-18T15:44:07.518+05:30  INFO 11075 --- [thogamura-api-gateway] [           main] l.thogamura.gateway.GatewayApplication   : Started GatewayApplication in 0.942 seconds (process running for 1.037)
+
+NIO Server Process 1 Log Confirmation:
+15:44:07.514 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:64250, active subscribers: 1
+
+3. INITIAL NETWORK STATUS QUERY
+--------------------------------------------------------------------------------
+Command:
+curl -s http://127.0.0.1:8080/api/v1/network-status
+
+Actual JSON Response:
+{
+  "centralHost": "127.0.0.1",
+  "nioPort": 7444,
+  "nioFeed": {
+    "enabled": true,
+    "status": "CONNECTED",
+    "connected": true,
+    "lastReceivedVersion": -1,
+    "notificationCount": 0,
+    "reconnectCount": 0
+  },
+  "sse": {
+    "activeClients": 0,
+    "broadcastCount": 0,
+    "lastBroadcastVersion": -1
+  },
+  "tlsCommand": {
+    "status": "NOT_IMPLEMENTED",
+    "owner": "Member 5"
+  }
+}
+
+4. PROCESS 3: HTTP SSE Client Connection & Live Controlled Broadcast
+--------------------------------------------------------------------------------
+Client Command:
+curl -N -s -H "Accept: text/event-stream" http://127.0.0.1:8080/api/v1/events
+
+Server Command (Input to Process 1 stdin):
+42
+
+NIO Server Process 1 Output:
+Published change version: 42 (sent to 1 active subscriber(s))
+
+Process 3 (curl HTTP SSE Client) Captured Stream Output:
+event:stock-changed
+data:42
+
+Updated Network Status (/api/v1/network-status):
+{
+  "centralHost": "127.0.0.1",
+  "nioPort": 7444,
+  "nioFeed": {
+    "enabled": true,
+    "status": "CONNECTED",
+    "connected": true,
+    "lastReceivedVersion": 42,
+    "notificationCount": 1,
+    "reconnectCount": 0
+  },
+  "sse": {
+    "activeClients": 1,
+    "broadcastCount": 1,
+    "lastBroadcastVersion": 42
+  },
+  "tlsCommand": {
+    "status": "NOT_IMPLEMENTED",
+    "owner": "Member 5"
+  }
+}
+
+5. DELIBERATE FAILURE: NIO Server Interruption & Reconnecting State
+--------------------------------------------------------------------------------
+Action: Killed Process 1 (NioNotificationServer)
+
+Gateway (Process 2) Logs:
+2026-11-18T15:45:06.746+05:30  WARN 11075 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 1000ms...
+2026-11-18T15:45:08.757+05:30  WARN 11075 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 2000ms...
+2026-11-18T15:45:12.768+05:30  WARN 11075 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 4000ms...
+
+Failure Network Status (/api/v1/network-status):
+{
+  "centralHost": "127.0.0.1",
+  "nioPort": 7444,
+  "nioFeed": {
+    "enabled": true,
+    "status": "RECONNECTING",
+    "connected": false,
+    "lastReceivedVersion": 42,
+    "notificationCount": 1,
+    "reconnectCount": 5
+  },
+  "sse": {
+    "activeClients": 1,
+    "broadcastCount": 1,
+    "lastBroadcastVersion": 42
+  },
+  "tlsCommand": {
+    "status": "NOT_IMPLEMENTED",
+    "owner": "Member 5"
+  }
+}
+* Note: SSE client remains connected while nioFeed status correctly indicates RECONNECTING.
+  Browser UI reflects this as "Warehouse Paused" with stale-data alert.
+
+6. RECOVERY & SUBSEQUENT EVENT BROADCAST
+--------------------------------------------------------------------------------
+Action: Restarted Process 1 (NioNotificationServer)
+
+Gateway (Process 2) Log:
+2026-11-18T15:45:25.812+05:30  INFO 11075 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:7444
+
+Network Status after Reconnection:
+{
+  "centralHost": "127.0.0.1",
+  "nioPort": 7444,
+  "nioFeed": {
+    "enabled": true,
+    "status": "CONNECTED",
+    "connected": true,
+    "lastReceivedVersion": 42,
+    "notificationCount": 1,
+    "reconnectCount": 6
+  },
+  "sse": {
+    "activeClients": 1,
+    "broadcastCount": 1,
+    "lastBroadcastVersion": 42
+  },
+  "tlsCommand": {
+    "status": "NOT_IMPLEMENTED",
+    "owner": "Member 5"
+  }
+}
+
+Publishing Second Version (Input '43' to Process 1 stdin):
+Process 3 (curl HTTP SSE Client) Stream Output:
+event:stock-changed
+data:42
+
+event:stock-changed
+data:43
+
+7. MULTI-CLIENT SSE VERIFICATION (2 Simultaneous Clients)
+--------------------------------------------------------------------------------
+Connected 2nd SSE Client:
+curl -N -s -H "Accept: text/event-stream" http://127.0.0.1:8080/api/v1/events
+
+Network Status (/api/v1/network-status):
+"sse": {
+  "activeClients": 2,
+  "broadcastCount": 2,
+  "lastBroadcastVersion": 43
+}
+
+8. MULTI-CLIENT NIO CONCURRENCY VERIFICATION (12 Concurrent Subscribers)
+--------------------------------------------------------------------------------
+Executed Test: NioMultiClientConcurrencyTest
+- 12 real concurrent TCP SocketChannel subscribers.
+- 1 single selector loop thread (nio-notification-eventloop) servicing all 12.
+- 5 concurrent version broadcasts (201-205).
+- All 12 subscribers received all 5 messages.
+- 6 clients abruptly disconnected; remaining 6 clients continued receiving notifications.
+
+9. SLOW CLIENT ISOLATION & TCP RST FAULT TOLERANCE
+--------------------------------------------------------------------------------
+Executed Test: NioSlowSubscriberResilienceTest
+- Client queue bounded at 5 messages.
+- Stalled client failing to read was evicted on queue overflow.
+- Healthy concurrent clients received all 20 messages without loss.
+- Client closed with TCP RST (setSoLinger(true, 0)) cleaned up cleanly without crashing selector loop.
+================================================================================
