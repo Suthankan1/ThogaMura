@@ -9,4 +9,17 @@ management:
       exposure:
         include: health,info
 
+thogamura:
+  notifications:
+    subscriber:
+      # Disabled by default in starter/tests; enable when running gateway against network server
+      enabled: ${THOGAMURA_NOTIFICATIONS_SUBSCRIBER_ENABLED:false}
+      # Warehouse NIO notification host/port (loopback by default for private demo LAN)
+      host: ${THOGAMURA_NOTIFICATIONS_HOST:127.0.0.1}
+      port: ${THOGAMURA_NOTIFICATIONS_PORT:7444}
+      max-frame-bytes: ${THOGAMURA_NOTIFICATIONS_MAX_FRAME_BYTES:65536}
+      initial-backoff-ms: ${THOGAMURA_NOTIFICATIONS_INITIAL_BACKOFF_MS:500}
+      max-backoff-ms: ${THOGAMURA_NOTIFICATIONS_MAX_BACKOFF_MS:10000}
+      backoff-multiplier: ${THOGAMURA_NOTIFICATIONS_BACKOFF_MULTIPLIER:2.0}
+
 # No PostgreSQL datasource here. Network-server is the sole DB owner.

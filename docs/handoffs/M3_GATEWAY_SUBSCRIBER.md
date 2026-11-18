@@ -1,0 +1,41 @@
+# Handoff — Member 3 (Suthankan Balenthiran) / Gateway NIO Subscriber (Issue #19A)
+
+- **Owner and lecture concept:** Member 3 (@Suthankan1) — Client-side Java NIO (`SocketChannel`, `ByteBuffer`, `InetSocketAddress`), streaming frame reconstruction, and reconnection with bounded exponential backoff.
+- **Branch / commit / PR:** Branch `feat/m3-gateway-nio-subscriber-19a`, targeting `main`. Pull request created for review (`Refs #19`).
+- **One-sentence behavior:** Gateway-side Java NIO subscriber connecting to the central warehouse notification server, assembling fragmented newline-delimited change frames into version signals with automatic exponential backoff reconnection.
+- **Changed files:**
+  - `backend/api-gateway/src/main/java/lk/thogamura/gateway/network/notifications/ChangeNotification.java`
+  - `backend/api-gateway/src/main/java/lk/thogamura/gateway/network/notifications/FrameTooLargeException.java`
+  - `backend/api-gateway/src/main/java/lk/thogamura/gateway/network/notifications/NotificationFrameDecoder.java`
+  - `backend/api-gateway/src/main/java/lk/thogamura/gateway/network/notifications/NotificationListener.java`
+  - `backend/api-gateway/src/main/java/lk/thogamura/gateway/network/notifications/NotificationSubscriberConfig.java`
+  - `backend/api-gateway/src/main/java/lk/thogamura/gateway/network/notifications/SubscriberStatus.java`
+  - `backend/api-gateway/src/main/java/lk/thogamura/gateway/network/notifications/GatewayNioSubscriber.java`
+  - `backend/api-gateway/src/main/java/lk/thogamura/gateway/network/notifications/NotificationSubscriberLifecycle.java`
+  - `backend/api-gateway/src/main/resources/application.yml`
+  - `backend/api-gateway/src/test/java/lk/thogamura/gateway/network/notifications/ChangeNotificationTest.java`
+  - `backend/api-gateway/src/test/java/lk/thogamura/gateway/network/notifications/NotificationFrameDecoderTest.java`
+  - `backend/api-gateway/src/test/java/lk/thogamura/gateway/network/notifications/TestNotificationServer.java`
+  - `backend/api-gateway/src/test/java/lk/thogamura/gateway/network/notifications/GatewayNioSubscriberTest.java`
+  - `backend/api-gateway/src/test/java/lk/thogamura/gateway/network/notifications/NotificationSubscriberLifecycleTest.java`
+  - `docs/handoffs/M3_GATEWAY_SUBSCRIBER.md`
+- **Contract changes:** None. Adheres strictly to `docs/contracts/NETWORK_PROTOCOL_V1.md` newline JSON envelope `{"v":1,"type":"CHANGED","version":<long>}` and `docs/contracts/HTTP_API_V1.md`.
+- **Commands actually run:**
+  - `mvn -f backend/pom.xml clean verify`
+  - Cross-platform verification inside Linux Docker container (`maven:3.9-eclipse-temurin-21`)
+  - `git diff --check`
+- **Observed result and test count:** 49 tests executed across the backend reactor, 0 failures, 0 errors, 0 skipped (28 in `api-gateway`, 21 in `network-server`).
+- **Network demo actually observed:**
+  - Real local TCP socket connections to loopback server on ephemeral ports.
+  - Successfully parsed valid `CHANGED` notification and invoked listener callback.
+  - Assembled split/fragmented TCP reads into complete frames.
+  - Dispatched multiple frames arriving in a single socket read sequentially.
+  - Safely discarded malformed/unauthorized JSON payloads without crashing subscriber thread.
+  - Detected server disconnection and transitioned status to `RECONNECTING`.
+  - Reconnected automatically with exponential backoff when the server restarted on the same port, resuming notification delivery.
+  - Clean subscriber shutdown with immediate channel release and zero thread leakage.
+- **Open issues / unverified assumptions:**
+  - The notification feed remains strictly non-authoritative and version-only (`v`, `type`, `version`).
+  - Browser-facing SSE endpoint (`GET /api/v1/events`) and Next.js frontend invalidation hook are deferred to Issue #19B.
+- **Next smallest slice and receiving owner:**
+  - Member 3 next step: Issue #19B (Spring Boot SSE controller bridging `NotificationListener` events to browser `EventSource` and Next.js invalidation).
