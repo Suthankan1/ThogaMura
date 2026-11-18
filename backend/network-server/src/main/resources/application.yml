@@ -23,3 +23,8 @@ thogamura:
     allow-non-loopback: ${THOGAMURA_NOTIFICATIONS_ALLOW_NON_LOOPBACK:false}
     # Security: Approved branch gateway IP addresses (comma-separated; defaults to loopback if empty)
     allowed-clients: ${THOGAMURA_NOTIFICATIONS_ALLOWED_CLIENTS:}
+  supplier:
+    # Outbound Java URL/HTTP mock supplier endpoint (Member 2 - Issue #31, #32)
+    base-url: ${THOGAMURA_SUPPLIER_BASE_URL:http://127.0.0.1:8090}
+    connect-timeout-ms: ${THOGAMURA_SUPPLIER_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${THOGAMURA_SUPPLIER_READ_TIMEOUT_MS:5000}
