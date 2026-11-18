@@ -23,6 +23,26 @@ public class TcpCommandServerConfig {
     private final int maxClients;
     private final int maxFrameBytes;
     private final boolean allowNonLoopbackPlaintext;
+    private final boolean tlsEnabled;
+
+    public TcpCommandServerConfig(
+            String host,
+            int port,
+            int backlog,
+            int readTimeoutMs,
+            int maxClients,
+            int maxFrameBytes,
+            boolean allowNonLoopbackPlaintext,
+            boolean tlsEnabled) {
+        this.host = (host != null && !host.isBlank()) ? host.trim() : "127.0.0.1";
+        this.port = port;
+        this.backlog = backlog > 0 ? backlog : 50;
+        this.readTimeoutMs = readTimeoutMs >= 0 ? readTimeoutMs : ProtocolInfo.DEFAULT_READ_TIMEOUT_MS;
+        this.maxClients = maxClients > 0 ? maxClients : 50;
+        this.maxFrameBytes = maxFrameBytes > 0 ? maxFrameBytes : ProtocolInfo.MAX_FRAME_BYTES;
+        this.allowNonLoopbackPlaintext = allowNonLoopbackPlaintext;
+        this.tlsEnabled = tlsEnabled;
+    }
 
     public TcpCommandServerConfig(
             String host,
@@ -32,17 +52,11 @@ public class TcpCommandServerConfig {
             int maxClients,
             int maxFrameBytes,
             boolean allowNonLoopbackPlaintext) {
-        this.host = (host != null && !host.isBlank()) ? host.trim() : "127.0.0.1";
-        this.port = port;
-        this.backlog = backlog > 0 ? backlog : 50;
-        this.readTimeoutMs = readTimeoutMs >= 0 ? readTimeoutMs : ProtocolInfo.DEFAULT_READ_TIMEOUT_MS;
-        this.maxClients = maxClients > 0 ? maxClients : 50;
-        this.maxFrameBytes = maxFrameBytes > 0 ? maxFrameBytes : ProtocolInfo.MAX_FRAME_BYTES;
-        this.allowNonLoopbackPlaintext = allowNonLoopbackPlaintext;
+        this(host, port, backlog, readTimeoutMs, maxClients, maxFrameBytes, allowNonLoopbackPlaintext, false);
     }
 
     public TcpCommandServerConfig(String host, int port) {
-        this(host, port, 50, ProtocolInfo.DEFAULT_READ_TIMEOUT_MS, 50, ProtocolInfo.MAX_FRAME_BYTES, false);
+        this(host, port, 50, ProtocolInfo.DEFAULT_READ_TIMEOUT_MS, 50, ProtocolInfo.MAX_FRAME_BYTES, false, false);
     }
 
     public TcpCommandServerConfig(int port) {
@@ -68,7 +82,7 @@ public class TcpCommandServerConfig {
 
         try {
             InetAddress address = InetAddress.getByName(host);
-            if (!address.isLoopbackAddress() && !allowNonLoopbackPlaintext) {
+            if (!address.isLoopbackAddress() && !allowNonLoopbackPlaintext && !tlsEnabled) {
                 throw new IllegalStateException(
                         "Plaintext TCP command transport is strictly prohibited on non-loopback interface '" + host
                                 + "' without TLS. Only loopback binding is permitted for development/testing "
@@ -108,6 +122,10 @@ public class TcpCommandServerConfig {
         return allowNonLoopbackPlaintext;
     }
 
+    public boolean isTlsEnabled() {
+        return tlsEnabled;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -118,12 +136,13 @@ public class TcpCommandServerConfig {
                 maxClients == that.maxClients &&
                 maxFrameBytes == that.maxFrameBytes &&
                 allowNonLoopbackPlaintext == that.allowNonLoopbackPlaintext &&
+                tlsEnabled == that.tlsEnabled &&
                 Objects.equals(host, that.host);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(host, port, backlog, readTimeoutMs, maxClients, maxFrameBytes, allowNonLoopbackPlaintext);
+        return Objects.hash(host, port, backlog, readTimeoutMs, maxClients, maxFrameBytes, allowNonLoopbackPlaintext, tlsEnabled);
     }
 
     @Override
@@ -136,6 +155,7 @@ public class TcpCommandServerConfig {
                 ", maxClients=" + maxClients +
                 ", maxFrameBytes=" + maxFrameBytes +
                 ", allowNonLoopbackPlaintext=" + allowNonLoopbackPlaintext +
+                ", tlsEnabled=" + tlsEnabled +
                 '}';
     }
 }

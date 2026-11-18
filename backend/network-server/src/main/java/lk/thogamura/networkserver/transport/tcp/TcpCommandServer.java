@@ -112,7 +112,8 @@ public class TcpCommandServer {
                 Socket clientSocket = serverSocket.accept();
 
                 // Security check for plaintext binding: verify remote client if restricted
-                if (!config.isAllowNonLoopbackPlaintext() && !clientSocket.getInetAddress().isLoopbackAddress()) {
+                boolean isTls = (serverSocket instanceof javax.net.ssl.SSLServerSocket) || config.isTlsEnabled();
+                if (!isTls && !config.isAllowNonLoopbackPlaintext() && !clientSocket.getInetAddress().isLoopbackAddress()) {
                     logger.warn("Rejecting non-loopback plaintext connection attempt from {}",
                             clientSocket.getRemoteSocketAddress());
                     closeQuietly(clientSocket);
@@ -152,6 +153,16 @@ public class TcpCommandServer {
         String clientAddress = String.valueOf(socket.getRemoteSocketAddress());
         try {
             socket.setSoTimeout(config.getReadTimeoutMs());
+
+            if (socket instanceof javax.net.ssl.SSLSocket sslSocket) {
+                try {
+                    sslSocket.startHandshake();
+                } catch (javax.net.ssl.SSLException e) {
+                    logger.warn("TLS handshake failed with client {}: {}", clientAddress, e.getMessage());
+                    closeQuietly(socket);
+                    return;
+                }
+            }
 
             try (socket;
                  InputStream in = socket.getInputStream();
@@ -309,12 +320,24 @@ public class TcpCommandServer {
      * @param args optional arguments: [port] [host]
      * @throws IOException on startup or socket binding errors
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : ProtocolInfo.DEFAULT_TLS_COMMAND_PORT;
         String host = args.length > 1 ? args[1] : "127.0.0.1";
+        String keystorePath = args.length > 2 ? args[2] : System.getProperty("thogamura.tls.keystore-path", System.getenv("THOGAMURA_TLS_KEYSTORE_PATH"));
+        String keystorePass = args.length > 3 ? args[3] : System.getProperty("thogamura.tls.keystore-password", System.getenv("THOGAMURA_TLS_KEYSTORE_PASSWORD"));
 
-        TcpCommandServerConfig config = new TcpCommandServerConfig(host, port);
-        TcpCommandServer server = new TcpCommandServer(config);
+        boolean tls = keystorePath != null && !keystorePath.isBlank();
+        TcpCommandServerConfig config = new TcpCommandServerConfig(
+                host, port, 50, ProtocolInfo.DEFAULT_READ_TIMEOUT_MS, 50, ProtocolInfo.MAX_FRAME_BYTES, false, tls);
+
+        ServerSocketFactory socketFactory = ServerSocketFactory.getDefault();
+        if (tls) {
+            char[] pass = (keystorePass != null) ? keystorePass.toCharArray() : new char[0];
+            socketFactory = lk.thogamura.networkserver.security.TlsServerSocketFactory.fromKeystore(
+                    java.nio.file.Path.of(keystorePath), pass, "PKCS12", new String[]{"TLSv1.3", "TLSv1.2"});
+        }
+
+        TcpCommandServer server = new TcpCommandServer(config, new DefaultCommandDispatcher(), socketFactory);
         server.start();
 
         System.out.println("SERVER_READY:" + server.getPort());
