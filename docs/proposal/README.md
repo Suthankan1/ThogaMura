@@ -6,7 +6,7 @@
 - The matching `ThogaMura_Group_Proposal_v2.pdf` was generated for team sharing on **17 November 2026**. The team lead can share the PDF directly. **This is an idea proposal, not the final implementation report required for Moodle.**
 - Canonical implementation specifications remain [NETWORK_FEATURES_V2.md](../NETWORK_FEATURES_V2.md), [TEAM_WORKLOADS.md](../TEAM_WORKLOADS.md), the [contracts](../contracts/) and [GitHub issue #1](https://github.com/Suthankan1/ThogaMura/issues/1).
 
-All M1–M5 assignments are currently **unassigned** until member names and GitHub handles are confirmed. Lecturer approval is still required for the distinct concept split, especially M2 Java HTTP/URL programming. The Java NIO feed is version-only and private-LAN restricted; see [issue #33](https://github.com/Suthankan1/ThogaMura/issues/33).
+The five members are now **named** in [issue #1](https://github.com/Suthankan1/ThogaMura/issues/1). M3–M5 have GitHub assignees; M1–M2 are planned owners but still need private-repo collaborator access before GitHub can actually assign their tickets. The PDF reflects the **17 November planning snapshot**, before names arrived. Lecturer approval is still required for the distinct concept split, especially M2 Java HTTP/URL programming. The Java NIO feed is version-only and private-LAN restricted; see [issue #33](https://github.com/Suthankan1/ThogaMura/issues/33).
 
 ## Historical original (superseded)
 
