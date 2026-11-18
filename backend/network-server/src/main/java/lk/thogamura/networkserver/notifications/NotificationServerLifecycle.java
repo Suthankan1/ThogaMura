@@ -2,6 +2,7 @@ package lk.thogamura.networkserver.notifications;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
@@ -34,6 +35,7 @@ public class NotificationServerLifecycle implements SmartLifecycle, Notification
     private NioNotificationServer server;
     private boolean running = false;
 
+    @Autowired
     public NotificationServerLifecycle(
             @Value("${thogamura.notifications.host:127.0.0.1}") String host,
             @Value("${thogamura.notifications.port:7444}") int port,
