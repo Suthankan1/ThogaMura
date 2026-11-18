@@ -8,6 +8,9 @@ import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Spring lifecycle adapter hosting the Java NIO notification server.
@@ -25,6 +28,8 @@ public class NotificationServerLifecycle implements SmartLifecycle, Notification
     private final int port;
     private final int maxClients;
     private final int maxPendingMessages;
+    private final boolean allowNonLoopback;
+    private final Set<String> allowedClientAddresses;
 
     private NioNotificationServer server;
     private boolean running = false;
@@ -33,11 +38,37 @@ public class NotificationServerLifecycle implements SmartLifecycle, Notification
             @Value("${thogamura.notifications.host:127.0.0.1}") String host,
             @Value("${thogamura.notifications.port:7444}") int port,
             @Value("${thogamura.notifications.max-clients:100}") int maxClients,
-            @Value("${thogamura.notifications.max-pending-messages:50}") int maxPendingMessages) {
+            @Value("${thogamura.notifications.max-pending-messages:50}") int maxPendingMessages,
+            @Value("${thogamura.notifications.allow-non-loopback:false}") boolean allowNonLoopback,
+            @Value("${thogamura.notifications.allowed-clients:}") String allowedClientsRaw) {
         this.host = host;
         this.port = port;
         this.maxClients = maxClients;
         this.maxPendingMessages = maxPendingMessages;
+        this.allowNonLoopback = allowNonLoopback;
+        this.allowedClientAddresses = parseAllowedClients(allowedClientsRaw);
+    }
+
+    public NotificationServerLifecycle(
+            String host,
+            int port,
+            int maxClients,
+            int maxPendingMessages) {
+        this(host, port, maxClients, maxPendingMessages, false, "");
+    }
+
+    private static Set<String> parseAllowedClients(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Collections.emptySet();
+        }
+        Set<String> set = new HashSet<>();
+        for (String part : raw.split(",")) {
+            String clean = part.trim();
+            if (!clean.isEmpty()) {
+                set.add(clean);
+            }
+        }
+        return Collections.unmodifiableSet(set);
     }
 
     @Override
@@ -46,7 +77,8 @@ public class NotificationServerLifecycle implements SmartLifecycle, Notification
             return;
         }
         try {
-            NotificationServerConfig config = new NotificationServerConfig(host, port, maxClients, maxPendingMessages);
+            NotificationServerConfig config = new NotificationServerConfig(
+                    host, port, maxClients, maxPendingMessages, 0, allowNonLoopback, allowedClientAddresses);
             server = new NioNotificationServer(config);
             server.start();
             running = true;

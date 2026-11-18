@@ -14,8 +14,12 @@ thogamura:
   notifications:
     # Disabled by default; enable explicitly when running the network server
     enabled: ${THOGAMURA_NOTIFICATIONS_ENABLED:false}
-    # Restrict binding to loopback for local development and private demo LAN safety
+    # Security: Restrict binding to loopback by default for local development safety (Issue #33)
     host: ${THOGAMURA_NOTIFICATIONS_HOST:127.0.0.1}
     port: ${THOGAMURA_NOTIFICATIONS_PORT:7444}
     max-clients: ${THOGAMURA_NOTIFICATIONS_MAX_CLIENTS:100}
     max-pending-messages: ${THOGAMURA_NOTIFICATIONS_MAX_PENDING:50}
+    # Security: Explicit operator approval required before binding beyond loopback
+    allow-non-loopback: ${THOGAMURA_NOTIFICATIONS_ALLOW_NON_LOOPBACK:false}
+    # Security: Approved branch gateway IP addresses (comma-separated; defaults to loopback if empty)
+    allowed-clients: ${THOGAMURA_NOTIFICATIONS_ALLOWED_CLIENTS:}
