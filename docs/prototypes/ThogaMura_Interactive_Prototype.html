@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="ThogaMura interactive offline prototype for branch inventory, stock requests and warehouse networking workflows.">
+  <title>ThogaMura | Operations overview</title>
+  <style>
+    :root{--ink:#16304a;--deep:#0c2635;--muted:#587180;--canvas:#f4f8fa;--white:#fff;--line:#e4edf1;--teal:#117b80;--teal-dark:#0c656c;--mint:#e6f4f1;--good:#147456;--sand:#fff1df;--amber:#9c5a16;--rose:#fdebec;--red:#ad3744;--radius:15px;--shadow:0 8px 24px rgba(21,55,72,.035);font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--canvas)}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;min-height:100dvh}
+    button,input,select{font:inherit}
+    button,a{ -webkit-tap-highlight-color:transparent }
+    button{cursor:pointer}
+    button:disabled{cursor:not-allowed;opacity:.52}
+    a{color:inherit;text-decoration:none}
+    :where(button,a,input,select,summary):focus-visible{outline:3px solid #f0a72e;outline-offset:3px}
+    .skip-link{position:fixed;z-index:1000;top:-70px;left:20px;background:var(--teal);color:white;padding:12px 16px;border-radius:9px}
+    .skip-link:focus{top:15px}
+    .shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100dvh}
+    .sidebar{background:var(--deep);color:#d9e6eb;display:flex;flex-direction:column;gap:28px;padding:25px 16px;position:sticky;top:0;height:100dvh}
+    .brand{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:800;color:#fff;letter-spacing:-.03em}
+    .brand-mark{display:grid;place-items:center;width:37px;height:37px;background:var(--teal);color:white;border-radius:9px;font-size:22px;font-weight:800;flex:none}
+    .brand small{display:block;font-size:8px;font-weight:700;letter-spacing:.15em;color:#8fa6b3;text-transform:uppercase;margin-top:5px}
+    .nav-caption,.eyebrow{font-size:10px;letter-spacing:.105em;text-transform:uppercase;font-weight:800}
+    .nav-caption{color:#73909f;padding-inline:13px}
+    .nav-list{display:grid;gap:5px;margin-top:10px}
+    .nav-link{display:flex;align-items:center;gap:12px;min-height:43px;border-radius:10px;padding:0 13px;font-size:13px;font-weight:650;color:#c7d7df;transition:background .15s,color .15s}
+    .nav-link:hover{background:#173849;color:white}
+    .nav-link[aria-current="page"]{background:#145366;color:white;box-shadow:inset 3px 0 0 #53d3c2}
+    .icon{width:18px;height:18px;flex:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;vertical-align:middle}
+    .sidebar-foot{margin-top:auto;display:grid;gap:13px}
+    .side-connection{border-radius:12px;background:#126c77;padding:13px 14px;color:#e9f9f8;display:grid;gap:5px;font-size:11px}
+    .side-connection strong{font-size:12px}
+    .side-connection small{color:#bde1dc}
+    .tiny-disclaimer{font-size:10px;line-height:1.5;color:#87a1ae;padding-inline:5px}
+    .workspace{min-width:0}
+    .topbar{height:73px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 clamp(20px,2.8vw,45px);position:sticky;top:0;z-index:20}
+    .crumb{font-size:12px;font-weight:800;white-space:nowrap}
+    .crumb span{font-weight:450;color:#8496a3;margin-inline-start:9px}
+    .top-actions{display:flex;align-items:center;gap:16px;font-size:11px;white-space:nowrap}
+    .demo-tag{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+    .connection-inline{display:inline-flex;align-items:center;gap:7px;font-weight:750;color:var(--good)}
+    .connection-inline.off{color:var(--red)}
+    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
+    .topbar .text-button{border:0;background:transparent;color:var(--muted);font-size:11px;font-weight:700;padding:9px}
+    .topbar .text-button:hover{color:var(--teal)}
+    .main{max-width:1290px;margin:0 auto;padding:36px clamp(20px,3vw,48px) 85px}
+    .page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:25px;flex-wrap:wrap}
+    h1,h2,h3,p{margin-top:0}
+    h1{font-size:clamp(25px,2.5vw,34px);line-height:1.16;letter-spacing:-.035em;margin-bottom:8px}
+    h2{font-size:19px;letter-spacing:-.025em;margin-bottom:12px}
+    h3{font-size:15px;margin-bottom:7px}
+    .subtext{color:var(--muted);font-size:13px;line-height:1.55;margin-bottom:0}
+    .heading-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:42px;border-radius:9px;padding:11px 16px;border:1px solid transparent;font-size:12px;font-weight:800;line-height:1.15;transition:background .15s,transform .15s;white-space:normal;text-align:center}
+    .btn:not(:disabled):active{transform:translateY(1px)}
+    .btn.primary{background:var(--teal);color:#fff}
+    .btn.primary:hover{background:var(--teal-dark)}
+    .btn.secondary{background:#e7f4f1;color:var(--teal-dark)}
+    .btn.secondary:hover{background:#d5ebe6}
+    .btn.ghost{background:#fff;color:var(--ink);border-color:var(--line)}
+    .btn.ghost:hover{background:#f7fbfc}
+    .btn.danger{background:var(--rose);color:var(--red)}
+    .btn.small{min-height:34px;padding:8px 12px;font-size:11px}
+    .btn.linklike{padding:4px 2px;min-height:28px;background:none;color:var(--teal);border:none}
+    .btn.linklike:hover{text-decoration:underline}
+    .card{background:white;border:1px solid #edf1f3;border-radius:var(--radius);box-shadow:var(--shadow);min-width:0}
+    .pad{padding:22px}
+    .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
+    .metric{padding:19px 21px;min-height:124px;display:grid;align-content:space-between;gap:8px}
+    .metric-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);font-weight:750}
+    .metric .value{font-size:31px;font-weight:850;letter-spacing:-.045em;line-height:1}
+    .metric .foot{font-size:11px;color:var(--muted)}
+    .metric .foot strong{color:var(--teal)}
+    .muted{color:var(--muted)}
+    .teal{color:var(--teal)}
+    .strong{font-weight:800}
+    .smallprint{font-size:11px;line-height:1.55;color:var(--muted)}
+    .grid-two{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(270px,.75fr);gap:18px;align-items:start}
+    .grid-form{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.85fr);gap:18px;align-items:start}
+    .stack{display:grid;gap:16px}
+    .callout{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:18px 21px;border-radius:12px;line-height:1.45;margin-bottom:20px;flex-wrap:wrap}
+    .callout.mint{background:var(--mint)}
+    .callout.sand{background:var(--sand)}
+    .callout.rose{background:var(--rose)}
+    .callout strong{font-size:13px}
+    .callout p{font-size:12px;color:var(--muted);margin:5px 0 0}
+    .section-card{padding:20px 22px}
+    .section-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+    .section-title h2{margin:0}
+    .pill{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:6px;font-weight:850;text-transform:uppercase;letter-spacing:.045em;font-size:10px;white-space:nowrap}
+    .pill.good{background:#e3f3ee;color:#147456}
+    .pill.warn{background:#fff0df;color:#96551b}
+    .pill.neutral{background:#eaf1f5;color:#546d7c}
+    .pill.bad{background:#fdebed;color:#a13b47}
+    .pill.info{background:#e6f4f2;color:var(--teal)}
+    .table-wrap{overflow-x:auto;max-width:100%;border:1px solid #edf1f3;border-radius:11px}
+    table{border-collapse:collapse;width:100%;font-size:12px;background:white}
+    caption{font-weight:800;text-align:left;padding:14px 17px;color:var(--ink)}
+    thead{background:#f7fafb}
+    th{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.055em;text-align:left;text-transform:uppercase}
+    th,td{padding:13px 15px;border-bottom:1px solid #eef2f4;vertical-align:middle}
+    tbody tr:last-child th,tbody tr:last-child td{border-bottom:0}
+    tbody tr:hover{background:#fafdfd}
+    td:first-child strong{display:block;font-size:12px}
+    .row-sub{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
+    .number{font-variant-numeric:tabular-nums}
+    .available{color:var(--teal);font-weight:850}
+    .info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .status-box{padding:15px;border-radius:11px;background:#f7fafb;min-width:0}
+    .status-box strong{font-size:13px}
+    .status-box .smallprint{margin:7px 0 0}
+    .toolbar{display:flex;align-items:end;gap:13px;flex-wrap:wrap;margin-bottom:16px}
+    .field{display:grid;gap:8px;min-width:0}
+    .field label{font-size:11px;font-weight:850;color:#38546a}
+    .field input,.field select{width:100%;min-width:0;min-height:45px;background:white;border:1px solid #cddce3;border-radius:8px;padding:11px 13px;color:var(--ink);font-size:14px}
+    .field input::placeholder{color:#91a3ad}
+    .field input[aria-invalid="true"]{border-color:var(--red)}
+    .field input:focus,.field select:focus{border-color:#8abcb8}
+    .field .hint{font-size:11px;line-height:1.5;color:var(--muted)}
+    .toolbar .field{min-width:180px;flex:1}
+    .toolbar .field:first-child{flex:2 1 280px}
+    .field-group{display:grid;gap:20px}
+    .form-card{padding:25px}
+    .form-card h2{margin-bottom:20px}
+    .stock-strip{background:var(--mint);border-radius:9px;padding:15px;display:flex;gap:18px;justify-content:space-between;flex-wrap:wrap}
+    .stock-strip span{font-size:11px;color:var(--muted)}
+    .stock-strip strong{font-size:13px;display:block;margin-top:5px}
+    .input-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:20px}
+    .preview-card{padding:23px}
+    .eyebrow{color:var(--teal);margin-bottom:10px}
+    .kv{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:12px 0;border-bottom:1px solid var(--line)}
+    .kv:last-child{border-bottom:0}
+    .kv span{font-size:11px;color:var(--muted)}
+    .kv strong{font-size:13px}
+    .outcome{border-radius:12px;padding:15px 17px;margin-top:15px;font-size:12px;font-weight:750}
+    .outcome.mint{background:var(--mint);color:var(--teal-dark)}
+    .outcome.sand{background:var(--sand);color:var(--amber)}
+    .outcome.rose{background:var(--rose);color:var(--red)}
+    .status-stepper{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
+    .status-step{padding:11px 15px;border:1px solid var(--line);border-radius:9px;font-size:12px;color:var(--muted);background:white}
+    .status-step.done{background:var(--mint);border-color:#bfe1da;color:var(--teal-dark);font-weight:800}
+    .big-check{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:var(--teal);color:#fff;font-size:30px;margin-bottom:15px}
+    .centered-card{max-width:760px;margin:5vh auto;padding:32px}
+    .queue-list{display:grid;gap:11px}
+    .queue-row{background:#fff;border:1px solid #e9eff1;padding:18px;border-radius:11px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+    .queue-row.tint{background:var(--mint);border-color:#d7eae5}
+    .queue-meta{font-size:11px;color:var(--muted);margin-top:6px}
+    .queue-row h3{margin:7px 0 0}
+    .queue-row .btn{margin-inline-start:auto}
+    .empty{padding:35px 20px;text-align:center;color:var(--muted)}
+    .supplier-result{background:var(--mint);border-radius:13px;padding:24px;margin:19px 0;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .supplier-result h2{font-size:30px;margin:7px 0}
+    .supplier-result.warn{background:var(--sand)}
+    .supplier-result.bad{background:var(--rose)}
+    .supplier-scenarios{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:19px}
+    .scenario{padding:19px;border:1px solid var(--line);border-radius:11px;background:white}
+    .scenario strong{display:block;font-size:15px;margin:10px 0 6px}
+    .connection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:19px}
+    .connection-card{padding:18px;border-radius:12px;background:white;border:1px solid var(--line)}
+    .connection-card p{font-size:11px;color:var(--muted);line-height:1.55;margin:8px 0 0}
+    .connection-card strong{font-size:14px}
+    .switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+    .switch-row:last-child{border:0}
+    .switch-row strong{display:block;font-size:13px}
+    .switch-row small{display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:5px}
+    .switch{appearance:none;width:44px;height:26px;background:#c5d6dd;border-radius:99px;position:relative;cursor:pointer;flex:none;transition:background .15s}
+    .switch::after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;top:3px;left:3px;background:white;box-shadow:0 1px 4px #0002;transition:transform .15s}
+    .switch:checked{background:var(--teal)}
+    .switch:checked::after{transform:translateX(18px)}
+    .timeline{display:grid;gap:0}
+    .timeline-item{display:flex;align-items:start;gap:13px;padding:14px 0;border-bottom:1px solid var(--line)}
+    .timeline-item:last-child{border:0}
+    .timeline-dot{margin-top:5px;width:9px;height:9px;background:var(--teal);border:2px solid white;outline:1px solid #acd4cf;border-radius:50%;flex:none}
+    .timeline-item strong{font-size:12px}
+    .timeline-item p{font-size:11px;color:var(--muted);margin:5px 0 0}
+    .timeline-item time{font-size:10px;color:#91a3ae;margin-inline-start:auto;white-space:nowrap}
+    .demo-ribbon{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 17px;border-radius:11px;border:1px dashed #9bc8c7;color:#1f6064;background:#eaf7f4;font-size:11px;margin-bottom:23px;line-height:1.4}
+    .notice{padding:13px 15px;border-radius:10px;background:var(--sand);font-size:11px;line-height:1.6;color:#854d13;margin-top:16px}
+    .more-grid{display:grid;gap:12px}
+    .more-link{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:20px;border:1px solid var(--line);border-radius:14px;background:#fff;font-weight:800;min-height:76px}
+    .more-link small{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:6px}
+    .more-link:hover{border-color:#88c5c0;background:#fcffff}
+    .bottom-nav{display:none}
+    #toast{position:fixed;z-index:80;bottom:20px;right:20px;max-width:min(410px,calc(100% - 40px));background:var(--deep);color:white;border-radius:12px;padding:14px 18px;box-shadow:0 12px 35px #0e263547;font-size:13px;line-height:1.5;opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .2s,transform .2s}
+    #toast.show{opacity:1;transform:translateY(0)}
+    dialog{border:0;border-radius:15px;max-width:min(560px,calc(100% - 30px));padding:26px;color:var(--ink);box-shadow:0 20px 70px #0e26354d}
+    dialog::backdrop{background:#09202ca1}
+    dialog h2{margin-bottom:15px}
+    dialog ol{padding-left:22px;line-height:1.85;font-size:13px;color:var(--muted)}
+    .dialog-actions{display:flex;justify-content:flex-end;margin-top:18px}
+    .visually-hidden{position:absolute;clip-path:inset(50%);width:1px;height:1px;margin:-1px;border:0;padding:0;overflow:hidden;white-space:nowrap}
+    @media(max-width:1150px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-two{grid-template-columns:1fr}.connection-grid{grid-template-columns:1fr 1fr}.main{padding-inline:25px}}
+    @media(max-width:760px){
+      .shell{display:block}.sidebar{display:none}.topbar{height:70px;padding:0 17px}.crumb{display:none}
+      .top-actions{gap:8px}.top-actions .desktop-only,.top-actions .text-button{display:none}
+      .main{padding:22px 18px 105px}
+      h1{font-size:27px}.page-head{margin-bottom:20px}
+      .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.metric{padding:17px;min-height:112px}.metric .value{font-size:26px}
+      .grid-form{grid-template-columns:1fr}.pad,.form-card,.preview-card{padding:19px}
+      .supplier-scenarios{grid-template-columns:1fr}.connection-grid{grid-template-columns:1fr}
+      .table-wrap{border:0;overflow:visible}.table-wrap table,.table-wrap tbody,.table-wrap tr,.table-wrap td{display:block;width:100%}
+      .table-wrap thead{position:absolute;clip-path:inset(50%);overflow:hidden;width:1px;height:1px}
+      .table-wrap tbody{display:grid;gap:11px}
+      .table-wrap tr{border:1px solid var(--line);border-radius:13px;background:white;padding:14px 16px}
+      .table-wrap th[scope=row]{display:block;padding:3px 0 8px}
+      .table-wrap td{padding:8px 0;border:0;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:right}
+      .table-wrap td::before{content:attr(data-label);color:var(--muted);font-size:11px;font-weight:700;text-align:left;white-space:nowrap}
+      .section-card{padding:17px}.queue-row{padding:16px}.queue-row .btn{width:100%}
+      .bottom-nav{display:flex;position:fixed;z-index:30;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);justify-content:space-around;gap:4px;padding:8px 7px max(8px,env(safe-area-inset-bottom));box-shadow:0 -9px 20px #182d3b0c}
+      .bottom-nav a{min-width:65px;min-height:53px;display:grid;place-items:center;align-content:center;gap:5px;font-size:10px;color:var(--muted);border-radius:8px}
+      .bottom-nav a[aria-current=page]{color:var(--teal);font-weight:800;background:#f2faf8}
+      .bottom-nav .icon{width:20px;height:20px}
+      .centered-card{padding:22px;margin:0}.status-stepper{gap:6px}.status-step{font-size:11px}
+      .top-mobile-brand{display:flex!important}.demo-ribbon{flex-wrap:wrap}
+      #toast{bottom:85px;right:12px}
+    }
+    @media(min-width:761px){.top-mobile-brand{display:none!important}}
+    @media(max-width:390px){.metric-grid{grid-template-columns:1fr 1fr}.metric .value{font-size:23px}.stock-strip{gap:8px}.top-actions .demo-tag{display:none}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
+    @media(forced-colors:active){.nav-link[aria-current=page],.bottom-nav a[aria-current=page]{outline:2px solid Highlight}.switch:checked{outline:2px solid Highlight}}
+  </style>
+</head>
+<body>
+  <a href="#main-heading" class="skip-link">Skip to main content</a>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Application sidebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">T</span><span>ThogaMura<small>Warehouse network</small></span></div>
+      <div>
+        <div class="nav-caption">Workspace</div>
+        <nav class="nav-list" aria-label="Primary">
+          <a class="nav-link" href="#/overview" data-route="overview"><span data-icon="home"></span>Overview</a>
+          <a class="nav-link" href="#/products" data-route="products"><span data-icon="box"></span>Products</a>
+          <a class="nav-link" href="#/request" data-route="request"><span data-icon="plus"></span>New stock request</a>
+          <a class="nav-link" href="#/requests" data-route="requests"><span data-icon="list"></span>Requests</a>
+          <a class="nav-link" href="#/warehouse" data-route="warehouse"><span data-icon="warehouse"></span>Warehouse queue</a>
+          <a class="nav-link" href="#/suppliers" data-route="suppliers"><span data-icon="truck"></span>Suppliers</a>
+          <a class="nav-link" href="#/activity" data-route="activity"><span data-icon="activity"></span>Activity &amp; network</a>
+        </nav>
+      </div>
+      <div class="sidebar-foot">
+        <div class="side-connection"><strong id="sidebar-connection">● Warehouse connected</strong><small id="sidebar-sub">Private LAN · sample state</small></div>
+        <div class="tiny-disclaimer">Coursework demonstration · simulated networking, no live Java server connection.</div>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div class="crumb">Central Warehouse <span>/ Branch network</span></div>
+        <div class="top-mobile-brand brand"><span class="brand-mark" aria-hidden="true">T</span><span style="color:var(--ink)">ThogaMura<small style="color:var(--muted)">Branch 02</small></span></div>
+        <div class="top-actions">
+          <span class="connection-inline" id="top-connection"><span class="dot" aria-hidden="true"></span><span>Connected</span></span>
+          <span class="demo-tag">Local interactive demo</span>
+          <span class="desktop-only" style="color:var(--muted)">Branch 02 · Operator</span>
+          <button class="text-button" type="button" data-action="help">How to demo</button>
+        </div>
+      </header>
+      <main class="main" id="main"></main>
+    </div>
+  </div>
+  <nav class="bottom-nav" aria-label="Mobile primary">
+    <a href="#/overview" data-route="overview"><span data-icon="home"></span>Home</a>
+    <a href="#/products" data-route="products"><span data-icon="box"></span>Products</a>
+    <a href="#/requests" data-route="requests"><span data-icon="list"></span>Requests</a>
+    <a href="#/more" data-route="more"><span data-icon="grid"></span>More</a>
+  </nav>
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <dialog id="help-dialog" aria-labelledby="help-title">
+    <h2 id="help-title">Try the ThogaMura demo</h2>
+    <ol>
+      <li>Open <strong>Products</strong> and request available stock.</li>
+      <li>Submit a request, then track it in <strong>Requests</strong>.</li>
+      <li>Open <strong>Warehouse queue</strong>, mark it picked, then dispatch it.</li>
+      <li>Check <strong>Suppliers</strong> for out-of-stock ITEM-008.</li>
+      <li>In <strong>Activity &amp; network</strong>, enable “Drop next response”, then submit a request and retry safely with the same ID.</li>
+    </ol>
+    <p class="smallprint">Everything runs in this file with local demo data. No network packets, database, or backend services are involved.</p>
+    <div class="dialog-actions"><button class="btn primary" data-action="close-help" type="button">Got it</button></div>
+  </dialog>
+  <script>
+  "use strict";
+  const STORE_KEY = "thogamura.demo.v2";
+  const paths = {
+    home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
+    box:'<path d="m3 7 9-4 9 4-9 4-9-4zm0 0v10l9 4 9-4V7M12 11v10"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    list:'<path d="M9 6h12M9 12h12M9 18h12M3 6h.01M3 12h.01M3 18h.01"/>',
+    warehouse:'<path d="m3 9 9-6 9 6v12H3zM3 9h18M7 21v-9h10v9M9 15h6"/>',
+    truck:'<path d="M3 6h11v12H3zM14 10h4l3 4v4h-7M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4m11 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4"/>',
+    activity:'<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+    grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',
+    refresh:'<path d="M20 7v5h-5M4 17v-5h5M5 9a8 8 0 0 1 14-2l1 5M4 12l1 5a8 8 0 0 0 14-2"/>',
+    shield:'<path d="m12 2 8 4v6c0 5-3 8-8 10-5-2-8-5-8-10V6z"/><path d="m8 12 3 3 5-6"/>',
+    check:'<path d="m4 12 5 5L20 6"/>',
+    alert:'<path d="m12 3 10 18H2L12 3zM12 9v5m0 3v.01"/>',
+    copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'
+  };
+  const icon = (name,size=18) => '<svg class="icon" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" aria-hidden="true">'+(paths[name]||paths.box)+'</svg>';
+  const escapeHTML = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const seed = () => ({
+    version:42,
+    nextNumber:1043,
+    products:[
+      {sku:"ITEM-007",name:"Packing tape, 48mm",onHand:10,reserved:8,category:"Packaging"},
+      {sku:"ITEM-008",name:"Thermal receipt roll",onHand:0,reserved:0,category:"POS supplies"},
+      {sku:"ITEM-011",name:"Bubble wrap, large",onHand:42,reserved:5,category:"Packaging"},
+      {sku:"ITEM-021",name:"Mailing boxes, medium",onHand:85,reserved:10,category:"Cartons"},
+      {sku:"ITEM-105",name:"Stretch film, 500mm",onHand:12,reserved:0,category:"Packaging"}
+    ],
+    requests:[
+      {id:"REQ-1042",requestId:"sample-1042",sku:"ITEM-007",quantity:2,branch:"Branch 02 — Wellawatte",status:"ACCEPTED",time:"12:35"},
+      {id:"REQ-1041",requestId:"sample-1041",sku:"ITEM-011",quantity:5,branch:"Branch 01 — Fort",status:"PICKED",time:"12:31"},
+      {id:"REQ-1039",requestId:"sample-1039",sku:"ITEM-021",quantity:10,branch:"Branch 03 — Dehiwala",status:"DISPATCHED",time:"12:18"},
+      {id:"REQ-1035",requestId:"sample-1035",sku:"ITEM-008",quantity:3,branch:"Branch 02 — Wellawatte",status:"REJECTED",time:"11:48"}
+    ],
+    receipts:{"sample-1042":"REQ-1042","sample-1041":"REQ-1041","sample-1039":"REQ-1039","sample-1035":"REQ-1035"},
+    events:[
+      {title:"REQ-1039 dispatched",detail:"10 mailing boxes · Branch 03",time:"12:42",type:"dispatch"},
+      {title:"REQ-1041 picked",detail:"5 bubble wrap · Warehouse",time:"12:39",type:"pick"},
+      {title:"REQ-1042 accepted",detail:"2 packing tape · Branch 02",time:"12:35",type:"request"}
+    ],
+    cmdOnline:true,nioOnline:true,supplierOnline:true,dropNext:false
+  });
+  let state;
+  try {
+    const saved=JSON.parse(localStorage.getItem(STORE_KEY)||"null");
+    state=saved && Array.isArray(saved.products) && Array.isArray(saved.requests) ? Object.assign(seed(),saved) : seed();
+  } catch { state=seed(); }
+  const ui={selectedSku:"ITEM-007",draftId:null,resultId:null,pending:null,recoveryReason:"",search:"",stockFilter:"all",requestFilter:"all",supplierSku:"ITEM-008",supplierMode:"available",supplierResult:null};
+  const product=sku=>state.products.find(p=>p.sku===sku);
+  const available=p=>Math.max(0,p.onHand-p.reserved);
+  const requestById=id=>state.requests.find(r=>r.id===id);
+  const productName=sku=>product(sku)?.name||sku;
+  const lowStock=()=>state.products.filter(p=>available(p)<5);
+  const timeNow=()=>new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  const newUUID=()=>typeof crypto!=="undefined" && typeof crypto.randomUUID==="function" ? crypto.randomUUID() : "demo-"+Date.now()+"-"+Math.random().toString(36).slice(2);
+  function persist(){try{localStorage.setItem(STORE_KEY,JSON.stringify(state));}catch{}}
+  function logEvent(title,detail,type="info"){
+    state.events.unshift({title,detail,time:timeNow(),type});
+    state.events=state.events.slice(0,30);
+  }
+  function publishVersion(){
+    state.version+=1;
+    persist();
+    if(state.nioOnline)toast("Version "+state.version+" received. Views use refreshed demo data.");
+  }
+  let toastTimer;
+  function toast(message){
+    const node=document.getElementById("toast");node.textContent=message;node.classList.add("show");
+    clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.classList.remove("show"),3500);
+  }
+  const btn=(label,action,style="primary",extra="")=>'<button type="button" class="btn '+style+'" data-action="'+action+'" '+extra+'>'+label+'</button>';
+  const head=(title,description,actions="")=>'<div class="page-head"><div><h1 id="main-heading" tabindex="-1">'+title+'</h1><p class="subtext">'+description+'</p></div>'+actions+'</div>';
+  const pill=(status)=>'<span class="pill '+({ACCEPTED:"info",PICKED:"good",DISPATCHED:"good",REJECTED:"bad",LOW:"warn",OUT:"warn"}[status]||"neutral")+'">'+escapeHTML(status)+'</span>';
+  const metric=(label,value,foot,ic)=>'<article class="card metric"><div class="metric-label"><span>'+label+'</span>'+icon(ic)+'</div><div class="value number">'+value+'</div><div class="foot">'+foot+'</div></article>';
+  const ribbon=()=>'<div class="demo-ribbon"><span><strong>INTERACTIVE DEMO</strong> · Sample data in your browser. No real Java sockets or warehouse changes.</span>'+btn("How to try it","help","secondary small")+'</div>';
+  const requestActions=()=>btn(icon("plus")+" New stock request","open-request");
+  function requestRow(r){
+    return '<tr><th scope="row"><strong>'+escapeHTML(r.id)+'</strong><div class="row-sub">'+escapeHTML(r.time)+'</div></th>'+
+      '<td data-label="Branch">'+escapeHTML(r.branch)+'</td><td data-label="Product">'+escapeHTML(r.sku)+'</td><td data-label="Qty" class="number">'+r.quantity+'</td>'+
+      '<td data-label="Status">'+pill(r.status)+'</td></tr>';
+  }
+  function requestTable(rows,caption){
+    return '<div class="table-wrap"><table><caption>'+caption+'</caption><thead><tr><th scope="col">Request</th><th scope="col">Branch</th><th scope="col">SKU</th><th scope="col">Qty</th><th scope="col">Status</th></tr></thead><tbody>'+
+      (rows.length?rows.map(requestRow).join(""):'<tr><td colspan="5" class="empty">No requests in this view.</td></tr>')+'</tbody></table></div>';
+  }
+  function connectionCard(title,on,desc){
+    return '<div class="connection-card"><div class="eyebrow">'+escapeHTML(title)+'</div><strong class="'+(on?"teal":"")+'">'+(on?"● Connected":"● Disconnected")+'</strong><p>'+escapeHTML(desc)+'</p></div>';
+  }
+  function overview(){
+    const active=state.requests.filter(r=>r.status==="ACCEPTED"||r.status==="PICKED");
+    const dispatched=state.requests.filter(r=>r.status==="DISPATCHED").length;
+    const latest=state.requests.slice(0,4);
+    return ribbon()+head("Operations overview","A live operational picture of branch requests and warehouse stock.",requestActions())+
+      '<div class="metric-grid">'+metric("SKUs monitored",state.products.length,"Central catalog","box")+
+      metric("Requests in progress",active.length,"Accepted + picked","list")+
+      metric("Low-stock products",lowStock().length,"Require attention","alert")+
+      metric("Dispatched requests",dispatched,"Demo request history","truck")+'</div>'+
+      '<div class="callout mint"><div><strong>'+icon("alert")+' Low stock needs attention</strong><p>'+lowStock().map(p=>escapeHTML(p.sku)+" · "+available(p)+" available").join(" &nbsp; · &nbsp; ")+'</p></div>'+btn("View inventory "+icon("arrow"),"go-products","secondary small")+'</div>'+
+      '<div class="grid-two"><section class="card section-card"><div class="section-title"><h2>Recent stock requests</h2>'+btn("View all","go-requests","linklike")+'</div>'+requestTable(latest,"Latest warehouse request statuses")+'</section>'+
+      '<div class="stack"><section class="card pad"><h2>Network health</h2><div class="info-grid">'+
+      '<div class="status-box"><strong class="'+(state.cmdOnline?"teal":"")+'">'+(state.cmdOnline?"● Connected":"● Offline")+'</strong><p class="smallprint">TCP/TLS command path (simulated)</p></div>'+
+      '<div class="status-box"><strong class="'+(state.nioOnline?"teal":"")+'">'+(state.nioOnline?"● Live":"● Paused")+'</strong><p class="smallprint">NIO version-only feed (simulated)</p></div></div>'+
+      '<div class="kv"><span>Latest warehouse version</span><strong>#'+state.version+'</strong></div><div class="kv"><span>Last sync</span><strong>Just now</strong></div>'+
+      '<div style="margin-top:15px">'+btn("Inspect network status "+icon("arrow"),"go-activity","secondary")+'</div></section>'+
+      '<section class="card pad"><div class="eyebrow">How it works</div><h3>A notification is not inventory</h3><p class="smallprint">NIO sends a version number only. The branch then refreshes authoritative data using the application bridge.</p></section></div></div>';
+  }
+  function productRow(p){
+    const avail=available(p),out=avail===0,low=avail>0&&avail<5;
+    const act=out?"open-supplier":"open-request";
+    return '<tr><th scope="row"><strong>'+escapeHTML(p.sku)+'</strong><div class="row-sub">'+escapeHTML(p.name)+'</div></th>'+
+      '<td data-label="On hand" class="number">'+p.onHand+'</td><td data-label="Reserved" class="number">'+p.reserved+'</td>'+
+      '<td data-label="Available" class="number available">'+avail+'</td><td data-label="Stock state">'+(out?pill("OUT"):low?pill("LOW"):'<span class="pill good">In stock</span>')+'</td>'+
+      '<td data-label="Action">'+btn((out?"Check supplier":"Request")+" "+icon("arrow"),act,"linklike",'data-sku="'+escapeHTML(p.sku)+'"')+'</td></tr>';
+  }
+  function filteredProducts(){
+    return state.products.filter(p=>{
+      const matches=(p.sku+" "+p.name+" "+p.category).toLowerCase().includes(ui.search.toLowerCase());
+      const a=available(p);
+      return matches&&(ui.stockFilter==="all"||(ui.stockFilter==="available"&&a>0)||(ui.stockFilter==="low"&&a<5)||(ui.stockFilter==="out"&&a===0));
+    });
+  }
+  function products(){
+    return head("Product inventory","Search server-confirmed balances before requesting warehouse stock.",requestActions())+
+      '<div class="toolbar"><div class="field"><label for="product-search">Search product or SKU</label><input id="product-search" type="search" placeholder="Search by name or SKU…" value="'+escapeHTML(ui.search)+'" autocorrect="off" spellcheck="false"></div>'+
+      '<div class="field"><label for="stock-filter">Stock availability</label><select id="stock-filter"><option value="all">All availability</option><option value="available">Available</option><option value="low">Low stock (&lt;5)</option><option value="out">Out of stock</option></select></div>'+
+      btn(icon("refresh")+" Refresh stock","refresh-stock","secondary")+'</div>'+
+      '<p class="smallprint" style="margin-bottom:13px"><strong>'+state.products.length+' SKUs</strong> · <strong style="color:var(--amber)">'+lowStock().length+' low-stock products</strong> · Version '+state.version+'</p>'+
+      '<section class="card pad"><div class="table-wrap"><table><caption>Warehouse products and availability</caption><thead><tr><th scope="col">Product / SKU</th><th scope="col">On hand</th><th scope="col">Reserved</th><th scope="col">Available</th><th scope="col">Stock state</th><th scope="col">Action</th></tr></thead><tbody id="product-body">'+filteredProducts().map(productRow).join("")+'</tbody></table></div></section>'+
+      '<div class="callout mint" style="margin-top:17px"><p>Balances are calculated at the warehouse. Stock is reserved only after a confirmed accepted request.</p></div>';
+  }
+  function renderProductRows(){
+    const node=document.getElementById("product-body");
+    if(node)node.innerHTML=filteredProducts().map(productRow).join("")||'<tr><td colspan="6" class="empty">No matching products.</td></tr>';
+  }
+  function productOptions(){
+    return state.products.map(p=>'<option value="'+escapeHTML(p.sku)+'" '+(ui.selectedSku===p.sku?"selected":"")+'>'+escapeHTML(p.sku+" — "+p.name)+'</option>').join("");
+  }
+  function requestForm(){
+    if(ui.pending){
+      return head("Resolve the pending request","A previous command has no confirmed client response.")+
+        '<div class="callout sand"><div><strong>Do not create another request yet.</strong><p>Retry the original request ID first. A new ID could reserve the same stock twice.</p></div>'+btn("Resolve pending request "+icon("arrow"),"go-recovery","primary")+'</div>';
+    }
+    if(!ui.draftId)ui.draftId=newUUID();
+    const p=product(ui.selectedSku)||state.products[0];const a=available(p);
+    return head("Request warehouse stock","One product per request. Only a server response confirms acceptance.")+
+      '<div class="grid-form"><form id="request-form" method="post" action="#" class="card form-card" novalidate><h2>Request details</h2><div class="field-group">'+
+      '<div class="field"><label for="branch">Branch</label><select id="branch" name="branch" required><option>Branch 02 — Wellawatte</option><option>Branch 01 — Fort</option><option>Branch 03 — Dehiwala</option></select></div>'+
+      '<div class="field"><label for="request-sku">Product</label><select id="request-sku" name="sku" required>'+productOptions()+'</select></div>'+
+      '<div class="stock-strip" id="request-stock-strip"><div><span>On hand</span><strong>'+p.onHand+'</strong></div><div><span>Reserved</span><strong>'+p.reserved+'</strong></div><div><span>Available</span><strong class="teal">'+a+'</strong></div></div>'+
+      '<div class="field"><label for="quantity">Quantity <span aria-hidden="true">*</span></label><span class="hint" id="qty-hint">Positive whole number. You cannot request more than the available stock.</span>'+
+      '<input id="quantity" name="quantity" type="number" min="1" step="1" inputmode="numeric" value="'+Math.min(2,Math.max(1,a))+'" aria-describedby="qty-hint" required><span class="hint" id="qty-error" role="status"></span></div>'+
+      '<div class="smallprint">Request ID for safe retry: <code id="draft-id">'+escapeHTML(ui.draftId)+'</code></div></div>'+
+      '<div class="input-actions"><button class="btn primary" type="submit">'+icon("check")+' Review &amp; submit request</button>'+btn("Cancel","go-products","secondary")+'</div></form>'+
+      '<aside class="card preview-card" aria-label="Reservation preview"><div class="eyebrow">Before you submit</div><h2>Reservation preview</h2>'+
+      '<div class="kv"><span>Product</span><strong id="preview-name">'+escapeHTML(p.name)+'</strong></div>'+
+      '<div class="kv"><span>Available now</span><strong id="preview-available">'+a+' units</strong></div>'+
+      '<div class="kv"><span>Request quantity</span><strong id="preview-quantity">2 units</strong></div>'+
+      '<div class="outcome mint" id="preview-result">If accepted: '+Math.max(0,a-2)+' units remain available</div>'+
+      '<p class="smallprint" style="margin-top:14px">The warehouse validates the actual stock atomically. This preview does not reserve anything.</p>'+
+      '<div class="notice">Network timeout? Retry using the <strong>same request ID</strong> to avoid duplicate reservations.</div></aside></div>';
+  }
+  function resultPage(){
+    const r=requestById(ui.resultId)||state.requests[0];const ok=r?.status!=="REJECTED";
+    return '<div class="centered-card card"><div class="big-check" style="'+(ok?"":"background:var(--red)")+'">'+(ok?icon("check",30):icon("alert",30))+'</div>'+
+      '<div class="eyebrow">'+(ok?"Warehouse confirmed":"Warehouse rejected")+'</div><h1 id="main-heading" tabindex="-1">'+(ok?"Request accepted":"Request not accepted")+'</h1>'+
+      '<p class="subtext">'+(ok?"The central warehouse has reserved the requested stock.":"The request was safely rejected, and no stock was reserved.")+'</p>'+
+      '<div class="status-stepper"><span class="status-step done">1 · Submitted</span><span class="status-step '+(ok?"done":"")+'">2 · '+(ok?"Accepted":"Rejected")+'</span><span class="status-step">3 · Picked</span><span class="status-step">4 · Dispatched</span></div>'+
+      '<div class="card pad" style="background:#fafdfe"><div class="kv"><span>Request ID</span><strong>'+escapeHTML(r?.id||"—")+'</strong></div><div class="kv"><span>Product</span><strong>'+escapeHTML(productName(r.sku))+'</strong></div><div class="kv"><span>Quantity</span><strong>'+r.quantity+' units</strong></div><div class="kv"><span>Branch</span><strong>'+escapeHTML(r.branch)+'</strong></div>'+
+      '<div class="kv"><span>Status</span>'+pill(r.status)+'</div></div>'+
+      '<div class="input-actions">'+btn("View all requests","go-requests")+btn("New stock request","open-request","secondary")+btn("Back to inventory","go-products","ghost")+'</div></div>';
+  }
+  function requests(){
+    const statuses=["all","ACCEPTED","PICKED","DISPATCHED","REJECTED"];const filtered=state.requests.filter(r=>ui.requestFilter==="all"||r.status===ui.requestFilter);
+    return head("Request tracking","Track warehouse-confirmed status changes. Notifications carry version only.",requestActions())+
+      '<div class="metric-grid">'+metric("Total requests",state.requests.length,"All demo requests","list")+
+      metric("Accepted",state.requests.filter(r=>r.status==="ACCEPTED").length,"Ready for picking","check")+
+      metric("Picked",state.requests.filter(r=>r.status==="PICKED").length,"Awaiting dispatch","warehouse")+
+      metric("Dispatched",state.requests.filter(r=>r.status==="DISPATCHED").length,"Stock moved","truck")+'</div>'+
+      '<div class="toolbar"><div class="field"><label for="request-filter">Filter by status</label><select id="request-filter">'+statuses.map(s=>'<option value="'+s+'" '+(s===ui.requestFilter?"selected":"")+'>'+(s==="all"?"All statuses":s)+'</option>').join("")+'</select></div>'+
+      btn(icon("refresh")+" Refresh statuses","refresh-requests","secondary")+'</div>'+
+      (!state.nioOnline?'<div class="callout sand"><strong>Live updates paused</strong><p>The displayed statuses might be stale. You can still request a manual refresh.</p></div>':'<div class="callout mint"><strong>● Live notifications connected</strong><p>On a version change, the branch fetches current request statuses.</p></div>')+
+      '<section class="card pad">'+requestTable(filtered,"Warehouse request history")+'</section>';
+  }
+  function warehouse(){
+    const accepted=state.requests.filter(r=>r.status==="ACCEPTED");const picked=state.requests.filter(r=>r.status==="PICKED");
+    const queue=(r,action,tint=false)=>'<div class="queue-row '+(tint?"tint":"")+'"><div><div class="eyebrow">'+escapeHTML(r.id)+' · '+r.status+'</div><h3>'+escapeHTML(r.sku)+' · '+escapeHTML(productName(r.sku))+'</h3><div class="queue-meta">'+escapeHTML(r.branch)+' · '+r.quantity+' units</div></div>'+
+      btn((action==="pick"?"Mark picked":"Dispatch")+ " "+icon("arrow"),action,tint?"primary":"secondary",'data-id="'+escapeHTML(r.id)+'" '+(!state.cmdOnline?"disabled":""))+'</div>';
+    return head("Warehouse queue","Pick and dispatch only requests that the central server has accepted.")+
+      '<div class="callout mint"><strong>PICK → DISPATCH</strong><p>Picking does not deduct physical stock. Dispatch records one movement and releases its reservation.</p></div>'+
+      '<div class="stack"><section class="card section-card"><div class="section-title"><h2>Accepted — ready to pick</h2><span class="smallprint">'+accepted.length+' requests</span></div>'+
+      '<div class="queue-list">'+(accepted.length?accepted.map(r=>queue(r,"pick")).join(""):'<div class="empty">No accepted requests waiting to be picked.</div>')+'</div></section>'+
+      '<section class="card section-card"><div class="section-title"><h2>Picked — ready to dispatch</h2><span class="smallprint">'+picked.length+' requests</span></div>'+
+      '<div class="queue-list">'+(picked.length?picked.map(r=>queue(r,"dispatch",true)).join(""):'<div class="empty">No picked requests awaiting dispatch.</div>')+'</div></section></div>'+
+      '<div class="notice">Each action is checked against the current request status in this demo. Double dispatch is rejected.</div>';
+  }
+  function supplierDetails(){
+    if(!ui.supplierResult)return '<div class="supplier-result"><div><div class="eyebrow">Available · Demo supplier</div><h2>20 units reported</h2><p class="smallprint">ITEM-008 · Independent supplier HTTP mock</p><p class="smallprint">Advisory only, not warehouse-owned stock</p></div><div><span class="eyebrow">Warehouse stock</span><h2>0 available</h2></div></div>';
+    const r=ui.supplierResult;
+    if(r.status==="available")return '<div class="supplier-result"><div><div class="eyebrow">● Available · Demo supplier</div><h2>'+r.units+' units reported</h2><p class="smallprint">'+escapeHTML(r.sku)+' · Separate supplier stock</p><p class="smallprint">Read-only information, no purchase or reservation</p></div><div><span class="eyebrow">Warehouse stock</span><h2>'+available(product(r.sku))+' available</h2></div></div>';
+    if(r.status==="zero")return '<div class="supplier-result"><div><div class="eyebrow">Known zero</div><h2>0 units reported</h2><p class="smallprint">Supplier responded successfully with no available units.</p></div></div>';
+    if(r.status==="unknown")return '<div class="supplier-result warn"><div><div class="eyebrow">Unknown / 404</div><h2>No confirmed quantity</h2><p class="smallprint">The supplier does not recognize this SKU. Never invent stock.</p></div></div>';
+    return '<div class="supplier-result bad"><div><div class="eyebrow">Unavailable / timeout</div><h2>Try again later</h2><p class="smallprint">The service could not be reached; its stock is unknown.</p></div></div>';
+  }
+  function suppliers(){
+    return head("Supplier availability","Check a separate supplier service when warehouse stock is insufficient.")+
+      '<form id="supplier-form" method="get" action="#" class="card pad"><div class="toolbar" style="margin-bottom:0"><div class="field"><label for="supplier-sku">Product / SKU</label><select id="supplier-sku" name="sku">'+state.products.map(p=>'<option value="'+p.sku+'" '+(p.sku===ui.supplierSku?"selected":"")+'>'+escapeHTML(p.sku+" — "+p.name)+'</option>').join("")+'</select></div>'+
+      '<div class="field"><label for="supplier-scenario">Demo response scenario</label><select id="supplier-scenario" name="scenario">'+
+      '<option value="available">Available stock</option><option value="zero">Known zero</option><option value="unknown">Unknown SKU / 404</option><option value="unavailable">Timeout / unavailable</option></select></div>'+
+      '<button class="btn primary" type="submit">'+icon("refresh")+' Check supplier</button></div></form>'+supplierDetails()+
+      '<h2>Different network outcomes</h2><div class="supplier-scenarios">'+
+      '<article class="scenario"><div class="eyebrow">Known zero</div><strong>0 units</strong><p class="smallprint">Supplier returned a valid response with zero quantity.</p></article>'+
+      '<article class="scenario" style="background:var(--sand)"><div class="eyebrow" style="color:var(--amber)">Unknown / 404</div><strong>No confirmed quantity</strong><p class="smallprint">SKU not found; do not invent stock.</p></article>'+
+      '<article class="scenario" style="background:var(--rose)"><div class="eyebrow" style="color:var(--red)">Unavailable / timeout</div><strong>Please try again</strong><p class="smallprint">Service unreachable; do not interpret as zero.</p></article></div>'+
+      '<div class="callout mint" style="margin-top:19px"><p>Supplier lookup is read-only. It does not purchase, reserve, or automatically replenish warehouse stock.</p></div>';
+  }
+  function activity(){
+    return head("Activity & network","Inspect simulated transport health, events and failure scenarios.",btn("Recovery example "+icon("arrow"),"go-recovery","secondary"))+
+      '<div class="connection-grid">'+connectionCard("TLS command channel",state.cmdOnline,"Branch commands and authoritative responses.")+
+      connectionCard("NIO notification feed",state.nioOnline,"Version-only CHANGED messages, no SKU or quantity.")+
+      connectionCard("Supplier HTTP lookup",state.supplierOnline,"External advisory requests; separate failure boundary.")+'</div>'+
+      '<div class="grid-two"><section class="card pad"><div class="section-title"><h2>Recent network & stock activity</h2><span class="smallprint">Version #'+state.version+'</span></div>'+
+      '<div class="timeline">'+state.events.slice(0,10).map(e=>'<div class="timeline-item"><span class="timeline-dot" aria-hidden="true"></span><div><strong>'+escapeHTML(e.title)+'</strong><p>'+escapeHTML(e.detail)+'</p></div><time>'+escapeHTML(e.time)+'</time></div>').join("")+'</div>'+
+      '<div style="margin-top:15px">'+btn(icon("refresh")+" Refresh activity","refresh-activity","secondary")+'</div></section>'+
+      '<div class="stack"><section class="card pad"><h2>Interactive network lab</h2>'+
+      '<label class="switch-row" for="switch-command"><span><strong>Command connection</strong><small>Take the TCP/TLS command path offline.</small></span><input class="switch" id="switch-command" type="checkbox" data-toggle="cmdOnline" '+(state.cmdOnline?"checked":"")+'></label>'+
+      '<label class="switch-row" for="switch-nio"><span><strong>NIO live notifications</strong><small>Pause or reconnect version-only updates.</small></span><input class="switch" id="switch-nio" type="checkbox" data-toggle="nioOnline" '+(state.nioOnline?"checked":"")+'></label>'+
+      '<label class="switch-row" for="switch-supplier"><span><strong>Supplier HTTP service</strong><small>Force a supplier timeout until reconnected.</small></span><input class="switch" id="switch-supplier" type="checkbox" data-toggle="supplierOnline" '+(state.supplierOnline?"checked":"")+'></label>'+
+      '<label class="switch-row" for="switch-drop"><span><strong>Drop next command response</strong><small>Server applies the request; client misses its result. Retry the same ID.</small></span><input class="switch" id="switch-drop" type="checkbox" data-toggle="dropNext" '+(state.dropNext?"checked":"")+'></label></section>'+
+      '<section class="card pad"><div class="eyebrow">Demo controls</div><p class="smallprint">Change warehouse data to publish one simulated version notice.</p>'+
+      '<div class="input-actions">'+btn("Simulate stock arrival","simulate-stock","secondary")+btn("Reset sample data","reset","ghost")+'</div></section></div></div>'+
+      '<div class="notice">These switches change only in-browser behavior. The original coursework must implement real Java TCP, TLS, NIO and HTTP communication independently.</div>';
+  }
+  function recovery(){
+    const pending=ui.pending;
+    const text=ui.recoveryReason==="lost-ack"?"The warehouse may have accepted this request. The response was deliberately dropped.":"The warehouse command connection is offline. No confirmation was received.";
+    return head("Connection interrupted","A safe recovery path for commands and live notifications.")+
+      '<div class="callout sand"><div><div class="eyebrow" style="color:var(--amber)">Response uncertain</div><strong>Your request may have reached the warehouse.</strong><p>'+text+' Never create a different ID just to retry.</p></div>'+btn(icon("refresh")+" Retry same request","retry-pending","primary",pending?"":"disabled")+'</div>'+
+      '<div class="card pad" style="margin-bottom:17px"><div class="eyebrow">Preserved request ID</div><h2 style="overflow-wrap:anywhere">'+escapeHTML(pending?.requestId||"No pending request in this browser")+'</h2>'+
+      '<p class="smallprint">When the server receives a repeated ID, it returns the original result. This prototype simulates that idempotent receipt behavior.</p>'+
+      (pending?'<p class="smallprint">'+escapeHTML(pending.sku)+' · '+pending.quantity+' units · '+escapeHTML(pending.branch)+'</p>':'')+'</div>'+
+      '<div class="callout rose"><div><div class="eyebrow" style="color:var(--red)">Live updates</div><strong>'+(state.nioOnline?"Connected to version notices":"Temporarily offline from warehouse updates")+'</strong>'+
+      '<p>Notifications are advisory. Refresh authoritative stock after reconnecting.</p></div>'+btn("Go to activity","go-activity","secondary")+'</div>'+
+      '<div class="callout mint"><strong>Expected recovery</strong><p>Once connected, repeated submissions use the preserved request ID and stock is reserved at most once.</p></div>';
+  }
+  function more(){
+    return head("More tools","Explore network-aware warehouse utilities.")+
+      '<div class="more-grid"><a class="more-link" href="#/suppliers"><span>Supplier availability<small>Check separate HTTP stock, including timeout states</small></span>'+icon("arrow")+'</a>'+
+      '<a class="more-link" href="#/warehouse"><span>Warehouse queue<small>Pick and dispatch confirmed requests</small></span>'+icon("arrow")+'</a>'+
+      '<a class="more-link" href="#/activity"><span>Activity & network<small>Inspect transport health and simulated failures</small></span>'+icon("arrow")+'</a>'+
+      '<a class="more-link" href="#/recovery"><span>Network recovery<small>Review uncertain delivery and safe retries</small></span>'+icon("arrow")+'</a></div>'+
+      '<div class="callout mint" style="margin-top:19px"><div><strong>'+icon("shield")+' Designed for a network programming assignment</strong><p>Java TCP/TLS commands, Java NIO version notices and supplier HTTP are represented as UI concepts only.</p></div></div>'+ 
+      '<div class="input-actions">'+btn("How to demo","help","secondary")+btn("Reset demo data","reset","ghost")+'</div>';
+  }
+  const pages={overview:["Operations overview",overview],products:["Product inventory",products],request:["Stock request",requestForm],result:["Request result",resultPage],requests:["Request tracking",requests],warehouse:["Warehouse queue",warehouse],suppliers:["Supplier availability",suppliers],activity:["Activity & network",activity],recovery:["Connection recovery",recovery],more:["More tools",more]};
+  function route(){const name=(location.hash.match(/^#\/([a-z-]+)/)||[])[1]||"overview";return pages[name]?name:"overview";}
+  function go(name){const next="#/"+name;if(location.hash===next)render();else location.hash=next;window.scrollTo({top:0,behavior:"instant"});}
+  function updateGlobals(active){
+    const connected=state.cmdOnline&&state.nioOnline;
+    const top=document.getElementById("top-connection");top.classList.toggle("off",!connected);
+    top.querySelector("span:last-child").textContent=connected?"Connected":"Connection issue";
+    const side=document.getElementById("sidebar-connection");side.textContent=connected?"● Warehouse connected":"● Connection degraded";
+    document.getElementById("sidebar-sub").textContent="Private LAN · simulated demo";
+    document.querySelectorAll("a[data-route]").forEach(a=>{
+      const current=a.dataset.route===active||(a.dataset.route==="more"&&["warehouse","suppliers","activity","recovery"].includes(active)&&a.closest(".bottom-nav"));
+      if(current)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");
+    });
+    document.querySelectorAll("[data-icon]").forEach(n=>{n.innerHTML=icon(n.dataset.icon);});
+  }
+  function render(){
+    const key=route();document.getElementById("main").innerHTML=pages[key][1]();
+    document.title=pages[key][0]+" | ThogaMura interactive demo";
+    updateGlobals(key);
+    if(key==="products")document.getElementById("stock-filter").value=ui.stockFilter;
+    if(key==="request")updatePreview();
+    if(key==="suppliers")document.getElementById("supplier-scenario").value=ui.supplierMode;
+  }
+  function updatePreview(){
+    const sku=document.getElementById("request-sku");const qty=document.getElementById("quantity");if(!sku||!qty)return;
+    const p=product(sku.value);if(!p)return;ui.selectedSku=p.sku;
+    const a=available(p);const n=Number(qty.value);
+    document.getElementById("request-stock-strip").innerHTML='<div><span>On hand</span><strong>'+p.onHand+'</strong></div><div><span>Reserved</span><strong>'+p.reserved+'</strong></div><div><span>Available</span><strong class="teal">'+a+'</strong></div>';
+    document.getElementById("preview-name").textContent=p.name;
+    document.getElementById("preview-available").textContent=a+" units";
+    document.getElementById("preview-quantity").textContent=(Number.isFinite(n)?n:0)+" units";
+    document.getElementById("preview-result").textContent=(Number.isInteger(n)&&n>0&&n<=a)?"If accepted: "+(a-n)+" units remain available":"Review the quantity: only "+a+" units available";
+    document.getElementById("preview-result").className="outcome "+(Number.isInteger(n)&&n>0&&n<=a?"mint":"sand");
+  }
+  function processCommand(draft){
+    const prior=state.receipts[draft.requestId];
+    if(prior)return requestById(prior);
+    const p=product(draft.sku);
+    const canAccept=!!p&&Number.isInteger(draft.quantity)&&draft.quantity>0&&draft.quantity<=available(p);
+    const r={id:"REQ-"+state.nextNumber++,requestId:draft.requestId,sku:draft.sku,quantity:draft.quantity,branch:draft.branch,status:canAccept?"ACCEPTED":"REJECTED",time:timeNow()};
+    state.requests.unshift(r);state.receipts[draft.requestId]=r.id;
+    if(canAccept)p.reserved+=draft.quantity;
+    logEvent(r.id+" "+r.status.toLowerCase(),draft.quantity+" "+draft.sku+" · "+draft.branch,"request");publishVersion();
+    return r;
+  }
+  function sendRequest(draft){
+    if(!state.cmdOnline){
+      ui.pending=draft;ui.recoveryReason="offline";go("recovery");toast("No warehouse connection. The request is not confirmed.");return;
+    }
+    const drop=state.dropNext;state.dropNext=false;
+    const result=processCommand(draft);ui.resultId=result.id;
+    if(drop){
+      ui.pending=draft;ui.recoveryReason="lost-ack";persist();go("recovery");toast("Simulated response lost. Retry with the same ID.");return;
+    }
+    ui.pending=null;ui.draftId=null;ui.recoveryReason="";persist();go("result");
+  }
+  function submitRequest(form){
+    const p=product(form.elements.sku.value);const qty=form.elements.quantity;
+    qty.setCustomValidity("");
+    const n=Number(qty.value),a=p?available(p):0;
+    if(!Number.isSafeInteger(n)||n<1)qty.setCustomValidity("Enter a positive whole number.");
+    else if(n>a)qty.setCustomValidity("Only "+a+" units are available.");
+    qty.setAttribute("aria-invalid",qty.validationMessage?"true":"false");
+    const error=document.getElementById("qty-error");error.textContent=qty.validationMessage;
+    if(!form.checkValidity()){form.reportValidity();qty.focus();return;}
+    const draft={requestId:ui.draftId||newUUID(),sku:p.sku,quantity:n,branch:form.elements.branch.value};
+    sendRequest(draft);
+  }
+  function transitionRequest(id,action){
+    if(!state.cmdOnline){toast("Command connection offline. Reconnect in Activity & network.");return;}
+    const r=requestById(id);if(!r)return;
+    if(action==="pick"&&r.status==="ACCEPTED"){r.status="PICKED";logEvent(r.id+" picked",r.quantity+" "+r.sku+" · Warehouse","pick");publishVersion();render();return;}
+    if(action==="dispatch"&&r.status==="PICKED"){
+      const p=product(r.sku);
+      if(p){p.reserved=Math.max(0,p.reserved-r.quantity);p.onHand=Math.max(0,p.onHand-r.quantity);}
+      r.status="DISPATCHED";logEvent(r.id+" dispatched",r.quantity+" "+r.sku+" · "+r.branch,"dispatch");publishVersion();render();return;
+    }
+    toast("Invalid transition: only ACCEPTED → PICKED → DISPATCHED is allowed.");
+  }
+  document.addEventListener("click",event=>{
+    const target=event.target.closest("[data-action]");if(!target||target.disabled)return;
+    const action=target.dataset.action;
+    if(action==="open-request"){ui.selectedSku=target.dataset.sku||"ITEM-007";ui.draftId=newUUID();go("request");}
+    else if(action==="open-supplier"){ui.supplierSku=target.dataset.sku||"ITEM-008";ui.supplierResult=null;go("suppliers");}
+    else if(action==="go-products")go("products");
+    else if(action==="go-requests")go("requests");
+    else if(action==="go-activity")go("activity");
+    else if(action==="go-recovery")go("recovery");
+    else if(action==="refresh-stock"||action==="refresh-requests"||action==="refresh-activity"){render();toast("Refreshed from current local demo state (version "+state.version+").");}
+    else if(action==="pick"||action==="dispatch")transitionRequest(target.dataset.id,action);
+    else if(action==="retry-pending"){
+      if(!ui.pending){toast("There is no pending request to retry.");return;}
+      sendRequest(ui.pending);
+    }
+    else if(action==="simulate-stock"){
+      const p=product("ITEM-011");p.onHand+=5;logEvent("ITEM-011 stock arrival","+5 units added to demo warehouse","stock");publishVersion();render();
+    }
+    else if(action==="reset"){
+      if(!confirm("Reset all demo requests, stock and network switches to the initial sample data?"))return;
+      state=seed();ui.pending=null;ui.resultId=null;ui.draftId=null;ui.supplierResult=null;persist();go("overview");toast("Demo data reset.");
+    }
+    else if(action==="help")document.getElementById("help-dialog").showModal();
+    else if(action==="close-help")document.getElementById("help-dialog").close();
+  });
+  document.addEventListener("submit",event=>{
+    if(event.target.id==="request-form"){event.preventDefault();submitRequest(event.target);}
+    if(event.target.id==="supplier-form"){
+      event.preventDefault();ui.supplierSku=event.target.elements.sku.value;ui.supplierMode=event.target.elements.scenario.value;
+      ui.supplierResult={sku:ui.supplierSku,status:state.supplierOnline?ui.supplierMode:"unavailable",units:ui.supplierSku==="ITEM-008"?20:12};
+      logEvent("Supplier lookup",ui.supplierSku+" · "+ui.supplierResult.status,"supplier");persist();render();toast("Read-only supplier scenario checked.");
+    }
+  });
+  document.addEventListener("input",event=>{
+    if(event.target.id==="product-search"){ui.search=event.target.value;renderProductRows();}
+    if(event.target.id==="quantity"){event.target.setCustomValidity("");event.target.setAttribute("aria-invalid","false");document.getElementById("qty-error").textContent="";updatePreview();}
+  });
+  document.addEventListener("change",event=>{
+    const t=event.target;
+    if(t.id==="stock-filter"){ui.stockFilter=t.value;renderProductRows();}
+    if(t.id==="request-filter"){ui.requestFilter=t.value;render();}
+    if(t.id==="request-sku"){ui.selectedSku=t.value;updatePreview();}
+    if(t.dataset.toggle){
+      state[t.dataset.toggle]=t.checked;persist();render();
+      const label={cmdOnline:"Command connection",nioOnline:"NIO live notifications",supplierOnline:"Supplier HTTP service",dropNext:"Next-response drop"}[t.dataset.toggle];
+      toast(label+(t.checked?" enabled.":" disabled."));
+    }
+  });
+  window.addEventListener("hashchange",()=>{render();const h=document.getElementById("main-heading");if(h)h.focus({preventScroll:true});});
+  document.querySelectorAll("[data-icon]").forEach(node=>{node.innerHTML=icon(node.dataset.icon);});
+  render();
+  </script>
+</body>
+</html>
