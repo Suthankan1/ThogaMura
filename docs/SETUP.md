@@ -61,6 +61,20 @@ npm --prefix frontend run build
 git diff --check
 ```
 
+## TLS certificate setup (Member 5)
+
+Command traffic over port 7443 requires server-authenticated TLS (ADR-004). Generate synthetic local development certificates using standard Java `keytool`:
+
+```bash
+# Generate dev CA, warehouse server keystore, and gateway truststore:
+./scripts/generate-dev-certs.sh
+
+# For a two-laptop demo, include the warehouse laptop's LAN IP in the certificate SAN:
+./scripts/generate-dev-certs.sh --lan-ip 192.168.8.100
+```
+
+All credentials are saved to `.certs/` and excluded from Git. See [TLS Certificate and Truststore Workflow](TLS_CERTIFICATES.md) for full details.
+
 ## Two-machine LAN demo
 
 Run server + PostgreSQL on the warehouse laptop; run gateway + browser on the shop laptop. Bind socket listeners to a suitable LAN interface, configure firewall rules for the small required ports, verify TLS server name/SAN and truststore, and configure `THOGAMURA_SERVER_HOST` to the central machine's trusted hostname/IP; there is no UDP discovery in v2. Restrict NIO port 7444 to the private demo LAN and do **not** expose it publicly. Run the independent supplier HTTP stub on port 8090 only if testing M2. Use fictitious demo items; never expose PostgreSQL publicly.
