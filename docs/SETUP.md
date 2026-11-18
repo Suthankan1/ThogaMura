@@ -22,7 +22,9 @@ docker compose up -d db
 docker compose ps
 ```
 
-PostgreSQL runs locally at port 5432 and persists in a Docker named volume. `docker compose down` stops containers without deleting the volume; **never run `down -v` on a database containing data worth keeping**.
+PostgreSQL runs in Docker Compose (mapped to host port `5432` by default) and persists in the named volume `thogamura_postgres_data`. If your workstation already has a local PostgreSQL service running on port 5432, specify `POSTGRES_PORT=5433` (or another free port) in your root `.env` and update `THOGAMURA_DB_URL=jdbc:postgresql://localhost:5433/thogamura`.
+
+`docker compose down` stops containers without deleting the volume; **never run `down -v` on a database containing data worth keeping**.
 
 ## Java builds
 
