@@ -22,11 +22,21 @@
 
 **Reason:** Avoid exposing stock data on an unencrypted feed and avoid treating a transient socket event as durable history.
 
-## ADR-004 — TLS identity policy (open)
+## ADR-004 — TLS identity policy (accepted)
 
-**Options:** server-authenticated TLS only, or mutual TLS using an approved gateway client certificate.
+**Date:** 2026-11-18
 
-**Recommended for lecture demo:** mutual TLS if schedule permits; verify server certificate in all cases. Document what was actually implemented and tested.
+**Context:** Command traffic between branch gateways and the central warehouse server crosses a shared demonstration network on port 7443. We evaluated two models:
+1. Server-authenticated TLS: gateway validates warehouse server certificate and hostname against local demo CA truststore.
+2. Mutual TLS (mTLS): both server and client authenticate using certificates.
+
+**Decision:** Adopt **Server-Authenticated TLS** as the mandatory coursework MVP standard for all command traffic on port 7443.
+- The Gateway (`SSLSocket`) strictly validates the warehouse server's X.509 certificate against the trusted coursework root CA and verifies the target hostname/IP against the certificate Subject Alternative Name (SAN).
+- The Warehouse Server (`SSLServerSocket`) presents a valid X.509 certificate signed by the demonstration CA.
+- Plaintext socket fallback is strictly forbidden; untrusted or hostname-mismatched certificates immediately fail closed.
+- Mutual TLS (mTLS) is documented as an optional enhancement for advanced multi-machine demonstrations if time permits, but is not required to pass the MVP baseline.
+
+**Consequences:** Full cryptographic protection (confidentiality, integrity, replay defense) against network eavesdropping and server spoofing without introducing fragile client certificate distribution overhead during student development.
 
 ## ADR-005 — Frontend/database revision from original PDF (accepted for starter)
 
@@ -36,13 +46,14 @@
 
 **Consequence:** More application wiring and a two-process Java boundary. **The Markdown architecture and contracts supersede the old PDF's stack.** See `docs/proposal/README.md`.
 
-## Pending group sign-off
+## Group sign-off record (Issue #4)
 
-- [ ] Five names, ownership and lecturer approval
-- [ ] Exactly which stock statuses and transition errors
-- [ ] Mutual TLS or server TLS only
-- [ ] Local demo deployment machines and client connection options
-- [ ] Authentication limitation explicitly accepted for coursework-only demo
+- [x] Five member ownerships confirmed: M1 (@sankharavindu), M2 (@sandunikarunarathna), M3 (@Suthankan1), M4 (@Yasiru-ruwantha), M5 (@vibhathkalsara99).
+- [x] Stock request statuses frozen: `ACCEPTED`, `REJECTED`, `PICKED`, `DISPATCHED`.
+- [x] Error codes enumerated and frozen across all modules.
+- [x] Server-authenticated TLS accepted as MVP baseline (ADR-004).
+- [x] Fixed IP/DNS addressing without UDP auto-discovery accepted (ADR-006).
+- [x] Coursework security boundaries, private LAN restrictions, and synthetic data scope accepted.
 
 Use a new dated ADR section when changing a frozen contract, not an undocumented silent edit.
 
@@ -55,3 +66,28 @@ Use a new dated ADR section when changing a frozen contract, not an undocumented
 **Security and scope:** TLS commands are mandatory. The existing unencrypted NIO invalidation port remains private-demo-LAN/firewall only and cannot be deployed over WAN until encrypted/authenticated. Browser auth/roles and public HTTPS are future work. No offline queue; no second inventory database.
 
 **Implementation state:** Design/documentation only; code and old UDP backlog need migration. Get lecturer approval for distinct M2 concept before student ownership assignment.
+
+## ADR-007 — Shared Network Protocol v1, HTTP API v1, and Security Contracts Freeze (2026-11-18, accepted)
+
+**Date:** 2026-11-18
+
+**Context:** Issue #4 requires freezing all shared contracts before parallel implementation by the five member tracks.
+
+**Decision:** Formally freeze the following specifications at version 1.0.0:
+1. `docs/contracts/NETWORK_PROTOCOL_V1.md`:
+   - Bounded newline-delimited UTF-8 JSON framing ($\le 65,536$ bytes).
+   - Canonical UUID v4 `requestId` correlation.
+   - Diagnostic `PING` / `PONG` command for safe connectivity and latency testing.
+   - Idempotent command retry rules backed by SHA-256 fingerprints in PostgreSQL `command_receipts`.
+   - Complete enumeration of frozen status values and 10 standard error codes.
+2. `docs/contracts/HTTP_API_V1.md`:
+   - Spring Boot Gateway REST endpoints mapping 1:1 to custom TCP wire commands.
+   - `Idempotency-Key` header mapped directly to TCP `requestId`.
+   - Single Server-Sent Events stream (`GET /api/v1/events`) emitting version-only cache invalidations.
+   - Diagnostic `/api/v1/network-status` endpoint for 3-hop topology health verification.
+3. `docs/contracts/SUPPLIER_HTTP_V1.md`:
+   - Read-only external supplier stock inquiry using Java `URI`/`HttpURLConnection` to configured base URL (`THOGAMURA_SUPPLIER_BASE_URL`).
+   - Standard mock schemas for available units, confirmed zero, unknown SKU (404), and supplier outage (503).
+   - Strict SSRF protection and 16 KB response payload bounding.
+
+**Consequences:** All five member tracks have unambiguous, frozen API contracts. Member 1 can implement TCP framing (Issue #6) and command listener (Issue #7); Member 4 can implement reservation transactions (Issue #10); Member 5 can construct TLS socket factories (Issue #23) with confidence that wire envelopes and status codes will not drift.
