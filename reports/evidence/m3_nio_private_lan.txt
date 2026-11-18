@@ -1,0 +1,450 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] ThogaMura backend reactor                                          [pom]
+[INFO] Shared wire protocol constants                                     [jar]
+[INFO] Java network server                                                [jar]
+[INFO] HTTP/SSE to Java sockets gateway                                   [jar]
+[INFO] 
+[INFO] -------------------< lk.thogamura:thogamura-backend >-------------------
+[INFO] Building ThogaMura backend reactor 0.1.0-SNAPSHOT                  [1/4]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] -----------------------< lk.thogamura:protocol >------------------------
+[INFO] Building Shared wire protocol constants 0.1.0-SNAPSHOT             [2/4]
+[INFO]   from protocol/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ protocol ---
+[INFO] skip non existing resourceDirectory /Users/suthankan/Desktop/Projects/ThogaMura/backend/protocol/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/suthankan/Desktop/Projects/ThogaMura/backend/protocol/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ protocol ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ protocol ---
+[INFO] skip non existing resourceDirectory /Users/suthankan/Desktop/Projects/ThogaMura/backend/protocol/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ protocol ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ protocol ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --------------------< lk.thogamura:network-server >---------------------
+[INFO] Building Java network server 0.1.0-SNAPSHOT                        [3/4]
+[INFO]   from network-server/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ network-server ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ network-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ network-server ---
+[INFO] skip non existing resourceDirectory /Users/suthankan/Desktop/Projects/ThogaMura/backend/network-server/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ network-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ network-server ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running lk.thogamura.networkserver.notifications.NioPartialWriteResilienceTest
+15:15:40.201 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63016 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=10, maxPendingQueue=50]
+15:15:40.201 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63016
+15:15:40.204 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63017, active subscribers: 1
+15:15:40.422 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:40.422 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:40.422 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.282 s -- in lk.thogamura.networkserver.notifications.NioPartialWriteResilienceTest
+[INFO] Running lk.thogamura.networkserver.notifications.NioPrivateNetworkSecurityTest
+15:15:40.435 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63020 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=10, maxPendingQueue=50]
+15:15:40.435 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63020
+15:15:40.437 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63021, active subscribers: 1
+15:15:40.544 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:40.544 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:40.544 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:40.548 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63022 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+15:15:40.548 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63022
+15:15:40.548 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:40.548 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:40.548 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:40.556 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63023 [bindMode=LOOPBACK, allowedClients=[192.168.1.99], maxClients=10, maxPendingQueue=50]
+15:15:40.556 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63023
+15:15:40.556 [nio-notification-eventloop] WARN lk.thogamura.networkserver.notifications.NioNotificationServer -- Rejected unauthorized NIO notification connection from /127.0.0.1:63024
+15:15:40.662 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:40.662 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:40.662 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.229 s -- in lk.thogamura.networkserver.notifications.NioPrivateNetworkSecurityTest
+[INFO] Running lk.thogamura.networkserver.notifications.NioSlowSubscriberResilienceTest
+15:15:40.666 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63025 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=10, maxPendingQueue=5]
+15:15:40.666 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63025
+15:15:40.667 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63026, active subscribers: 1
+15:15:40.667 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63027, active subscribers: 2
+15:15:40.667 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63028, active subscribers: 3
+15:15:44.006 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63028 disconnected (EOF)
+15:15:44.006 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63027 disconnected (EOF)
+15:15:44.037 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:44.037 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:44.038 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:44.041 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63032 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+15:15:44.041 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63032
+15:15:44.041 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63033, active subscribers: 1
+15:15:44.041 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63034, active subscribers: 2
+15:15:44.255 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:44.255 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:44.256 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.592 s -- in lk.thogamura.networkserver.notifications.NioSlowSubscriberResilienceTest
+[INFO] Running lk.thogamura.networkserver.notifications.NioNotificationServerTest
+15:15:44.262 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63035 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+15:15:44.262 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63035
+15:15:44.263 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63036, active subscribers: 1
+15:15:44.263 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63037, active subscribers: 2
+15:15:44.368 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63036 disconnected (EOF)
+15:15:44.476 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:44.476 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:44.476 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:44.479 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63038 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+15:15:44.479 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63038
+15:15:44.480 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63039, active subscribers: 1
+15:15:44.585 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:44.585 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:44.586 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:44.588 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63040 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+15:15:44.588 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63040
+15:15:44.589 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:44.589 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:44.589 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:44.591 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63041
+15:15:44.591 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63041 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+15:15:44.591 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:44.591 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:44.591 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:44.592 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63042 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=10, maxPendingQueue=5]
+15:15:44.592 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63042
+15:15:44.592 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63043, active subscribers: 1
+15:15:44.697 [nio-notification-eventloop] WARN lk.thogamura.networkserver.notifications.NioNotificationServer -- Slow subscriber /127.0.0.1:63043 exceeded queue bound (5) or failed write; closing channel
+15:15:44.803 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63045, active subscribers: 1
+15:15:44.907 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:44.907 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:44.907 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:44.909 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63046 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+15:15:44.909 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63046
+15:15:44.910 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63047, active subscribers: 1
+15:15:44.910 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63048, active subscribers: 2
+15:15:44.910 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63049, active subscribers: 3
+15:15:44.910 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63050, active subscribers: 4
+15:15:44.911 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63051, active subscribers: 5
+15:15:44.911 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63052, active subscribers: 6
+15:15:44.911 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63053, active subscribers: 7
+15:15:44.911 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63054, active subscribers: 8
+15:15:44.911 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63055, active subscribers: 9
+15:15:44.911 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63056, active subscribers: 10
+15:15:45.019 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63047 disconnected (EOF)
+15:15:45.019 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:45.019 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63048 disconnected (EOF)
+15:15:45.019 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63049 disconnected (EOF)
+15:15:45.019 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:45.019 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:45.022 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63057 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+15:15:45.022 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63057
+15:15:45.022 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63058, active subscribers: 1
+15:15:45.128 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:45.129 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:45.129 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.871 s -- in lk.thogamura.networkserver.notifications.NioNotificationServerTest
+[INFO] Running lk.thogamura.networkserver.notifications.ClientSessionTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in lk.thogamura.networkserver.notifications.ClientSessionTest
+[INFO] Running lk.thogamura.networkserver.notifications.NioMultiClientConcurrencyTest
+15:15:45.137 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63068 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=20, maxPendingQueue=50]
+15:15:45.137 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63068
+15:15:45.138 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63069, active subscribers: 1
+15:15:45.138 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63070, active subscribers: 2
+15:15:45.138 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63071, active subscribers: 3
+15:15:45.138 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63072, active subscribers: 4
+15:15:45.138 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63073, active subscribers: 5
+15:15:45.139 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63074, active subscribers: 6
+15:15:45.139 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63075, active subscribers: 7
+15:15:45.139 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63076, active subscribers: 8
+15:15:45.139 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63077, active subscribers: 9
+15:15:45.139 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63078, active subscribers: 10
+15:15:45.139 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63079, active subscribers: 11
+15:15:45.139 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63080, active subscribers: 12
+15:15:45.247 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63072 disconnected (EOF)
+15:15:45.248 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63070 disconnected (EOF)
+15:15:45.248 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63071 disconnected (EOF)
+15:15:45.248 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63073 disconnected (EOF)
+15:15:45.248 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63074 disconnected (EOF)
+15:15:45.248 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:63069 disconnected (EOF)
+15:15:45.351 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:45.351 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:45.352 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.217 s -- in lk.thogamura.networkserver.notifications.NioMultiClientConcurrencyTest
+[INFO] Running lk.thogamura.networkserver.notifications.NotificationServerLifecycleTest
+15:15:45.354 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:63084 [bindMode=LOOPBACK, allowedClients=[LOOPBACK_ONLY], maxClients=50, maxPendingQueue=20]
+15:15:45.354 [main] INFO lk.thogamura.networkserver.notifications.NotificationServerLifecycle -- NotificationServerLifecycle started Java NIO notification feed on 127.0.0.1:63084
+15:15:45.355 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:63084
+15:15:45.355 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:63085, active subscribers: 1
+15:15:45.461 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+15:15:45.461 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+15:15:45.461 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+15:15:45.461 [main] INFO lk.thogamura.networkserver.notifications.NotificationServerLifecycle -- NotificationServerLifecycle stopped Java NIO notification feed
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.109 s -- in lk.thogamura.networkserver.notifications.NotificationServerLifecycleTest
+[INFO] Running lk.thogamura.networkserver.notifications.ChangeNotificationTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.027 s -- in lk.thogamura.networkserver.notifications.ChangeNotificationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 35, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] ----------------------< lk.thogamura:api-gateway >----------------------
+[INFO] Building HTTP/SSE to Java sockets gateway 0.1.0-SNAPSHOT           [4/4]
+[INFO]   from api-gateway/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ api-gateway ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ api-gateway ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ api-gateway ---
+[INFO] skip non existing resourceDirectory /Users/suthankan/Desktop/Projects/ThogaMura/backend/api-gateway/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ api-gateway ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ api-gateway ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running lk.thogamura.gateway.sse.SseNotificationBroadcasterTest
+15:15:46.082 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.083 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+15:15:46.202 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.202 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+15:15:46.312 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.313 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+15:15:46.315 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.315 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+15:15:46.317 [main] WARN lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Discarding invalid negative notification version: -1
+15:15:46.318 [main] WARN lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Discarding invalid negative notification version: -50
+15:15:46.319 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.319 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+15:15:46.320 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.321 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+15:15:46.323 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.324 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+15:15:46.334 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.334 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+15:15:46.334 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- Shutting down SseNotificationBroadcaster...
+15:15:46.334 [main] INFO lk.thogamura.gateway.sse.SseNotificationBroadcaster -- SseNotificationBroadcaster shut down successfully
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.524 s -- in lk.thogamura.gateway.sse.SseNotificationBroadcasterTest
+[INFO] Running lk.thogamura.gateway.web.MetaControllerTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in lk.thogamura.gateway.web.MetaControllerTest
+[INFO] Running lk.thogamura.gateway.web.EventsControllerTest
+15:15:46.379 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [lk.thogamura.gateway.web.EventsControllerTest]: EventsControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+15:15:46.430 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration lk.thogamura.gateway.GatewayApplication for test class lk.thogamura.gateway.web.EventsControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-18T15:15:46.577+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.gateway.web.EventsControllerTest     : Starting EventsControllerTest using Java 25.0.4.1 with PID 61936 (started by suthankan in /Users/suthankan/Desktop/Projects/ThogaMura/backend/api-gateway)
+2026-11-18T15:15:46.578+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.gateway.web.EventsControllerTest     : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T15:15:47.483+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-18T15:15:47.483+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-18T15:15:47.484+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2026-11-18T15:15:47.499+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.gateway.web.EventsControllerTest     : Started EventsControllerTest in 1.049 seconds (process running for 1.918)
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.220 s -- in lk.thogamura.gateway.web.EventsControllerTest
+[INFO] Running lk.thogamura.gateway.web.NetworkStatusControllerTest
+2026-11-18T15:15:47.578+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [lk.thogamura.gateway.web.NetworkStatusControllerTest]: NetworkStatusControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T15:15:47.583+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration lk.thogamura.gateway.GatewayApplication for test class lk.thogamura.gateway.web.NetworkStatusControllerTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-18T15:15:47.607+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.web.NetworkStatusControllerTest    : Starting NetworkStatusControllerTest using Java 25.0.4.1 with PID 61936 (started by suthankan in /Users/suthankan/Desktop/Projects/ThogaMura/backend/api-gateway)
+2026-11-18T15:15:47.607+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.web.NetworkStatusControllerTest    : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T15:15:47.797+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-18T15:15:47.797+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-18T15:15:47.797+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-11-18T15:15:47.801+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.web.NetworkStatusControllerTest    : Started NetworkStatusControllerTest in 0.215 seconds (process running for 2.22)
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.309 s -- in lk.thogamura.gateway.web.NetworkStatusControllerTest
+[INFO] Running lk.thogamura.gateway.integration.NioToSseIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.7)
+
+2026-11-18T15:15:47.918+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.i.NioToSseIntegrationTest          : Starting NioToSseIntegrationTest using Java 25.0.4.1 with PID 61936 (started by suthankan in /Users/suthankan/Desktop/Projects/ThogaMura/backend/api-gateway)
+2026-11-18T15:15:47.918+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.i.NioToSseIntegrationTest          : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T15:15:48.347+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-11-18T15:15:48.361+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T15:15:48.361+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.48]
+2026-11-18T15:15:48.394+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-11-18T15:15:48.395+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 476 ms
+2026-11-18T15:15:48.606+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T15:15:48.738+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 63153 (http) with context path '/'
+2026-11-18T15:15:48.739+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63124
+2026-11-18T15:15:48.739+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] .t.g.n.n.NotificationSubscriberLifecycle : NotificationSubscriberLifecycle started Gateway NIO subscriber for 127.0.0.1:63124
+2026-11-18T15:15:48.739+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63124...
+2026-11-18T15:15:48.740+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63124
+2026-11-18T15:15:48.742+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.i.NioToSseIntegrationTest          : Started NioToSseIntegrationTest in 0.836 seconds (process running for 3.161)
+2026-11-18T15:15:48.917+05:30  INFO 61936 --- [thogamura-api-gateway] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T15:15:48.917+05:30  INFO 61936 --- [thogamura-api-gateway] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T15:15:48.918+05:30  INFO 61936 --- [thogamura-api-gateway] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-18T15:15:49.017+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Discarding invalid or unauthorized notification frame '{"v":1,"type":"INVALID","version":999}': Unsupported notification type: INVALID
+2026-11-18T15:15:59.134+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Warehouse server closed notification channel (EOF). Retrying in 100ms...
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.25 s -- in lk.thogamura.gateway.integration.NioToSseIntegrationTest
+[INFO] Running lk.thogamura.gateway.network.notifications.NotificationFrameDecoderTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in lk.thogamura.gateway.network.notifications.NotificationFrameDecoderTest
+[INFO] Running lk.thogamura.gateway.network.notifications.NioReconnectionResilienceTest
+2026-11-18T15:15:59.146+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63211
+2026-11-18T15:15:59.146+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63211...
+2026-11-18T15:15:59.146+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63211
+2026-11-18T15:15:59.238+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63124...
+2026-11-18T15:15:59.239+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 200ms...
+2026-11-18T15:15:59.357+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Warehouse server closed notification channel (EOF). Retrying in 100ms...
+2026-11-18T15:15:59.442+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63124...
+2026-11-18T15:15:59.443+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 400ms...
+2026-11-18T15:15:59.460+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63211...
+2026-11-18T15:15:59.461+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63211
+2026-11-18T15:15:59.670+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:15:59.670+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:15:59.674+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63216...
+2026-11-18T15:15:59.674+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63216
+2026-11-18T15:15:59.674+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63216
+2026-11-18T15:15:59.831+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Warehouse server closed notification channel (EOF). Retrying in 80ms...
+2026-11-18T15:15:59.847+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63124...
+2026-11-18T15:15:59.847+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 500ms...
+2026-11-18T15:15:59.916+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63216...
+2026-11-18T15:15:59.917+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63216
+2026-11-18T15:16:00.095+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Warehouse server closed notification channel (EOF). Retrying in 80ms...
+2026-11-18T15:16:00.178+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63216...
+2026-11-18T15:16:00.179+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63216
+2026-11-18T15:16:00.307+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:00.307+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.165 s -- in lk.thogamura.gateway.network.notifications.NioReconnectionResilienceTest
+[INFO] Running lk.thogamura.gateway.network.notifications.GatewayNioSubscriberTest
+2026-11-18T15:16:00.314+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63222
+2026-11-18T15:16:00.314+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63222...
+2026-11-18T15:16:00.315+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63222
+2026-11-18T15:16:00.350+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63124...
+2026-11-18T15:16:00.350+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 500ms...
+2026-11-18T15:16:00.523+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Warehouse server closed notification channel (EOF). Retrying in 100ms...
+2026-11-18T15:16:00.629+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63222...
+2026-11-18T15:16:00.629+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63222
+2026-11-18T15:16:00.838+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:00.839+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:00.841+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63226
+2026-11-18T15:16:00.841+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63226...
+2026-11-18T15:16:00.841+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63226
+2026-11-18T15:16:00.850+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63124...
+2026-11-18T15:16:00.851+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 500ms...
+2026-11-18T15:16:00.947+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:00.947+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:00.950+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63229
+2026-11-18T15:16:00.950+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63229...
+2026-11-18T15:16:00.951+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63229
+2026-11-18T15:16:01.058+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:01.059+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:01.063+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63231
+2026-11-18T15:16:01.063+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63231...
+2026-11-18T15:16:01.063+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63231
+2026-11-18T15:16:01.224+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:01.224+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:01.227+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63233
+2026-11-18T15:16:01.227+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63233...
+2026-11-18T15:16:01.228+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63233
+2026-11-18T15:16:01.334+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Warehouse server closed notification channel (EOF). Retrying in 200ms...
+2026-11-18T15:16:01.356+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63124...
+2026-11-18T15:16:01.356+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 500ms...
+2026-11-18T15:16:01.440+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:01.440+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:01.443+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63236
+2026-11-18T15:16:01.443+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63236...
+2026-11-18T15:16:01.443+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63236
+2026-11-18T15:16:01.546+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:01.546+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:01.548+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63238
+2026-11-18T15:16:01.549+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63238...
+2026-11-18T15:16:01.549+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63238
+2026-11-18T15:16:01.655+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Discarding invalid or unauthorized notification frame 'corrupt-data-not-json': Malformed notification frame: corrupt-data-not-json
+2026-11-18T15:16:01.656+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Discarding invalid or unauthorized notification frame '{"v":1,"type":"CHANGED","version":5,"sku":"SECRET-001"}': Invalid fields in notification. Allowed only [v, version, type], got: [v, type, version, sku]
+2026-11-18T15:16:01.656+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:01.656+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:01.658+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63240
+2026-11-18T15:16:01.658+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63240...
+2026-11-18T15:16:01.659+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63240
+2026-11-18T15:16:01.765+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:01.765+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.456 s -- in lk.thogamura.gateway.network.notifications.GatewayNioSubscriberTest
+[INFO] Running lk.thogamura.gateway.network.notifications.ChangeNotificationTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.026 s -- in lk.thogamura.gateway.network.notifications.ChangeNotificationTest
+[INFO] Running lk.thogamura.gateway.network.notifications.NotificationSubscriberLifecycleTest
+2026-11-18T15:16:01.796+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63242...
+2026-11-18T15:16:01.796+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63242
+2026-11-18T15:16:01.796+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] .t.g.n.n.NotificationSubscriberLifecycle : NotificationSubscriberLifecycle started Gateway NIO subscriber for 127.0.0.1:63242
+2026-11-18T15:16:01.797+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 100ms...
+2026-11-18T15:16:01.859+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63124...
+2026-11-18T15:16:01.859+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 500ms...
+2026-11-18T15:16:01.901+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63242...
+2026-11-18T15:16:01.902+05:30  WARN 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : NIO notification feed connection dropped or failed: Connection refused. Retrying in 150ms...
+2026-11-18T15:16:01.902+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:01.902+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:01.902+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] .t.g.n.n.NotificationSubscriberLifecycle : NotificationSubscriberLifecycle stopped Gateway NIO subscriber
+2026-11-18T15:16:01.904+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber started for target 127.0.0.1:63246
+2026-11-18T15:16:01.904+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connecting to warehouse NIO notification feed at 127.0.0.1:63246...
+2026-11-18T15:16:01.904+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] .t.g.n.n.NotificationSubscriberLifecycle : NotificationSubscriberLifecycle started Gateway NIO subscriber for 127.0.0.1:63246
+2026-11-18T15:16:01.905+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Connected to warehouse NIO notification feed at 127.0.0.1:63246
+2026-11-18T15:16:02.011+05:30  INFO 61936 --- [thogamura-api-gateway] [-nio-subscriber] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber loop terminated
+2026-11-18T15:16:02.011+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] l.t.g.n.n.GatewayNioSubscriber           : Gateway NIO subscriber stopped successfully
+2026-11-18T15:16:02.011+05:30  INFO 61936 --- [thogamura-api-gateway] [           main] .t.g.n.n.NotificationSubscriberLifecycle : NotificationSubscriberLifecycle stopped Gateway NIO subscriber
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.217 s -- in lk.thogamura.gateway.network.notifications.NotificationSubscriberLifecycleTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 43, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for ThogaMura backend reactor 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] ThogaMura backend reactor .......................... SUCCESS [  0.001 s]
+[INFO] Shared wire protocol constants ..................... SUCCESS [  0.221 s]
+[INFO] Java network server ................................ SUCCESS [  5.801 s]
+[INFO] HTTP/SSE to Java sockets gateway ................... SUCCESS [ 16.865 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  23.047 s
+[INFO] Finished at: 2026-11-18T15:16:02+05:30
+[INFO] ------------------------------------------------------------------------
