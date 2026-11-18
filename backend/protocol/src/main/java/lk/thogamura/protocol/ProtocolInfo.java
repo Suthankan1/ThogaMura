@@ -41,6 +41,9 @@ public final class ProtocolInfo {
     public static final String STATUS_ERROR = "ERROR";
     public static final String STATUS_PICKED = "PICKED";
     public static final String STATUS_DISPATCHED = "DISPATCHED";
+    public static final String STATUS_AVAILABLE = "AVAILABLE";
+    public static final String STATUS_UNAVAILABLE = "UNAVAILABLE";
+    public static final String STATUS_UNKNOWN = "UNKNOWN";
 
     // Standard Error Codes
     public static final String ERROR_VALIDATION = "VALIDATION_ERROR";
