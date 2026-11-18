@@ -1,0 +1,35 @@
+# Handoff — Member 3 (Suthankan Balenthiran) / Java NIO Notification Server (Issue #18)
+
+- **Owner and lecture concept:** Member 3 (@Suthankan1) — Non-blocking Java NIO (`ServerSocketChannel`, `SocketChannel`, `Selector`, `SelectionKey`, `ByteBuffer`).
+- **Branch / commit / PR:** Branch `feat/m3-nio-server-18`, targeting `main`. Pull request created for review.
+- **One-sentence behavior:** Non-blocking Java NIO notification server broadcasting version-only change invalidation signals (`{"v":1,"type":"CHANGED","version":<num>}`) to multiple simultaneous connected branch gateways via a single selector event loop with bounded client queues and partial write support.
+- **Changed files:**
+  - `backend/network-server/src/main/java/lk/thogamura/networkserver/notifications/NotificationPublisher.java`
+  - `backend/network-server/src/main/java/lk/thogamura/networkserver/notifications/ChangeNotification.java`
+  - `backend/network-server/src/main/java/lk/thogamura/networkserver/notifications/NotificationServerConfig.java`
+  - `backend/network-server/src/main/java/lk/thogamura/networkserver/notifications/ClientSession.java`
+  - `backend/network-server/src/main/java/lk/thogamura/networkserver/notifications/NioNotificationServer.java`
+  - `backend/network-server/src/main/java/lk/thogamura/networkserver/notifications/NotificationServerLifecycle.java`
+  - `backend/network-server/src/main/resources/application.yml`
+  - `backend/network-server/src/test/java/lk/thogamura/networkserver/notifications/ChangeNotificationTest.java`
+  - `backend/network-server/src/test/java/lk/thogamura/networkserver/notifications/ClientSessionTest.java`
+  - `backend/network-server/src/test/java/lk/thogamura/networkserver/notifications/NioNotificationServerTest.java`
+  - `backend/network-server/src/test/java/lk/thogamura/networkserver/notifications/NotificationServerLifecycleTest.java`
+  - `docs/handoffs/M3_NIO_SERVER.md`
+- **Contract changes:** None. Adheres strictly to proposed `docs/contracts/NETWORK_PROTOCOL_V1.md` newline JSON envelope `{"v":1,"type":"CHANGED","version":<long>}` without leaking business data.
+- **Commands actually run:**
+  - `mvn -f backend/pom.xml test` (22/22 tests passing)
+  - `git diff --check`
+- **Observed result and test count:** 22 tests executed, 0 failures, 0 errors, 0 skipped.
+- **Network demo actually observed:**
+  - Real local TCP socket connections across 10 simultaneous clients.
+  - Published notifications received across all 10 clients.
+  - Abrupt client disconnection safely cleaned up without affecting server or remaining clients.
+  - Bounded slow-client buffer overflow detection cleanly terminating uncooperative subscribers.
+  - Clean server shutdown with resource release.
+- **Open issues / unverified assumptions:**
+  - Feed is strictly version-only on private LAN / loopback (`127.0.0.1:7444`). Public or WAN exposure is prohibited per Issue #33.
+  - Integration with PostgreSQL after-commit signals remains pending M4's transaction implementation (#10).
+- **Next smallest slice and receiving owner:**
+  - Member 3 next step: Issue #19 (Spring Boot API Gateway NIO subscriber and SSE bridge).
+  - Member 4 integration: trigger `NotificationPublisher.publish(version)` after committing atomic stock mutations.
