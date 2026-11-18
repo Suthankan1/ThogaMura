@@ -74,3 +74,49 @@ Owner: Yasiru Ruwantha (@Yasiru-ruwantha)
 [INFO] Total time:  1.995 s
 [INFO] Finished at: 2026-11-18T19:23:10+05:30
 [INFO] ------------------------------------------------------------------------
+
+
+================================================================================
+ThogaMura — Member 4 (M4): TCP Socket & Java NIO Integration Evidence (Slice 10b)
+Test Execution Evidence on Real TCP Sockets, Java NIO & PostgreSQL 17
+Timestamp: 2026-11-19T01:15:08+05:30
+Branch: feat/m4-reservation-command-integration-10b
+Reference Issue: #10 (Refs #10)
+Owner: Yasiru Ruwantha (@Yasiru-ruwantha)
+================================================================================
+
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running lk.thogamura.networkserver.inventory.PostCommitNioNotificationIntegrationTest
+01:15:05.452 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+01:15:05.454 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+01:15:05.485 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId '...' (no NIO event emitted)
+01:15:05.512 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=5, available=2 (no NIO event emitted)
+01:15:05.524 [main] WARN lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Best-effort Java NIO notification failed (stock reservation remains committed): Cannot publish notification: NIO notification server is not running
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.215 s -- in lk.thogamura.networkserver.inventory.PostCommitNioNotificationIntegrationTest
+
+[INFO] Running lk.thogamura.networkserver.inventory.StockReservationCommandHandlerTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.124 s -- in lk.thogamura.networkserver.inventory.StockReservationCommandHandlerTest
+
+[INFO] Running lk.thogamura.networkserver.inventory.TcpAtomicReservationSocketIntegrationTest
+01:15:08.520 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+01:15:08.560 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=5, available=2
+01:15:08.590 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId '...'
+01:15:08.620 [tcp-cmd-worker-1] WARN lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Command conflict detected for requestId '...': expected fingerprint ..., recorded ...
+01:15:08.730 [tcp-cmd-worker-20] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=10, available=0
+01:15:08.734 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+01:15:08.798 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed across server reboot for requestId '...'
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.432 s -- in lk.thogamura.networkserver.inventory.TcpAtomicReservationSocketIntegrationTest
+
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+================================================================================
+Total Reactor Build: 157 automated tests passed cleanly across protocol, network-server, and api-gateway.
+================================================================================
