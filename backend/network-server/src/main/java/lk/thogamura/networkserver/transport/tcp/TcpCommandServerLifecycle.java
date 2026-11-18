@@ -25,6 +25,7 @@ public class TcpCommandServerLifecycle implements SmartLifecycle {
 
     private final TcpCommandServerConfig config;
     private final CommandDispatcher dispatcher;
+    private final javax.net.ServerSocketFactory serverSocketFactory;
 
     private TcpCommandServer server;
     private boolean running = false;
@@ -38,7 +39,9 @@ public class TcpCommandServerLifecycle implements SmartLifecycle {
             @Value("${thogamura.command.server.max-clients:50}") int maxClients,
             @Value("${thogamura.command.server.max-frame-bytes:65536}") int maxFrameBytes,
             @Value("${thogamura.command.server.allow-non-loopback-plaintext:false}") boolean allowNonLoopbackPlaintext,
-            @Autowired(required = false) CommandDispatcher dispatcher) {
+            @Value("${thogamura.tls.server.enabled:${thogamura.tls.enabled:false}}") boolean tlsEnabled,
+            @Autowired(required = false) CommandDispatcher dispatcher,
+            @Autowired(required = false) javax.net.ServerSocketFactory serverSocketFactory) {
         this.config = new TcpCommandServerConfig(
                 host,
                 port,
@@ -46,14 +49,28 @@ public class TcpCommandServerLifecycle implements SmartLifecycle {
                 readTimeoutMs,
                 maxClients,
                 maxFrameBytes,
-                allowNonLoopbackPlaintext
+                allowNonLoopbackPlaintext,
+                tlsEnabled
         );
         this.dispatcher = (dispatcher != null) ? dispatcher : new DefaultCommandDispatcher();
+        this.serverSocketFactory = (serverSocketFactory != null)
+                ? serverSocketFactory
+                : javax.net.ServerSocketFactory.getDefault();
+    }
+
+    public TcpCommandServerLifecycle(
+            TcpCommandServerConfig config,
+            CommandDispatcher dispatcher,
+            javax.net.ServerSocketFactory serverSocketFactory) {
+        this.config = config;
+        this.dispatcher = (dispatcher != null) ? dispatcher : new DefaultCommandDispatcher();
+        this.serverSocketFactory = (serverSocketFactory != null)
+                ? serverSocketFactory
+                : javax.net.ServerSocketFactory.getDefault();
     }
 
     public TcpCommandServerLifecycle(TcpCommandServerConfig config, CommandDispatcher dispatcher) {
-        this.config = config;
-        this.dispatcher = (dispatcher != null) ? dispatcher : new DefaultCommandDispatcher();
+        this(config, dispatcher, javax.net.ServerSocketFactory.getDefault());
     }
 
     @Override
@@ -62,7 +79,7 @@ public class TcpCommandServerLifecycle implements SmartLifecycle {
             return;
         }
         try {
-            server = new TcpCommandServer(config, dispatcher);
+            server = new TcpCommandServer(config, dispatcher, serverSocketFactory);
             server.start();
             running = true;
             logger.info("TcpCommandServerLifecycle started warehouse TCP command listener on {}:{}",

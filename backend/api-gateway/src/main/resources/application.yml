@@ -17,6 +17,15 @@ thogamura:
       connect-timeout-ms: ${THOGAMURA_COMMAND_CONNECT_TIMEOUT_MS:3000}
       read-timeout-ms: ${THOGAMURA_COMMAND_READ_TIMEOUT_MS:5000}
       max-frame-bytes: ${THOGAMURA_COMMAND_MAX_FRAME_BYTES:65536}
+  tls:
+    client:
+      # Validated JSSE TLS encryption for central warehouse command client (Member 5 - Issue #23)
+      enabled: ${THOGAMURA_TLS_CLIENT_ENABLED:${THOGAMURA_TLS_ENABLED:false}}
+      truststore-path: ${THOGAMURA_TLS_TRUSTSTORE_PATH:.certs/gateway-truststore.p12}
+      truststore-password: ${THOGAMURA_TLS_TRUSTSTORE_PASSWORD:}
+      truststore-type: ${THOGAMURA_TLS_TRUSTSTORE_TYPE:PKCS12}
+      hostname-verification: ${THOGAMURA_TLS_HOSTNAME_VERIFICATION:true}
+      protocols: ${THOGAMURA_TLS_PROTOCOLS:TLSv1.3,TLSv1.2}
   notifications:
     subscriber:
       # Disabled by default in starter/tests; enable when running gateway against network server
