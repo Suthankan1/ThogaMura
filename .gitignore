@@ -8,6 +8,11 @@
 *.pfx
 *.key
 *.pem
+*.crt
+*.csr
+*.srl
+.certs/
+certs/
 !.gitkeep
 
 # Java
