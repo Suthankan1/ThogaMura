@@ -198,6 +198,9 @@ public class TcpCommandClient {
                     new InetSocketAddress(config.getHost(), config.getPort()),
                     config.getConnectTimeoutMs()
             );
+            if (socket instanceof javax.net.ssl.SSLSocket sslSocket) {
+                sslSocket.startHandshake();
+            }
             return socket;
         } catch (ConnectException | UnknownHostException | NoRouteToHostException e) {
             closeQuietly(socket);
@@ -216,6 +219,16 @@ public class TcpCommandClient {
             throw new CommandTimeoutException(
                     "Connection timed out after " + config.getConnectTimeoutMs() + "ms connecting to "
                             + config.getHost() + ":" + config.getPort(),
+                    requestId,
+                    e
+            );
+        } catch (javax.net.ssl.SSLException e) {
+            closeQuietly(socket);
+            logger.error("TLS handshake failed connecting to {}:{} for requestId '{}': {}",
+                    config.getHost(), config.getPort(), requestId, e.getMessage(), e);
+            throw new CommandTransportException(
+                    "TLS handshake failed connecting to warehouse server at " + config.getHost() + ":"
+                            + config.getPort() + ": " + e.getMessage(),
                     requestId,
                     e
             );
