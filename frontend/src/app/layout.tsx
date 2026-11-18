@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "ThogaMura | Project Starter", template: "%s | ThogaMura" },
   description: "LAN-first branch-to-warehouse requests and supplier availability — coursework scaffold",
+  icons: {
+    icon: "/images/ThogaMura-logo.svg",
+  },
 };
 
 const links = [
@@ -23,8 +27,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <a href="#main" className="skip-link">Skip to main content</a>
         <header className="border-b border-slate-200 bg-white">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-5 px-5 py-5">
-            <Link href="/" className="text-xl font-bold tracking-tight text-slate-900">
-              Thoga<span className="text-teal-700">Mura</span>
+            <Link href="/" className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-slate-900 group">
+              <Image
+                src="/images/ThogaMura-logo.svg"
+                alt="ThogaMura logo"
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-md transition-transform group-hover:scale-105"
+                priority
+              />
+              <span>
+                Thoga<span className="text-teal-700">Mura</span>
+              </span>
             </Link>
             <nav aria-label="Primary navigation">
               <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-slate-700">
