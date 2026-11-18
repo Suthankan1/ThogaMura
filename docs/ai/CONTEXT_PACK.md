@@ -18,6 +18,8 @@
 - Tests + manual demo required for each member's contribution.
 - This repository is an **initial scaffold**, not a completed working app.
 
+**Confirmed owners (18 November 2026):** M1 @sankharavindu, M2 @sandunikarunarathna, M3 @Suthankan1, M4 @Yasiru-ruwantha, M5 @vibhathkalsara99. M1/M2 GitHub assignees are blocked until collaborator invitations are accepted; use issue #1 for ticket-level ownership. Never assume a planned owner is an actual GitHub assignee.
+
 **Read in order when relevant:** `AGENTS.md` -> `docs/NETWORK_FEATURES_V2.md` -> `docs/TEAM_WORKLOADS.md` -> `docs/contracts/NETWORK_PROTOCOL_V1.md` / `HTTP_API_V1.md` -> `docs/TEST_PLAN.md` -> module code.
 
 **Expected AI output:** a brief understanding, owner and slice, proposed file changes, code explanation, focused tests and limitations. Never claim tests or demo ran if not actually executed. No secrets or personal data in prompts.
