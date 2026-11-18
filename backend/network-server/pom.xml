@@ -64,6 +64,20 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>nio-server</id>
+            <configuration>
+              <mainClass>lk.thogamura.networkserver.notifications.NioNotificationServer</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>supplier-simulator</id>
+            <configuration>
+              <mainClass>lk.thogamura.networkserver.integration.supplier.SupplierHttpSimulator</mainClass>
+            </configuration>
+          </execution>
+        </executions>
         <configuration>
           <mainClass>lk.thogamura.networkserver.notifications.NioNotificationServer</mainClass>
         </configuration>
