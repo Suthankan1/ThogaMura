@@ -49,4 +49,20 @@ class NotificationServerLifecycleTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not running");
     }
+
+    @Test
+    @DisplayName("Should successfully instantiate NotificationServerLifecycle via Spring context autowiring")
+    void shouldInstantiateViaSpringContext() {
+        new org.springframework.boot.test.context.runner.ApplicationContextRunner()
+                .withUserConfiguration(NotificationServerLifecycle.class)
+                .withPropertyValues(
+                        "thogamura.notifications.enabled=true",
+                        "thogamura.notifications.host=127.0.0.1",
+                        "thogamura.notifications.port=0")
+                .run(context -> {
+                    assertThat(context).hasSingleBean(NotificationServerLifecycle.class);
+                    NotificationServerLifecycle bean = context.getBean(NotificationServerLifecycle.class);
+                    assertThat(bean).isNotNull();
+                });
+    }
 }
