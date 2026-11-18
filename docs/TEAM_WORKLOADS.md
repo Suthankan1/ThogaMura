@@ -1,6 +1,16 @@
 # Five distinct networking workloads — v2
 
-Member numbers are placeholders, **not real assignments**. Confirm lecturer approval and replace with actual names tomorrow. Every member owns source, automated tests and an individual live demo of one lecture concept. UI/CI/report are shared, not a substitute for assessed networking.
+The five member identities were confirmed **18 November 2026**. Every member owns source, automated tests and an individual live demo of one lecture concept. UI/CI/report are shared, not a substitute for assessed networking. Lecturer approval of the five distinct lecture concepts remains pending.
+
+| Track | Member / GitHub handle | Assignment status |
+| --- | --- | --- |
+| M1 | Sankha Ravindu — @sankharavindu | Planned owner; **not yet an assignable repo collaborator** |
+| M2 | Sanduni Karunarathna — @sandunikarunarathna | Planned owner; **not yet an assignable repo collaborator** |
+| M3 | Suthankan Balenthiran — @Suthankan1 | GitHub issues assigned |
+| M4 | Yasiru Ruwantha — @Yasiru-ruwantha | GitHub issues assigned |
+| M5 | Vibhath Kalsara — @vibhathkalsara99 | GitHub issues assigned |
+
+For **individual and shared ticket ownership**, follow [GitHub issue #1](https://github.com/Suthankan1/ThogaMura/issues/1). The repo owner must invite M1 and M2 to this private repository; only after they accept can their GitHub issues be assigned.
 
 ## M1 — TCP stock command delivery
 
