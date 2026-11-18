@@ -52,6 +52,7 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicLong lastPublishedVersion = new AtomicLong(0);
+    private final AtomicLong rejectedConnections = new AtomicLong(0);
 
     private ServerSocketChannel serverChannel;
     private Selector selector;
@@ -102,8 +103,11 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
         this.eventLoopThread.setDaemon(true);
         this.eventLoopThread.start();
 
-        logger.info("Java NIO notification server started on {}:{} (maxClients={}, maxPendingQueue={})",
-                config.host(), getPort(), config.maxClients(), config.maxPendingMessagesPerClient());
+        logger.info("Java NIO notification server started on {}:{} [bindMode={}, allowedClients={}, maxClients={}, maxPendingQueue={}]",
+                config.host(), getPort(),
+                config.isLoopback() ? "LOOPBACK" : "PRIVATE_LAN",
+                config.allowedClientAddresses().isEmpty() ? "[LOOPBACK_ONLY]" : config.allowedClientAddresses(),
+                config.maxClients(), config.maxPendingMessagesPerClient());
     }
 
     /**
@@ -207,6 +211,14 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
 
     public long getLastPublishedVersion() {
         return lastPublishedVersion.get();
+    }
+
+    public long getRejectedConnectionCount() {
+        return rejectedConnections.get();
+    }
+
+    public NotificationServerConfig getConfig() {
+        return config;
     }
 
     public String getHost() {
@@ -337,6 +349,23 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
         ServerSocketChannel ssc = (ServerSocketChannel) key.channel();
         SocketChannel clientChannel = ssc.accept();
         if (clientChannel == null) {
+            return;
+        }
+
+        SocketAddress remoteAddress = null;
+        try {
+            remoteAddress = clientChannel.getRemoteAddress();
+        } catch (IOException ignored) {
+        }
+
+        // Application-level client address restriction (Issue #33)
+        if (!config.isClientAllowed(remoteAddress)) {
+            rejectedConnections.incrementAndGet();
+            logger.warn("Rejected unauthorized NIO notification connection from {}", remoteAddress);
+            try {
+                clientChannel.close();
+            } catch (IOException ignored) {
+            }
             return;
         }
 
