@@ -40,11 +40,35 @@ public class TestNotificationServer implements AutoCloseable {
     }
 
     private void bind(int port) throws IOException {
-        serverChannel = ServerSocketChannel.open();
-        serverChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-        serverChannel.bind(new InetSocketAddress("127.0.0.1", port));
-        InetSocketAddress local = (InetSocketAddress) serverChannel.getLocalAddress();
-        this.boundPort = local.getPort();
+        IOException lastEx = null;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            try {
+                serverChannel = ServerSocketChannel.open();
+                serverChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+                serverChannel.bind(new InetSocketAddress("127.0.0.1", port));
+                InetSocketAddress local = (InetSocketAddress) serverChannel.getLocalAddress();
+                this.boundPort = local.getPort();
+                return;
+            } catch (IOException e) {
+                lastEx = e;
+                if (serverChannel != null) {
+                    try {
+                        serverChannel.close();
+                    } catch (IOException ignored) {
+                    }
+                }
+                if (port == 0) {
+                    throw e;
+                }
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Interrupted while binding to port " + port, ie);
+                }
+            }
+        }
+        throw lastEx;
     }
 
     private void runAcceptLoop() {
@@ -121,6 +145,11 @@ public class TestNotificationServer implements AutoCloseable {
         }
         if (acceptThread != null && acceptThread.isAlive()) {
             acceptThread.interrupt();
+            try {
+                acceptThread.join(500);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }
