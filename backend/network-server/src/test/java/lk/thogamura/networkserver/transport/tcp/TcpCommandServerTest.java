@@ -98,6 +98,16 @@ class TcpCommandServerTest {
     }
 
     @Test
+    @DisplayName("Should permit non-loopback binding when TLS is enabled")
+    void shouldPermitNonLoopbackBindingWhenTlsIsEnabled() {
+        TcpCommandServerConfig tlsConfig = new TcpCommandServerConfig(
+                "192.168.8.100", 7443, 50, 5000, 50, 65536, false, true
+        );
+        tlsConfig.validate();
+        assertThat(tlsConfig.isTlsEnabled()).isTrue();
+    }
+
+    @Test
     @DisplayName("Should return VALIDATION_ERROR when receiving malformed JSON")
     void shouldReturnValidationErrorOnMalformedJson() throws Exception {
         try (Socket socket = new Socket("127.0.0.1", port);

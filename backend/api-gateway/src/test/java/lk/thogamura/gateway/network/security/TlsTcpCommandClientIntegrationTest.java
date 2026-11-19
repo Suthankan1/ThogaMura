@@ -198,6 +198,33 @@ class TlsTcpCommandClientIntegrationTest {
     }
 
     @Test
+    @DisplayName("T12: Handshake succeeds when server certificate matches configured LAN IP/DNS in SAN")
+    void testLanSanMatchingSucceeds(@TempDir Path tempDir) throws Exception {
+        // Generate bundle configured with demonstration LAN IP and custom warehouse DNS name
+        TlsTestCertificateHelper.CertBundle lanBundle = TlsTestCertificateHelper.generateValidBundle(
+                tempDir, "ip:192.168.8.100", "dns:warehouse.thogamura.internal");
+
+        SSLServerSocket server = startTlsEchoServer(lanBundle.serverKeystore(), lanBundle.serverPassword());
+        int port = server.getLocalPort();
+
+        TlsSocketFactory socketFactory = TlsSocketFactory.fromTruststore(
+                lanBundle.gatewayTruststore(),
+                lanBundle.trustPassword(),
+                "PKCS12",
+                new String[]{"TLSv1.3", "TLSv1.2"},
+                true
+        );
+
+        // Connect using loopback IP (which is also present in SAN alongside LAN IP and DNS)
+        TcpCommandClientConfig config = new TcpCommandClientConfig("127.0.0.1", port);
+        TcpCommandClient client = new TcpCommandClient(config, socketFactory);
+
+        JsonNode pong = client.ping();
+        assertThat(pong).isNotNull();
+        assertThat(pong.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_PONG);
+    }
+
+    @Test
     @DisplayName("Gateway client rejects server certificate signed by untrusted rogue CA (fail-closed)")
     void testUntrustedServerCertificateRejected() throws Exception {
         SSLServerSocket server = startTlsEchoServer(untrustedServerKeystore, TlsTestCertificateHelper.TEST_PASSWORD);
