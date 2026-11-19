@@ -62,4 +62,20 @@ class PayloadFingerprintCalculatorTest {
         assertThat(fpJson1).isEqualTo(fpExpected);
         assertThat(fpJson2).isEqualTo(fpExpected);
     }
+
+    @Test
+    @DisplayName("Produces canonical fingerprint for stockRequestId payload")
+    void shouldProduceCanonicalFingerprintForStockRequestId() throws Exception {
+        java.util.UUID reqId = java.util.UUID.randomUUID();
+        String fp1 = PayloadFingerprintCalculator.calculateStockRequestIdFingerprint(reqId);
+        String fp2 = PayloadFingerprintCalculator.calculateStockRequestIdFingerprint(reqId);
+
+        assertThat(fp1).isEqualTo(fp2);
+        assertThat(fp1).hasSize(64);
+        assertThat(fp1).matches("^[a-f0-9]{64}$");
+
+        String json = "{\"stockRequestId\":\"" + reqId + "\"}";
+        String fpJson = PayloadFingerprintCalculator.calculateFingerprint(objectMapper.readTree(json));
+        assertThat(fpJson).isEqualTo(fp1);
+    }
 }

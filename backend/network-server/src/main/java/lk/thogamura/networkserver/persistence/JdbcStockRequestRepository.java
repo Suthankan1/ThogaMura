@@ -80,6 +80,56 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
     }
 
     @Override
+    public Optional<StockRequestRecord> findByIdForUpdate(UUID requestId) {
+        Objects.requireNonNull(requestId, "requestId must not be null");
+        String sql = """
+            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+            FROM stock_requests
+            WHERE request_id = ?
+            FOR UPDATE
+            """;
+        try {
+            StockRequestRecord record = jdbcTemplate.queryForObject(sql, ROW_MAPPER, requestId);
+            return Optional.ofNullable(record);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public void updateStatus(UUID requestId, String status) {
+        Objects.requireNonNull(requestId, "requestId must not be null");
+        Objects.requireNonNull(status, "status must not be null");
+        String sql = "UPDATE stock_requests SET status = ?, updated_at = NOW() WHERE request_id = ?";
+        int updated = jdbcTemplate.update(sql, status, requestId);
+        if (updated == 0) {
+            throw new IllegalStateException("Failed to update status for stock request: " + requestId);
+        }
+    }
+
+    @Override
+    public List<StockRequestRecord> findAll() {
+        String sql = """
+            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+            FROM stock_requests
+            ORDER BY created_at ASC
+            """;
+        return jdbcTemplate.query(sql, ROW_MAPPER);
+    }
+
+    @Override
+    public List<StockRequestRecord> findByStatus(String status) {
+        Objects.requireNonNull(status, "status must not be null");
+        String sql = """
+            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+            FROM stock_requests
+            WHERE status = ?
+            ORDER BY created_at ASC
+            """;
+        return jdbcTemplate.query(sql, ROW_MAPPER, status);
+    }
+
+    @Override
     public List<StockRequestRecord> findBySku(String sku) {
         Objects.requireNonNull(sku, "sku must not be null");
         String sql = """

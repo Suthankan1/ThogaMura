@@ -36,6 +36,19 @@ public final class PayloadFingerprintCalculator {
     }
 
     /**
+     * Calculates the canonical SHA-256 fingerprint for a stockRequestId command payload.
+     * Normalized canonical format: {@code {"stockRequestId":"<uuid>"}}
+     *
+     * @param stockRequestId stock request UUID
+     * @return 64-character lowercase hex SHA-256 fingerprint
+     */
+    public static String calculateStockRequestIdFingerprint(java.util.UUID stockRequestId) {
+        java.util.Objects.requireNonNull(stockRequestId, "stockRequestId must not be null");
+        String normalized = "{\"stockRequestId\":\"" + stockRequestId + "\"}";
+        return computeSha256Hex(normalized);
+    }
+
+    /**
      * Calculates the canonical fingerprint from a generic {@link JsonNode} payload.
      *
      * @param data JSON node representing the command payload
@@ -50,6 +63,14 @@ public final class PayloadFingerprintCalculator {
                     data.get("sku").asText(),
                     data.get("quantity").asInt()
             );
+        }
+        if (data.has("stockRequestId")) {
+            String idStr = data.get("stockRequestId").asText().trim();
+            try {
+                return calculateStockRequestIdFingerprint(java.util.UUID.fromString(idStr));
+            } catch (IllegalArgumentException ignored) {
+                // fallback to generic canonicalization
+            }
         }
 
         // Generic canonicalization: sort keys alphabetically
