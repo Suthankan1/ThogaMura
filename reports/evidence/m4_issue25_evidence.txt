@@ -1,0 +1,687 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] ThogaMura backend reactor                                          [pom]
+[INFO] Shared wire protocol constants                                     [jar]
+[INFO] Java network server                                                [jar]
+[INFO] 
+[INFO] -------------------< lk.thogamura:thogamura-backend >-------------------
+[INFO] Building ThogaMura backend reactor 0.1.0-SNAPSHOT                  [1/3]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] -----------------------< lk.thogamura:protocol >------------------------
+[INFO] Building Shared wire protocol constants 0.1.0-SNAPSHOT             [2/3]
+[INFO]   from protocol/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ protocol ---
+[INFO] skip non existing resourceDirectory /Users/khyrpremarathna/Desktop/ThogaMura/backend/protocol/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/khyrpremarathna/Desktop/ThogaMura/backend/protocol/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ protocol ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ protocol ---
+[INFO] skip non existing resourceDirectory /Users/khyrpremarathna/Desktop/ThogaMura/backend/protocol/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ protocol ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ protocol ---
+[INFO] 
+[INFO] --------------------< lk.thogamura:network-server >---------------------
+[INFO] Building Java network server 0.1.0-SNAPSHOT                        [3/3]
+[INFO]   from network-server/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ network-server ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ network-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ network-server ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ network-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ network-server ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running lk.thogamura.networkserver.fulfillment.StockFulfillmentIntegrationTest
+19:02:23.200 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:postgresql://localhost:5435/thogamura?adaptiveFetch=false&adaptiveFetchMaximum=-1&adaptiveFetchMinimum=0&allowEncodingChanges=false&ApplicationName=PostgreSQL+JDBC+Driver&autosave=never&binaryTransfer=true&binaryTransferDisable=&binaryTransferEnable=&cancelSignalTimeout=10&channelBinding=prefer&cleanupSavepoints=false&connectTimeout=10&convertBooleanToNumeric=false&databaseMetadataCacheFields=65536&databaseMetadataCacheFieldsMiB=5&defaultRowFetchSize=0&disableColumnSanitiser=false&escapeSyntaxCallMode=select&groupStartupParameters=false&gssEncMode=allow&gsslib=auto&gssResponseTimeout=5000&gssUseDefaultCreds=false&hideUnprivilegedObjects=false&hostRecheckSeconds=10&jaasApplicationName=pgjdbc&jaasLogin=true&loadBalanceHosts=false&loginTimeout=0&logServerErrorDetail=true&logUnclosedConnections=false&maxSendBufferSize=8192&preferQueryMode=extended&preparedStatementCacheQueries=256&preparedStatementCacheSizeMiB=5&prepareThreshold=5&protocolVersion=3&quoteReturningIdentifiers=true&readOnly=false&readOnlyMode=transaction&receiveBufferSize=-1&reWriteBatchedInserts=false&sendBufferSize=-1&socketTimeout=0&sslfactory=org.postgresql.ssl.LibPQFactory&sslNegotiation=postgres&sslResponseTimeout=5000&sspiServiceClass=POSTGRES&targetServerType=any&tcpKeepAlive=false&tcpNoDelay=true&unknownLength=2147483647&useSpnego=false&xmlFactoryFactory= (PostgreSQL 17.12)
+19:02:23.249 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 1 migration (execution time 00:00.026s)
+19:02:23.299 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema "public": 1
+19:02:23.302 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Schema "public" is up to date. No migration necessary.
+19:02:23.429 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56610 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:23.429 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56610
+19:02:23.431 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56611, active subscribers: 1
+19:02:23.538 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:23.538 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:23.540 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56612 [readTimeout=5000ms, maxClients=50]
+19:02:23.548 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56613
+19:02:23.549 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '42b6644a-4946-4ca8-bf6b-b7956dadbe2e') from /127.0.0.1:56613
+19:02:23.583 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:23.586 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:23.638 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56617
+19:02:23.639 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: '40718b03-0c78-483d-bbc3-673e68d31ef2') from /127.0.0.1:56617
+19:02:23.661 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Stock request '42b6644a-4946-4ca8-bf6b-b7956dadbe2e' successfully transitioned to PICKED (commandRequestId: '40718b03-0c78-483d-bbc3-673e68d31ef2')
+19:02:23.664 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 102
+19:02:23.700 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56622
+19:02:23.700 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: '866738cc-b54f-4270-8b89-ed66563bcc90') from /127.0.0.1:56622
+19:02:23.724 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Dispatched stock request '42b6644a-4946-4ca8-bf6b-b7956dadbe2e' for SKU 'ITEM-007', quantity=8, newOnHand=2, newReserved=0, available=2
+19:02:23.726 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 103
+19:02:23.762 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56612...
+19:02:23.762 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:56611 disconnected (EOF)
+19:02:23.764 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:23.764 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:23.764 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:23.765 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:23.819 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56635
+19:02:23.819 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56635 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:23.819 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56636, active subscribers: 1
+19:02:23.921 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:23.921 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:23.922 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56637 [readTimeout=5000ms, maxClients=50]
+19:02:23.923 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56638
+19:02:23.923 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '9f4e6363-4363-4d31-aa11-0ea2c200e1bd') from /127.0.0.1:56638
+19:02:23.950 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:23.952 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:23.952 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56641
+19:02:23.953 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: 'dbf76e40-bc2c-429f-8abd-8b78d013b502') from /127.0.0.1:56641
+19:02:23.975 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Stock request '9f4e6363-4363-4d31-aa11-0ea2c200e1bd' successfully transitioned to PICKED (commandRequestId: 'dbf76e40-bc2c-429f-8abd-8b78d013b502')
+19:02:23.976 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 102
+19:02:23.977 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56644
+19:02:23.977 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: 'dbf76e40-bc2c-429f-8abd-8b78d013b502') from /127.0.0.1:56644
+19:02:23.985 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Durable command receipt replayed for requestId 'dbf76e40-bc2c-429f-8abd-8b78d013b502'
+19:02:23.986 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56646
+19:02:23.986 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: 'b59e0691-21a7-4fb1-8500-efef7c3f1f83') from /127.0.0.1:56646
+19:02:24.010 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Dispatched stock request '9f4e6363-4363-4d31-aa11-0ea2c200e1bd' for SKU 'ITEM-007', quantity=8, newOnHand=2, newReserved=0, available=2
+19:02:24.011 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 103
+19:02:24.020 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56650
+19:02:24.020 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: 'b59e0691-21a7-4fb1-8500-efef7c3f1f83') from /127.0.0.1:56650
+19:02:24.028 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Durable command receipt replayed for requestId 'b59e0691-21a7-4fb1-8500-efef7c3f1f83'
+19:02:24.045 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56637...
+19:02:24.046 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:24.046 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:24.046 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:24.046 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:24.090 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56660 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:24.090 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56660
+19:02:24.090 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56661, active subscribers: 1
+19:02:24.193 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:24.193 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:24.194 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56662 [readTimeout=5000ms, maxClients=50]
+19:02:24.195 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56663
+19:02:24.195 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'ac1fdda0-4a97-494c-b625-c0890b9fd5ff') from /127.0.0.1:56663
+19:02:24.224 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=4, newReserved=4, available=6
+19:02:24.225 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:24.226 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56666
+19:02:24.226 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'b503b70e-5449-4345-bdd5-df8dfbb5df9f') from /127.0.0.1:56666
+19:02:24.248 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=4, newReserved=8, available=2
+19:02:24.249 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 102
+19:02:24.250 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56669
+19:02:24.250 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: '50930bf1-4e5f-4c4b-8f2c-dc7b3cae9027') from /127.0.0.1:56669
+19:02:24.267 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Stock request 'ac1fdda0-4a97-494c-b625-c0890b9fd5ff' successfully transitioned to PICKED (commandRequestId: '50930bf1-4e5f-4c4b-8f2c-dc7b3cae9027')
+19:02:24.268 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 103
+19:02:24.269 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56672
+19:02:24.269 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: '50930bf1-4e5f-4c4b-8f2c-dc7b3cae9027') from /127.0.0.1:56672
+19:02:24.276 [tcp-cmd-worker-4] WARN lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Command conflict detected for requestId '50930bf1-4e5f-4c4b-8f2c-dc7b3cae9027': expected fingerprint 8c0ee526db79c67a10892cbe1d94c5bf0d21bcfac946e449525be41b52f4d51a, recorded 5abd822c3eca76e0a1d66319585079c0ec4f70341780bdbd3dca946f4df76170
+19:02:24.276 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56662...
+19:02:24.277 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:24.277 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:24.277 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:24.277 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:24.322 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56680 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:24.322 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56680
+19:02:24.322 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56681, active subscribers: 1
+19:02:24.427 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:24.427 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:24.428 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56682 [readTimeout=5000ms, maxClients=50]
+19:02:24.430 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56683
+19:02:24.430 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '9a342828-555a-4ca0-b662-de8d65106ea8') from /127.0.0.1:56683
+19:02:24.461 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:24.462 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:24.478 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56687
+19:02:24.478 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: 'e022f324-7e53-4000-a3a6-1532f5281b04') from /127.0.0.1:56687
+19:02:24.499 [tcp-cmd-worker-2] WARN lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Illegal state transition rejected: Cannot transition stock request '9a342828-555a-4ca0-b662-de8d65106ea8' from ACCEPTED to DISPATCHED; only PICKED requests can be dispatched
+19:02:24.520 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56682...
+19:02:24.520 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:24.520 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:24.520 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:24.520 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:24.562 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56698 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:24.562 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56698
+19:02:24.562 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56699, active subscribers: 1
+19:02:24.668 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:24.668 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:24.668 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56700 [readTimeout=5000ms, maxClients=50]
+19:02:24.670 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56701
+19:02:24.670 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'ad91e95b-c4a6-471c-a226-5258ece1e19a') from /127.0.0.1:56701
+19:02:24.702 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:24.704 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:24.712 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56704
+19:02:24.713 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: 'd68c0c8a-8ad3-4602-a681-4fde2cc8c0c5') from /127.0.0.1:56704
+19:02:24.733 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Stock request 'ad91e95b-c4a6-471c-a226-5258ece1e19a' successfully transitioned to PICKED (commandRequestId: 'd68c0c8a-8ad3-4602-a681-4fde2cc8c0c5')
+19:02:24.734 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 102
+19:02:24.735 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56707
+19:02:24.735 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: '0771f176-220e-4ded-9f1e-c232e09fe30a') from /127.0.0.1:56707
+19:02:24.757 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Dispatched stock request 'ad91e95b-c4a6-471c-a226-5258ece1e19a' for SKU 'ITEM-007', quantity=8, newOnHand=2, newReserved=0, available=2
+19:02:24.758 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 103
+19:02:24.759 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56710
+19:02:24.759 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: '882be8b0-c68d-4176-8080-03dc5fa3efbb') from /127.0.0.1:56710
+19:02:24.773 [tcp-cmd-worker-4] WARN lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Illegal state transition rejected: Cannot transition stock request 'ad91e95b-c4a6-471c-a226-5258ece1e19a' from DISPATCHED to PICKED; only ACCEPTED requests can be picked
+19:02:24.775 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56700...
+19:02:24.775 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:24.775 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:24.775 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:24.775 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:24.815 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56719
+19:02:24.815 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56719 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:24.815 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56720, active subscribers: 1
+19:02:24.922 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:24.922 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:24.925 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56721 [readTimeout=5000ms, maxClients=50]
+19:02:24.926 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56722
+19:02:24.927 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: '3e7fb502-5ac7-4057-a6d2-f9bb5a2e0062') from /127.0.0.1:56722
+19:02:24.945 [tcp-cmd-worker-1] WARN lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Fulfillment pick failed: Stock request '965c75e7-2181-459c-b81f-1865bfd1cebb' not found
+19:02:24.946 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56721...
+19:02:24.946 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:56720 disconnected (EOF)
+19:02:24.946 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:24.947 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:24.947 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:24.947 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:24.988 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56731 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:24.988 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56731
+19:02:24.989 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56732, active subscribers: 1
+19:02:25.094 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:25.094 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:25.095 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56733 [readTimeout=5000ms, maxClients=50]
+19:02:25.096 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56734
+19:02:25.096 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '682a4daa-6608-4567-adae-2d31b38a31fd') from /127.0.0.1:56734
+19:02:25.126 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:25.127 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:25.128 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56737
+19:02:25.128 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: '4df17f16-6f54-48a3-a6a6-68171e16206d') from /127.0.0.1:56737
+19:02:25.151 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Stock request '682a4daa-6608-4567-adae-2d31b38a31fd' successfully transitioned to PICKED (commandRequestId: '4df17f16-6f54-48a3-a6a6-68171e16206d')
+19:02:25.152 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 102
+19:02:25.154 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56740
+19:02:25.154 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56741
+19:02:25.154 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: '086e75f9-3fbe-4653-a5fd-22d3b90b91b4') from /127.0.0.1:56740
+19:02:25.154 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: '1060f160-4783-4de6-a3c0-6f84982b51cc') from /127.0.0.1:56741
+19:02:25.180 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Dispatched stock request '682a4daa-6608-4567-adae-2d31b38a31fd' for SKU 'ITEM-007', quantity=8, newOnHand=2, newReserved=0, available=2
+19:02:25.181 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 103
+19:02:25.181 [tcp-cmd-worker-3] WARN lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Illegal state transition rejected: Cannot transition stock request '682a4daa-6608-4567-adae-2d31b38a31fd' from DISPATCHED to DISPATCHED; only PICKED requests can be dispatched
+19:02:25.204 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56733...
+19:02:25.204 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:25.204 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:25.204 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:25.204 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:25.246 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56754
+19:02:25.246 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56754 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:25.246 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56755, active subscribers: 1
+19:02:25.348 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:25.348 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:25.349 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56756 [readTimeout=5000ms, maxClients=50]
+19:02:25.350 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56757
+19:02:25.350 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '90b4baa7-2b13-473e-87e7-416fddb40fb1') from /127.0.0.1:56757
+19:02:25.377 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:25.378 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:25.379 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56760
+19:02:25.380 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: '77457cbf-0887-4990-baf6-f767d83513e0') from /127.0.0.1:56760
+19:02:25.403 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Stock request '90b4baa7-2b13-473e-87e7-416fddb40fb1' successfully transitioned to PICKED (commandRequestId: '77457cbf-0887-4990-baf6-f767d83513e0')
+19:02:25.404 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 102
+19:02:25.404 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:25.405 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:25.405 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:25.405 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56763
+19:02:25.405 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: 'f94f1d27-7d73-4285-9767-25c952753565') from /127.0.0.1:56763
+19:02:25.426 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Dispatched stock request '90b4baa7-2b13-473e-87e7-416fddb40fb1' for SKU 'ITEM-007', quantity=8, newOnHand=2, newReserved=0, available=2
+19:02:25.427 [tcp-cmd-worker-3] WARN lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Best-effort Java NIO notification failed (fulfillment remains committed): Cannot publish notification: NIO notification server is not running
+java.lang.IllegalStateException: Cannot publish notification: NIO notification server is not running
+	at lk.thogamura.networkserver.notifications.NioNotificationServer.publish(NioNotificationServer.java:125)
+	at lk.thogamura.networkserver.notifications.NotificationPublisher.publish(NotificationPublisher.java:25)
+	at lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService.lambda$publishChangeNotificationSafely$2(DefaultStockFulfillmentService.java:308)
+	at java.base/java.util.Optional.ifPresent(Optional.java:178)
+	at lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService.publishChangeNotificationSafely(DefaultStockFulfillmentService.java:305)
+	at lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService$1.afterCommit(DefaultStockFulfillmentService.java:296)
+	at org.springframework.transaction.support.TransactionSynchronizationUtils.invokeAfterCommit(TransactionSynchronizationUtils.java:165)
+	at org.springframework.transaction.support.TransactionSynchronizationUtils.triggerAfterCommit(TransactionSynchronizationUtils.java:153)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.triggerAfterCommit(AbstractPlatformTransactionManager.java:1006)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.processCommit(AbstractPlatformTransactionManager.java:836)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.commit(AbstractPlatformTransactionManager.java:758)
+	at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:152)
+	at lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService.dispatchStock(DefaultStockFulfillmentService.java:172)
+	at lk.thogamura.networkserver.fulfillment.StockFulfillmentCommandHandler.handleDispatch(StockFulfillmentCommandHandler.java:98)
+	at lk.thogamura.networkserver.fulfillment.StockFulfillmentCommandHandler.handle(StockFulfillmentCommandHandler.java:69)
+	at lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher.dispatch(DefaultCommandDispatcher.java:137)
+	at lk.thogamura.networkserver.transport.tcp.TcpCommandServer.handleClient(TcpCommandServer.java:241)
+	at lk.thogamura.networkserver.transport.tcp.TcpCommandServer.lambda$acceptLoop$1(TcpCommandServer.java:132)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+19:02:25.443 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56756...
+19:02:25.443 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:25.504 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56774
+19:02:25.504 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56774 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:25.505 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56775, active subscribers: 1
+19:02:25.611 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:25.611 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:25.612 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56776 [readTimeout=5000ms, maxClients=50]
+19:02:25.613 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56777
+19:02:25.614 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '806fc7cd-cec5-4f00-872f-503865924d68') from /127.0.0.1:56777
+19:02:25.640 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:25.641 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:25.642 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56780
+19:02:25.643 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: 'b0435bac-a5e0-471b-a7ba-bc07203db803') from /127.0.0.1:56780
+19:02:25.665 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Stock request '806fc7cd-cec5-4f00-872f-503865924d68' successfully transitioned to PICKED (commandRequestId: 'b0435bac-a5e0-471b-a7ba-bc07203db803')
+19:02:25.666 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 102
+19:02:25.667 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56783
+19:02:25.667 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: 'eb47e9ca-cd0d-4594-9ba9-fcb2f5c5d0a1') from /127.0.0.1:56783
+19:02:25.696 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Dispatched stock request '806fc7cd-cec5-4f00-872f-503865924d68' for SKU 'ITEM-007', quantity=8, newOnHand=2, newReserved=0, available=2
+19:02:25.697 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 103
+19:02:25.698 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56786
+19:02:25.698 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'GET_REQUESTS' (requestId: '273041c9-15a0-427c-8782-088054029cf5') from /127.0.0.1:56786
+19:02:25.709 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56788
+19:02:25.710 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'GET_MOVEMENTS' (requestId: '9a2a166f-3c69-4461-88dd-b8dee811fcd7') from /127.0.0.1:56788
+19:02:25.718 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56776...
+19:02:25.719 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:25.719 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:25.719 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:25.719 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:25.767 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56796
+19:02:25.767 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56796 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:25.767 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56797, active subscribers: 1
+19:02:25.873 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:25.873 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:25.874 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56798 [readTimeout=5000ms, maxClients=50]
+19:02:25.875 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56799
+19:02:25.876 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'c7db65f8-11a7-449c-bbfa-598929056a08') from /127.0.0.1:56799
+19:02:25.904 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:25.906 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:25.907 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56802
+19:02:25.908 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_PICKED' (requestId: 'b6cb69ec-95e9-4264-bfc4-12122c63c08d') from /127.0.0.1:56802
+19:02:25.932 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Stock request 'c7db65f8-11a7-449c-bbfa-598929056a08' successfully transitioned to PICKED (commandRequestId: 'b6cb69ec-95e9-4264-bfc4-12122c63c08d')
+19:02:25.933 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 102
+19:02:25.933 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56805
+19:02:25.934 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: '4ed33cb1-8783-4ae5-8d1e-d5159b677f39') from /127.0.0.1:56805
+19:02:25.956 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Dispatched stock request 'c7db65f8-11a7-449c-bbfa-598929056a08' for SKU 'ITEM-007', quantity=8, newOnHand=2, newReserved=0, available=2
+19:02:25.957 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Published Java NIO cache invalidation signal for change version 103
+19:02:25.964 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56798...
+19:02:25.964 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:25.964 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:25.964 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:25.965 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56809 [readTimeout=5000ms, maxClients=50]
+19:02:25.965 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:56810
+19:02:25.965 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'MARK_DISPATCHED' (requestId: '4ed33cb1-8783-4ae5-8d1e-d5159b677f39') from /127.0.0.1:56810
+19:02:25.971 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Durable command receipt replayed for requestId '4ed33cb1-8783-4ae5-8d1e-d5159b677f39'
+19:02:25.985 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56809...
+19:02:25.985 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:25.985 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:25.985 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:25.985 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+19:02:26.024 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server started on 127.0.0.1:56820 [bindMode=LOOPBACK, allowedClients=[127.0.0.1], maxClients=100, maxPendingQueue=50]
+19:02:26.024 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop started on /127.0.0.1:56820
+19:02:26.025 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Accepted NIO client connection from /127.0.0.1:56821, active subscribers: 1
+19:02:26.130 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:26.130 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'
+19:02:26.131 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:56822 [readTimeout=5000ms, maxClients=50]
+19:02:26.156 [main] WARN lk.thogamura.networkserver.fulfillment.DefaultStockFulfillmentService -- Fulfillment dispatch failed: Stock request '78b4d1d8-4d7c-43cf-857e-83aa35b9c975' not found
+19:02:26.182 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 56822...
+19:02:26.182 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Subscriber /127.0.0.1:56821 disconnected (EOF)
+19:02:26.182 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:26.182 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Stopping Java NIO notification server...
+19:02:26.182 [nio-notification-eventloop] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO selector event loop terminated
+19:02:26.182 [main] INFO lk.thogamura.networkserver.notifications.NioNotificationServer -- Java NIO notification server stopped successfully
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.474 s -- in lk.thogamura.networkserver.fulfillment.StockFulfillmentIntegrationTest
+[INFO] Running lk.thogamura.networkserver.inventory.AtomicStockReservationIntegrationTest
+19:02:26.274 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:26.277 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:26.402 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:26.402 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:26.418 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=8, available=2
+19:02:26.527 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=3, newReserved=3, available=7
+19:02:26.528 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:26.561 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=5, newReserved=8, available=2
+19:02:26.562 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 102
+19:02:26.592 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=2, newReserved=10, available=0
+19:02:26.593 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 103
+19:02:26.619 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:26.676 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Initialized InventoryWorkerPool [corePoolSize=2, maxPoolSize=4, queueCapacity=10]
+19:02:26.697 [inventory-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:26.698 [inventory-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:26.701 [inventory-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=8, available=2
+19:02:26.712 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Shutting down InventoryWorkerPool...
+19:02:26.794 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:26.795 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:26.802 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'e8f0dc96-d398-4d96-8969-7e9a2361d555'
+19:02:26.848 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=8, available=2
+19:02:26.860 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'fe49773f-5582-4129-a032-7572adcc3d6b'
+19:02:27.000 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.001 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:27.008 [main] WARN lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Command conflict detected for requestId 'd1da2cab-769c-4314-af06-f8a8e88bed77': expected fingerprint 754873f43a2e5266c8fa6604433755847a330894f6f7420976554b5c73fbe99f, recorded cd9b68c3d96cd5aa8daa27bb97a7bc066a9fc7ba3d375cbb977c33809a19b826
+19:02:27.015 [main] WARN lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Command conflict detected for requestId 'd1da2cab-769c-4314-af06-f8a8e88bed77': expected fingerprint 86938492821a36a2bcbe0303efc4466a195ebb143b915397b289a00127bde1ca, recorded cd9b68c3d96cd5aa8daa27bb97a7bc066a9fc7ba3d375cbb977c33809a19b826
+19:02:27.077 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.078 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:27.083 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'c6f2b7ab-d62e-4977-9162-ea362f7ab8d1'
+19:02:27.218 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Initialized InventoryWorkerPool [corePoolSize=10, maxPoolSize=10, queueCapacity=20]
+19:02:27.266 [inventory-worker-4] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.267 [inventory-worker-4] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:27.280 [inventory-worker-9] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.281 [inventory-worker-7] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.281 [inventory-worker-10] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.280 [inventory-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.281 [inventory-worker-3] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.281 [inventory-worker-8] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.281 [inventory-worker-5] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.281 [inventory-worker-6] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.281 [inventory-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Concurrent insert conflict on requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6', checking committed receipt: PreparedStatementCallback; SQL [INSERT INTO stock_requests (
+    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+]; ERROR: duplicate key value violates unique constraint "stock_requests_pkey"
+  Detail: Key (request_id)=(d139b9ab-938e-4585-9867-8ebf5d51faa6) already exists.
+19:02:27.294 [inventory-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.294 [inventory-worker-5] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.296 [inventory-worker-7] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.296 [inventory-worker-3] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.298 [inventory-worker-10] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.300 [inventory-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.300 [inventory-worker-9] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.304 [inventory-worker-8] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.305 [inventory-worker-6] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'd139b9ab-938e-4585-9867-8ebf5d51faa6'
+19:02:27.359 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Shutting down InventoryWorkerPool...
+19:02:27.411 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.412 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+19:02:27.418 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId '61f00ef9-9601-4290-8da9-d6a647a71700'
+19:02:27.446 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=8, available=2
+19:02:27.500 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.500 [main] WARN lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Best-effort Java NIO notification failed (stock reservation remains committed): Simulated NIO network failure
+java.lang.RuntimeException: Simulated NIO network failure
+	at lk.thogamura.networkserver.inventory.AtomicStockReservationIntegrationTest.lambda$shouldNotRollbackWhenNotificationFails$5(AtomicStockReservationIntegrationTest.java:491)
+	at lk.thogamura.networkserver.notifications.NotificationPublisher.publish(NotificationPublisher.java:25)
+	at lk.thogamura.networkserver.inventory.DefaultStockReservationService.lambda$publishChangeNotificationSafely$1(DefaultStockReservationService.java:322)
+	at java.base/java.util.Optional.ifPresent(Optional.java:178)
+	at lk.thogamura.networkserver.inventory.DefaultStockReservationService.publishChangeNotificationSafely(DefaultStockReservationService.java:319)
+	at lk.thogamura.networkserver.inventory.DefaultStockReservationService$1.afterCommit(DefaultStockReservationService.java:310)
+	at org.springframework.transaction.support.TransactionSynchronizationUtils.invokeAfterCommit(TransactionSynchronizationUtils.java:165)
+	at org.springframework.transaction.support.TransactionSynchronizationUtils.triggerAfterCommit(TransactionSynchronizationUtils.java:153)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.triggerAfterCommit(AbstractPlatformTransactionManager.java:1006)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.processCommit(AbstractPlatformTransactionManager.java:836)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.commit(AbstractPlatformTransactionManager.java:758)
+	at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:152)
+	at lk.thogamura.networkserver.inventory.DefaultStockReservationService.reserveStock(DefaultStockReservationService.java:106)
+	at lk.thogamura.networkserver.inventory.StockReservationService.reserveStock(StockReservationService.java:31)
+	at lk.thogamura.networkserver.inventory.AtomicStockReservationIntegrationTest.shouldNotRollbackWhenNotificationFails(AtomicStockReservationIntegrationTest.java:504)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:775)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:479)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:161)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:152)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:91)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:112)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:94)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:93)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:87)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:216)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:212)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:137)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:69)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:156)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:146)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:144)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:143)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:100)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:160)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:146)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:144)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:143)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:100)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:160)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:146)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:144)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:143)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:100)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:201)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:170)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:94)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:59)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:142)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:58)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$1(InterceptingLauncher.java:39)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:38)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+19:02:27.652 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.653 [main] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Published Java NIO cache invalidation signal for change version 101
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.471 s -- in lk.thogamura.networkserver.inventory.AtomicStockReservationIntegrationTest
+[INFO] Running lk.thogamura.networkserver.inventory.TcpAtomicReservationSocketIntegrationTest
+19:02:27.704 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:27.704 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:57038 [readTimeout=5000ms, maxClients=50]
+19:02:27.706 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57039
+19:02:27.706 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '85dd85c8-8d8a-45e7-b672-065755d591ec') from /127.0.0.1:57039
+19:02:27.720 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.740 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 57038...
+19:02:27.740 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:27.780 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:27.780 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:57051 [readTimeout=5000ms, maxClients=50]
+19:02:27.781 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57052
+19:02:27.781 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '4a9a9cda-2603-4e6c-9947-fc796741eb52') from /127.0.0.1:57052
+19:02:27.795 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.803 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57056
+19:02:27.803 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '04484ac4-c2e8-428a-902d-98e9f469e533') from /127.0.0.1:57056
+19:02:27.817 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=5, available=2
+19:02:27.831 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 57051...
+19:02:27.831 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:27.875 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:27.875 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:57067 [readTimeout=5000ms, maxClients=50]
+19:02:27.875 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57068
+19:02:27.875 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '89e17146-80d4-44a7-b405-a1753bca8679') from /127.0.0.1:57068
+19:02:27.891 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.898 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57072
+19:02:27.899 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '89e17146-80d4-44a7-b405-a1753bca8679') from /127.0.0.1:57072
+19:02:27.904 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId '89e17146-80d4-44a7-b405-a1753bca8679'
+19:02:27.928 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 57067...
+19:02:27.929 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:27.964 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:27.965 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:57084 [readTimeout=5000ms, maxClients=50]
+19:02:27.965 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57085
+19:02:27.965 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'a3253702-5a17-4a17-ba46-a8d0eac52789') from /127.0.0.1:57085
+19:02:27.978 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:27.986 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57089
+19:02:27.987 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'a3253702-5a17-4a17-ba46-a8d0eac52789') from /127.0.0.1:57089
+19:02:27.992 [tcp-cmd-worker-2] WARN lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Command conflict detected for requestId 'a3253702-5a17-4a17-ba46-a8d0eac52789': expected fingerprint 754873f43a2e5266c8fa6604433755847a330894f6f7420976554b5c73fbe99f, recorded cd9b68c3d96cd5aa8daa27bb97a7bc066a9fc7ba3d375cbb977c33809a19b826
+19:02:27.998 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 57084...
+19:02:27.998 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:28.035 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:28.036 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:57098 [readTimeout=5000ms, maxClients=50]
+19:02:28.039 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57100
+19:02:28.039 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57099
+19:02:28.039 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57101
+19:02:28.039 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57103
+19:02:28.039 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57102
+19:02:28.039 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '8d5bbb3a-8631-4851-985c-281f0f1ac24f') from /127.0.0.1:57100
+19:02:28.039 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'd846ee8b-6a7e-44be-9385-bfaa4bc35ed2') from /127.0.0.1:57099
+19:02:28.039 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'ba39f24b-d284-44a4-bdb9-cd8a889ccde6') from /127.0.0.1:57101
+19:02:28.039 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '1d8c90f9-e85b-4be8-abfd-94e66623236f') from /127.0.0.1:57102
+19:02:28.039 [tcp-cmd-worker-6] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57104
+19:02:28.039 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'db153c25-3e91-4676-bdce-b37394c0b2e2') from /127.0.0.1:57103
+19:02:28.039 [tcp-cmd-worker-7] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57105
+19:02:28.039 [tcp-cmd-worker-6] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '2322b383-454f-4f6f-a52d-c078d1cf43f3') from /127.0.0.1:57104
+19:02:28.039 [tcp-cmd-worker-7] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '4d94408e-ed7a-46a0-9465-3293a5112119') from /127.0.0.1:57105
+19:02:28.040 [tcp-cmd-worker-8] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57106
+19:02:28.040 [tcp-cmd-worker-9] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57107
+19:02:28.040 [tcp-cmd-worker-10] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57108
+19:02:28.040 [tcp-cmd-worker-10] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '97e54682-4a62-4eba-851e-73824e69f2ef') from /127.0.0.1:57108
+19:02:28.040 [tcp-cmd-worker-8] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '771e5d38-cee4-4615-8607-52bd5027d2f8') from /127.0.0.1:57106
+19:02:28.040 [tcp-cmd-worker-11] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57109
+19:02:28.040 [tcp-cmd-worker-12] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57110
+19:02:28.040 [tcp-cmd-worker-9] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '75a9c189-b956-49f6-a4b5-4fc611594584') from /127.0.0.1:57107
+19:02:28.040 [tcp-cmd-worker-13] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57111
+19:02:28.040 [tcp-cmd-worker-12] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'fbcc48c6-9eb1-4fd1-8696-a4963d8a1356') from /127.0.0.1:57110
+19:02:28.040 [tcp-cmd-worker-13] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '1803c704-cf67-4e0b-855d-273271b37a4a') from /127.0.0.1:57111
+19:02:28.040 [tcp-cmd-worker-11] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'e38e94c8-1edc-473d-9212-4c81c602ef83') from /127.0.0.1:57109
+19:02:28.040 [tcp-cmd-worker-14] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57112
+19:02:28.040 [tcp-cmd-worker-14] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '17b3b1ac-9aa7-4ccf-852a-892085b40454') from /127.0.0.1:57112
+19:02:28.040 [tcp-cmd-worker-15] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57113
+19:02:28.040 [tcp-cmd-worker-15] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '164893b8-0611-48ad-810f-6a0ffc12b820') from /127.0.0.1:57113
+19:02:28.040 [tcp-cmd-worker-16] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57114
+19:02:28.040 [tcp-cmd-worker-17] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57115
+19:02:28.041 [tcp-cmd-worker-16] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'c6adc839-de29-407b-afa7-40c260b3a23d') from /127.0.0.1:57114
+19:02:28.041 [tcp-cmd-worker-17] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '12095e63-33ff-4a2c-b677-3b3b263c3dca') from /127.0.0.1:57115
+19:02:28.041 [tcp-cmd-worker-18] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57116
+19:02:28.041 [tcp-cmd-worker-19] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57117
+19:02:28.041 [tcp-cmd-worker-18] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '31986cad-029c-49f7-af43-cbc1aadcd600') from /127.0.0.1:57116
+19:02:28.041 [tcp-cmd-worker-19] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'df01b4fa-a1c6-45ee-b3d5-857b60329279') from /127.0.0.1:57117
+19:02:28.041 [tcp-cmd-worker-20] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57118
+19:02:28.041 [tcp-cmd-worker-20] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: '13d7f451-0ae7-4cfc-8e73-e9fb07475def') from /127.0.0.1:57118
+19:02:28.093 [tcp-cmd-worker-11] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=1, available=9
+19:02:28.098 [tcp-cmd-worker-5] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=2, available=8
+19:02:28.101 [tcp-cmd-worker-7] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=3, available=7
+19:02:28.103 [tcp-cmd-worker-15] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=4, available=6
+19:02:28.106 [tcp-cmd-worker-9] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=5, available=5
+19:02:28.108 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=6, available=4
+19:02:28.110 [tcp-cmd-worker-14] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=7, available=3
+19:02:28.114 [tcp-cmd-worker-6] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=8, available=2
+19:02:28.116 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=9, available=1
+19:02:28.119 [tcp-cmd-worker-18] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=1, newReserved=10, available=0
+19:02:28.121 [tcp-cmd-worker-10] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.124 [tcp-cmd-worker-12] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.126 [tcp-cmd-worker-20] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.129 [tcp-cmd-worker-3] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.131 [tcp-cmd-worker-8] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.133 [tcp-cmd-worker-17] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.136 [tcp-cmd-worker-13] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.138 [tcp-cmd-worker-16] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.140 [tcp-cmd-worker-4] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.142 [tcp-cmd-worker-19] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Rejected stock reservation for SKU 'ITEM-007', requested=1, available=0
+19:02:28.155 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 57098...
+19:02:28.156 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:28.195 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:28.195 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:57167 [readTimeout=5000ms, maxClients=50]
+19:02:28.195 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57168
+19:02:28.196 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'c896f738-005e-4ccf-bb38-802548900074') from /127.0.0.1:57168
+19:02:28.211 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:28.219 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 57167...
+19:02:28.220 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:28.220 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:28.220 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:57172 [readTimeout=5000ms, maxClients=50]
+19:02:28.220 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57173
+19:02:28.220 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'c896f738-005e-4ccf-bb38-802548900074') from /127.0.0.1:57173
+19:02:28.225 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'c896f738-005e-4ccf-bb38-802548900074'
+19:02:28.243 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 57172...
+19:02:28.243 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+19:02:28.284 [main] INFO lk.thogamura.networkserver.transport.tcp.DefaultCommandDispatcher -- Registered command handler for 'REQUEST_STOCK'
+19:02:28.284 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server started on 127.0.0.1:57184 [readTimeout=5000ms, maxClients=50]
+19:02:28.285 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57185
+19:02:28.285 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'c9107435-854d-473c-9ce3-f6345552b3c5') from /127.0.0.1:57185
+19:02:28.301 [tcp-cmd-worker-1] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Reserved stock for SKU 'ITEM-007', requested=8, newReserved=8, available=2
+19:02:28.467 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Accepted command socket connection from /127.0.0.1:57190
+19:02:28.467 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Dispatching command 'REQUEST_STOCK' (requestId: 'c9107435-854d-473c-9ce3-f6345552b3c5') from /127.0.0.1:57190
+19:02:28.478 [tcp-cmd-worker-2] INFO lk.thogamura.networkserver.inventory.DefaultStockReservationService -- Durable command receipt replayed for requestId 'c9107435-854d-473c-9ce3-f6345552b3c5'
+19:02:28.514 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- Stopping TCP command server on port 57184...
+19:02:28.514 [main] INFO lk.thogamura.networkserver.transport.tcp.TcpCommandServer -- TCP command server stopped successfully.
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.854 s -- in lk.thogamura.networkserver.inventory.TcpAtomicReservationSocketIntegrationTest
+[INFO] Running lk.thogamura.networkserver.concurrent.InventoryWorkerPoolTest
+19:02:28.518 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Initialized InventoryWorkerPool [corePoolSize=2, maxPoolSize=4, queueCapacity=50]
+19:02:28.518 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Shutting down InventoryWorkerPool...
+19:02:28.518 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Initialized InventoryWorkerPool [corePoolSize=2, maxPoolSize=2, queueCapacity=5]
+19:02:28.518 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Shutting down InventoryWorkerPool...
+19:02:28.625 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Initialized InventoryWorkerPool [corePoolSize=1, maxPoolSize=1, queueCapacity=1]
+19:02:28.627 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Shutting down InventoryWorkerPool...
+19:02:28.628 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Initialized InventoryWorkerPool [corePoolSize=4, maxPoolSize=8, queueCapacity=20]
+19:02:28.628 [main] INFO lk.thogamura.networkserver.concurrent.InventoryWorkerPool -- Shutting down InventoryWorkerPool...
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.114 s -- in lk.thogamura.networkserver.concurrent.InventoryWorkerPoolTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 37, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for ThogaMura backend reactor 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] ThogaMura backend reactor .......................... SUCCESS [  0.002 s]
+[INFO] Shared wire protocol constants ..................... SUCCESS [  0.345 s]
+[INFO] Java network server ................................ SUCCESS [  6.518 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  7.066 s
+[INFO] Finished at: 2026-11-19T19:02:28+05:30
+[INFO] ------------------------------------------------------------------------
