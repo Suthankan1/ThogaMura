@@ -20,8 +20,22 @@ public class TcpCommandClientConfiguration {
             @Value("${thogamura.command.client.port:${thogamura.warehouse.port:7443}}") int port,
             @Value("${thogamura.command.client.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${thogamura.command.client.read-timeout-ms:5000}") int readTimeoutMs,
-            @Value("${thogamura.command.client.max-frame-bytes:65536}") int maxFrameBytes) {
-        return new TcpCommandClientConfig(host, port, connectTimeoutMs, readTimeoutMs, maxFrameBytes);
+            @Value("${thogamura.command.client.max-frame-bytes:65536}") int maxFrameBytes,
+            @Value("${thogamura.command.client.max-retries:2}") int maxRetries,
+            @Value("${thogamura.command.client.retry-backoff-ms:100}") long retryBackoffMs,
+            @Value("${thogamura.command.client.retry-backoff-multiplier:2.0}") double retryBackoffMultiplier,
+            @Value("${thogamura.command.client.max-retry-backoff-ms:1000}") long maxRetryBackoffMs) {
+        return new TcpCommandClientConfig(
+                host,
+                port,
+                connectTimeoutMs,
+                readTimeoutMs,
+                maxFrameBytes,
+                maxRetries,
+                retryBackoffMs,
+                retryBackoffMultiplier,
+                maxRetryBackoffMs
+        );
     }
 
     @Bean

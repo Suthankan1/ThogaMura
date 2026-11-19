@@ -17,6 +17,11 @@ thogamura:
       connect-timeout-ms: ${THOGAMURA_COMMAND_CONNECT_TIMEOUT_MS:3000}
       read-timeout-ms: ${THOGAMURA_COMMAND_READ_TIMEOUT_MS:5000}
       max-frame-bytes: ${THOGAMURA_COMMAND_MAX_FRAME_BYTES:65536}
+      # Member 1 - Safe bounded retries with finite backoff (Issue #11)
+      max-retries: ${THOGAMURA_COMMAND_MAX_RETRIES:2}
+      retry-backoff-ms: ${THOGAMURA_COMMAND_RETRY_BACKOFF_MS:100}
+      retry-backoff-multiplier: ${THOGAMURA_COMMAND_RETRY_BACKOFF_MULTIPLIER:2.0}
+      max-retry-backoff-ms: ${THOGAMURA_COMMAND_MAX_RETRY_BACKOFF_MS:1000}
   tls:
     client:
       # Validated JSSE TLS encryption for central warehouse command client (Member 5 - Issue #23)

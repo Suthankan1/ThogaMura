@@ -19,6 +19,7 @@ import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.NoRouteToHostException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Objects;
@@ -29,7 +30,8 @@ import java.util.UUID;
  *
  * <p>Uses standard JDK sockets ({@link Socket}) and stream framing to send business commands
  * and diagnostic inquiries to the central warehouse server. Strictly enforces Protocol v1
- * framing bounds, connection and read timeouts, and {@code requestId} response correlation.</p>
+ * framing bounds, connection and read timeouts, strict {@code requestId} response correlation,
+ * and bounded safe same-requestId retries with finite backoff.</p>
  *
  * <p>Accepts an injected {@link SocketFactory} (defaults to {@link SocketFactory#getDefault()}),
  * allowing Member 5 to integrate validated JSSE TLS ({@code SSLSocketFactory}) seamlessly
@@ -41,19 +43,25 @@ public class TcpCommandClient {
 
     private final TcpCommandClientConfig config;
     private final SocketFactory socketFactory;
+    private final Sleeper sleeper;
 
     public TcpCommandClient(TcpCommandClientConfig config) {
-        this(config, SocketFactory.getDefault());
+        this(config, SocketFactory.getDefault(), Thread::sleep);
     }
 
     public TcpCommandClient(TcpCommandClientConfig config, SocketFactory socketFactory) {
+        this(config, socketFactory, Thread::sleep);
+    }
+
+    public TcpCommandClient(TcpCommandClientConfig config, SocketFactory socketFactory, Sleeper sleeper) {
         this.config = Objects.requireNonNull(config, "config must not be null");
         this.socketFactory = Objects.requireNonNull(socketFactory, "socketFactory must not be null");
+        this.sleeper = Objects.requireNonNull(sleeper, "sleeper must not be null");
     }
 
     /**
      * Sends a command request over a real Java TCP socket with a generated UUID {@code requestId}
-     * and awaits the correlated response envelope.
+     * and awaits the correlated response envelope, applying configured bounded retries for transient failures.
      *
      * @param type command type from {@link ProtocolInfo}
      * @param data command data payload object (or null)
@@ -67,6 +75,10 @@ public class TcpCommandClient {
     /**
      * Sends a command request over a real Java TCP socket with an explicit {@code requestId}
      * and awaits the correlated response envelope.
+     *
+     * <p>Retries eligible transport failures (such as server disconnects or socket timeouts)
+     * up to {@code config.getMaxRetries()} using the <b>identical</b> {@code requestId} and
+     * exact original payload to leverage the warehouse server's durable command receipts.</p>
      *
      * @param type command type from {@link ProtocolInfo}
      * @param requestId canonical UUID v4 correlation identifier
@@ -83,7 +95,96 @@ public class TcpCommandClient {
         config.validate();
 
         String requestPayload = TcpMessageCodec.formatRequest(type, effectiveRequestId, data);
-        logger.debug("Dispatching TCP command '{}' (requestId: '{}') to {}:{}",
+
+        int maxRetries = config.getMaxRetries();
+        long currentBackoffMs = config.getRetryBackoffMs();
+        CommandTransportException lastException = null;
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            if (attempt > 0) {
+                logger.info("Retrying TCP command '{}' (attempt {} of {}, requestId: '{}') after backoff {}ms",
+                        type, attempt, maxRetries, effectiveRequestId, currentBackoffMs);
+                try {
+                    sleeper.sleep(currentBackoffMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new CommandTransportException(
+                            "Interrupted during retry backoff for requestId: " + effectiveRequestId,
+                            effectiveRequestId,
+                            e
+                    );
+                }
+                currentBackoffMs = Math.min(
+                        (long) (currentBackoffMs * config.getRetryBackoffMultiplier()),
+                        config.getMaxRetryBackoffMs()
+                );
+            }
+
+            try {
+                return executeSingleAttempt(type, effectiveRequestId, requestPayload);
+            } catch (CommandCorrelationException e) {
+                // Mismatched response requestId is a severe protocol failure; never mistake for success and do not retry
+                logger.error("Response correlation failure for requestId '{}' (received '{}'): not retrying",
+                        e.getExpectedRequestId(), e.getReceivedRequestId());
+                throw e;
+            } catch (CommandTransportException e) {
+                lastException = e;
+                if (!isEligibleForRetry(e) || attempt == maxRetries) {
+                    logger.warn("TCP command '{}' (requestId: '{}') failed on attempt {} of {} and will not be retried: {}",
+                            type, effectiveRequestId, attempt + 1, maxRetries + 1, e.getMessage());
+                    throw e;
+                }
+                logger.warn("Transient transport failure on attempt {}/{} for requestId '{}': {}",
+                        attempt + 1, maxRetries + 1, effectiveRequestId, e.getMessage());
+            }
+        }
+
+        if (lastException != null) {
+            throw lastException;
+        }
+        throw new CommandTransportException(
+                "Command failed without response for requestId: " + effectiveRequestId,
+                effectiveRequestId
+        );
+    }
+
+    /**
+     * Executes a single request attempt without retries.
+     *
+     * @param type command type from {@link ProtocolInfo}
+     * @param requestId canonical correlation identifier
+     * @param data command payload object (or null)
+     * @return parsed JSON response node
+     * @throws CommandTransportException on network, framing, or correlation failures
+     */
+    public JsonNode sendCommandOnce(String type, String requestId, Object data) throws CommandTransportException {
+        Objects.requireNonNull(type, "type must not be null");
+        String effectiveRequestId = (requestId != null && !requestId.isBlank())
+                ? requestId
+                : UUID.randomUUID().toString();
+        config.validate();
+        String requestPayload = TcpMessageCodec.formatRequest(type, effectiveRequestId, data);
+        return executeSingleAttempt(type, effectiveRequestId, requestPayload);
+    }
+
+    private boolean isEligibleForRetry(CommandTransportException e) {
+        if (e instanceof CommandCorrelationException) {
+            return false;
+        }
+        Throwable cause = e.getCause();
+        if (cause instanceof javax.net.ssl.SSLException) {
+            // Cryptographic / TLS certificate failures must fail-closed immediately without retry
+            return false;
+        }
+        if (cause instanceof FrameTooLargeException || cause instanceof MalformedFrameException) {
+            return false;
+        }
+        return true;
+    }
+
+    private JsonNode executeSingleAttempt(String type, String effectiveRequestId, String requestPayload)
+            throws CommandTransportException {
+        logger.debug("Dispatching TCP command attempt for '{}' (requestId: '{}') to {}:{}",
                 type, effectiveRequestId, config.getHost(), config.getPort());
 
         Socket socket = connectSocket(effectiveRequestId);
@@ -123,6 +224,15 @@ public class TcpCommandClient {
                 logger.warn("Server abruptly closed connection mid-frame for requestId '{}'", effectiveRequestId);
                 throw new ServerUnavailableException(
                         "Server abruptly closed connection mid-frame for requestId: " + effectiveRequestId,
+                        effectiveRequestId,
+                        e
+                );
+            } catch (SocketException e) {
+                logger.warn("Server connection reset or closed during read for requestId '{}': {}",
+                        effectiveRequestId, e.getMessage());
+                throw new ServerUnavailableException(
+                        "Warehouse server dropped connection prematurely for requestId: "
+                                + effectiveRequestId + ": " + e.getMessage(),
                         effectiveRequestId,
                         e
                 );
@@ -228,7 +338,7 @@ public class TcpCommandClient {
                     config.getHost(), config.getPort(), requestId, e.getMessage(), e);
             throw new CommandTransportException(
                     "TLS handshake failed connecting to warehouse server at " + config.getHost() + ":"
-                            + config.getPort() + ": " + e.getMessage(),
+                    + config.getPort() + ": " + e.getMessage(),
                     requestId,
                     e
             );
@@ -271,6 +381,10 @@ public class TcpCommandClient {
 
     public SocketFactory getSocketFactory() {
         return socketFactory;
+    }
+
+    public Sleeper getSleeper() {
+        return sleeper;
     }
 
     private void closeQuietly(Socket socket) {
