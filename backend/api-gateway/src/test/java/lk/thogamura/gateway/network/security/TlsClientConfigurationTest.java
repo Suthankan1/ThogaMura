@@ -12,6 +12,7 @@ import javax.net.SocketFactory;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TlsClientConfigurationTest {
 
@@ -66,5 +67,29 @@ class TlsClientConfigurationTest {
                     TcpCommandClient client = context.getBean(TcpCommandClient.class);
                     assertThat(client.getSocketFactory()).isSameAs(factory);
                 });
+    }
+
+    @Test
+    @DisplayName("Hostname verification cannot be disabled")
+    void testHostnameVerificationCannotBeDisabled() {
+        TlsClientProperties properties = new TlsClientProperties();
+
+        assertThatThrownBy(() -> properties.setHostnameVerification(false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must remain enabled");
+
+        assertThat(properties.isHostnameVerification()).isTrue();
+    }
+
+    @Test
+    @DisplayName("TLS socket factory rejects disabled hostname verification")
+    void testTlsSocketFactoryRejectsDisabledHostnameVerification() {
+        assertThatThrownBy(() -> new TlsSocketFactory(
+                javax.net.ssl.SSLContext.getDefault(),
+                new String[]{"TLSv1.3", "TLSv1.2"},
+                false
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must remain enabled");
     }
 }
