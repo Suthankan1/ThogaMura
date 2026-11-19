@@ -49,10 +49,14 @@ public class TlsSocketFactory extends SocketFactory {
             String[] enabledProtocols,
             boolean hostnameVerification) {
         this.delegate = Objects.requireNonNull(delegate, "delegate must not be null");
+        if (!hostnameVerification) {
+            throw new IllegalArgumentException(
+                    "TLS hostname verification must remain enabled for the command transport");
+        }
         this.enabledProtocols = (enabledProtocols != null && enabledProtocols.length > 0)
                 ? enabledProtocols.clone()
                 : new String[]{"TLSv1.3", "TLSv1.2"};
-        this.hostnameVerification = hostnameVerification;
+        this.hostnameVerification = true;
     }
 
     public TlsSocketFactory(

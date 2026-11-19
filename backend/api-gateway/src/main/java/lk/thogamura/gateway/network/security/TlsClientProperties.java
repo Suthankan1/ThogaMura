@@ -81,6 +81,10 @@ public class TlsClientProperties {
     }
 
     public void setHostnameVerification(boolean hostnameVerification) {
+        if (!hostnameVerification) {
+            throw new IllegalArgumentException(
+                    "TLS hostname verification must remain enabled for the command transport");
+        }
         this.hostnameVerification = hostnameVerification;
     }
 
