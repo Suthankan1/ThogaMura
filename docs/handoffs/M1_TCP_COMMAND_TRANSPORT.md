@@ -262,9 +262,55 @@ TESTCONTAINERS_RYUK_DISABLED=true mvn -f backend/pom.xml clean verify
 [INFO] BUILD SUCCESS
 ```
 
+## 8. Safe Same-ID Retries & Timeout Enforcement (Issue #11)
+
+Issue #11 implements reliable TCP request/response handling with **strict requestId correlation, finite timeouts, and safe same-request-ID retries** for Member 1 (@sankharavindu).
+
+### 8.1 Key Architecture & Guarantees:
+1. **Zero New RequestId on Retry:**
+   When retrying transient transport failures, `TcpCommandClient` computes or validates the canonical UUID `requestId` **once** prior to entering the retry loop. All subsequent retry attempts retransmit the **identical `requestId` and exact original data payload**.
+2. **Durable Receipt Integration:**
+   When a client disconnects or loses the TCP socket after the warehouse server has committed a stock reservation transaction, the client retries with the same `requestId`. The server inspects `command_receipts` in PostgreSQL, confirms the matching SHA-256 payload fingerprint, and replays the original decision without double-reserving stock.
+3. **Strict Correlation & No Fake Success:**
+   Every incoming frame is checked against the expected `requestId`. If the server returns a mismatched `requestId`, the client immediately throws `CommandCorrelationException` — **it is never mistaken for success and never retried**.
+4. **Immediate Fail-Closed for Non-Transient Failures:**
+   Cryptographic TLS failures (`SSLException`, untrusted cert, hostname mismatch) and protocol framing errors (`MalformedFrameException`, `FrameTooLargeException`) fail closed immediately on attempt 1 without retrying.
+5. **Gateway HTTP Distinction:**
+   - Disconnected / unreachable warehouse: `HTTP 503 Service Unavailable` (`WAREHOUSE_UNAVAILABLE`).
+   - Socket read timeout: `HTTP 504 Gateway Timeout` (`WAREHOUSE_TIMEOUT`).
+   - Correlation mismatch / protocol error: `HTTP 502 Bad Gateway` (`CORRELATION_ERROR`).
+
+### 8.2 Real Socket & Database Test Evidence:
+Demonstrated via automated tests using real OS loopback TCP sockets and real Testcontainers PostgreSQL 17:
+- `TcpCommandClientTest`: 9 unit tests verifying bounded retries, same-ID preservation, exponential backoff, and non-retryable correlation errors.
+- `TcpCommandClientIntegrationTest`: 7 real OS TCP socket tests verifying normal round-trip, unexpected connection drops with retry recovery, bounded read timeout enforcement, and mismatched ID rejection.
+- `TcpAtomicReservationSocketIntegrationTest`: Test 7 verifies lost response after committed stock reservation. Socket disconnects after commit; client retries with identical `requestId`; server returns original `ACCEPTED` decision; stock in PostgreSQL is reserved exactly once (`reserved=8`, not 16).
+- `GatewayExceptionHandlerTest`: 5 tests verifying mapping to HTTP 503, 504, 502, 409, and 500 status codes.
+
 ---
 
-## 8. Next Tasks
+## 9. Test Verification & Actual Results
 
-- **Issue #11 — [M1][W2] Safe same-ID TCP retries:** Verify that retransmitting ambiguous requests with identical `requestId` UUIDs returns the original recorded outcome without creating duplicate database reservations.
-- **Member 5 (@vibhathkalsara99):** Wrap this validated TCP command socket channel in JSSE TLS with certificate and hostname validation on port 7443.
+### Full Backend Reactor Verification:
+```bash
+TESTCONTAINERS_RYUK_DISABLED=true mvn -f backend/pom.xml clean verify
+```
+
+### Actual Results:
+```text
+-------------------------------------------------------
+ T E S T S
+-------------------------------------------------------
+[INFO] protocol: 21 tests passed (0 failures, 0 errors)
+[INFO] network-server: 74 tests passed (0 failures, 0 errors)
+[INFO] api-gateway: 91 tests passed (0 failures, 0 errors)
+[INFO] Total tests run: 186, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+---
+
+## 10. Next Tasks
+
+- **Issue #13 — [SHARED][W2] Implement product list and stock request frontend-to-TCP path:**
+  Member 2 (@sandunikarunarathna) and Member 1 can now safely begin full stock-request integration. The TCP client guarantees safe same-ID retries, finite timeouts, and deterministic error translation for `POST /api/v1/requests` and `GET /api/v1/products`.

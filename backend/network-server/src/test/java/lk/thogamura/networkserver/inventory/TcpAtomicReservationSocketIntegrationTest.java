@@ -378,6 +378,60 @@ class TcpAtomicReservationSocketIntegrationTest {
         }
     }
 
+    @Test
+    @Order(7)
+    @DisplayName("7. Lost response after committed reservation: Retry with identical requestId returns persisted decision without double-reserving")
+    void shouldHandleLostResponseAfterCommittedReservationAndRecoverViaSameIdRetry() throws Exception {
+        UUID requestId = UUID.randomUUID();
+        String request = TcpMessageCodec.formatRequest(
+                ProtocolInfo.COMMAND_REQUEST_STOCK,
+                requestId.toString(),
+                Map.of("sku", SyntheticInventoryFixtures.SKU_ITEM_007, "quantity", 8)
+        );
+
+        // Client 1 sends request, but terminates the socket before reading the response (simulating lost ACK / network drop)
+        try (Socket socket1 = new Socket("127.0.0.1", serverPort);
+             TcpFrameWriter writer1 = new TcpFrameWriter(socket1.getOutputStream())) {
+            writer1.writeFrame(request);
+            // Allow the server thread brief time to process and commit the transaction in PostgreSQL
+            Thread.sleep(150);
+            // Abruptly close socket1 without reading the response!
+            socket1.close();
+        }
+
+        // Verify the database transaction committed: on_hand=10, reserved=8, available=2
+        assertStockBalances(SyntheticInventoryFixtures.SKU_ITEM_007, 10, 8, 2);
+
+        // Verify command receipt was written to PostgreSQL
+        Integer receiptCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM command_receipts WHERE command_request_id = ?",
+                Integer.class,
+                requestId
+        );
+        assertThat(receiptCount).isEqualTo(1);
+
+        // Now client retries over a fresh TCP socket using the IDENTICAL requestId and unchanged payload
+        JsonNode retryRes = sendCommand(serverPort, request);
+
+        // Verify the response is the persisted original decision
+        assertThat(retryRes).isNotNull();
+        assertThat(retryRes.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_ACCEPTED);
+        assertThat(retryRes.get("requestId").asText()).isEqualTo(requestId.toString());
+        assertThat(retryRes.get("data").get("sku").asText()).isEqualTo(SyntheticInventoryFixtures.SKU_ITEM_007);
+        assertThat(retryRes.get("data").get("quantity").asInt()).isEqualTo(8);
+
+        // Critical: Verify stock was NOT reserved twice! reserved remains 8 (NOT 16!), available remains 2
+        assertStockBalances(SyntheticInventoryFixtures.SKU_ITEM_007, 10, 8, 2);
+
+        // Verify only 1 stock request record exists in PostgreSQL
+        Integer stockRequestCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM stock_requests WHERE request_id = ?",
+                Integer.class,
+                requestId
+        );
+        assertThat(stockRequestCount).isEqualTo(1);
+    }
+
     private JsonNode sendCommand(int port, String requestJson) throws IOException {
         try (Socket socket = new Socket("127.0.0.1", port);
              TcpFrameWriter writer = new TcpFrameWriter(socket.getOutputStream());

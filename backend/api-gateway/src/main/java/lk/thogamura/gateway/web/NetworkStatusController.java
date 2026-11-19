@@ -3,7 +3,10 @@ package lk.thogamura.gateway.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import lk.thogamura.gateway.network.notifications.NotificationSubscriberLifecycle;
 import lk.thogamura.gateway.network.notifications.SubscriberStatus;
+import lk.thogamura.gateway.network.tcp.CommandCorrelationException;
+import lk.thogamura.gateway.network.tcp.CommandTimeoutException;
 import lk.thogamura.gateway.network.tcp.CommandTransportException;
+import lk.thogamura.gateway.network.tcp.ServerUnavailableException;
 import lk.thogamura.gateway.network.tcp.TcpCommandClient;
 import lk.thogamura.gateway.sse.SseNotificationBroadcaster;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -129,7 +132,15 @@ public class NetworkStatusController {
             body.put("warehouseHost", host);
             body.put("warehousePort", port);
             return ResponseEntity.ok(body);
-        } catch (CommandTransportException e) {
+        } catch (CommandTimeoutException e) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("status", "TIMEOUT");
+            body.put("code", "WAREHOUSE_TIMEOUT");
+            body.put("message", "Warehouse command timed out: " + e.getMessage());
+            body.put("warehouseHost", host);
+            body.put("warehousePort", port);
+            return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(body);
+        } catch (ServerUnavailableException e) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("status", "UNAVAILABLE");
             body.put("code", "WAREHOUSE_UNAVAILABLE");
@@ -137,6 +148,22 @@ public class NetworkStatusController {
             body.put("warehouseHost", host);
             body.put("warehousePort", port);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+        } catch (CommandCorrelationException e) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("status", "ERROR");
+            body.put("code", "CORRELATION_ERROR");
+            body.put("message", "Mismatched requestId received from warehouse: " + e.getMessage());
+            body.put("warehouseHost", host);
+            body.put("warehousePort", port);
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
+        } catch (CommandTransportException e) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("status", "ERROR");
+            body.put("code", "INTERNAL_TRANSPORT_ERROR");
+            body.put("message", "Warehouse command transport error: " + e.getMessage());
+            body.put("warehouseHost", host);
+            body.put("warehousePort", port);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
         }
     }
 }
