@@ -34,6 +34,15 @@ public interface ProductStockRepository {
     void updateReserved(String sku, int newReserved);
 
     /**
+     * Updates both on-hand and reserved stock quantities for a product upon dispatch.
+     *
+     * @param sku product SKU
+     * @param newOnHand new on-hand quantity
+     * @param newReserved new reserved quantity
+     */
+    void updateBalances(String sku, int newOnHand, int newReserved);
+
+    /**
      * Retrieves all product stock records ordered by SKU.
      *
      * @return list of product stocks

@@ -64,6 +64,16 @@ public class JdbcProductStockRepository implements ProductStockRepository {
     }
 
     @Override
+    public void updateBalances(String sku, int newOnHand, int newReserved) {
+        Objects.requireNonNull(sku, "sku must not be null");
+        String sql = "UPDATE product_stock SET on_hand = ?, reserved = ? WHERE sku = ?";
+        int updated = jdbcTemplate.update(sql, newOnHand, newReserved, sku);
+        if (updated == 0) {
+            throw new IllegalStateException("Failed to update stock balances for sku: " + sku);
+        }
+    }
+
+    @Override
     public List<ProductStock> findAll() {
         String sql = "SELECT sku, name, on_hand, reserved FROM product_stock ORDER BY sku";
         return jdbcTemplate.query(sql, ROW_MAPPER);
