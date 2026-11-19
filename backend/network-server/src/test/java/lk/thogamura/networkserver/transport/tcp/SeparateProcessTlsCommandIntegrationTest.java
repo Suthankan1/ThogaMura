@@ -81,8 +81,11 @@ class SeparateProcessTlsCommandIntegrationTest {
                 TcpCommandServer.class.getName(),
                 "0",                                                 // Dynamic OS port
                 "127.0.0.1",                                         // Loopback interface
-                bundle.serverKeystore().toAbsolutePath().toString(), // Keystore path
-                new String(bundle.serverPassword())                  // Keystore password
+                bundle.serverKeystore().toAbsolutePath().toString()  // Keystore path
+        );
+        pb.environment().put(
+                "THOGAMURA_TLS_KEYSTORE_PASSWORD",
+                new String(bundle.serverPassword())
         );
         pb.redirectErrorStream(true);
 

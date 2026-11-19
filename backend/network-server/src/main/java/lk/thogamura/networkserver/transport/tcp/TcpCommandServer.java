@@ -321,14 +321,17 @@ public class TcpCommandServer {
      * allowing external orchestrators, separate JVM integration tests, and manual demonstrations
      * to capture the allocated port and begin transmission.</p>
      *
-     * @param args optional arguments: [port] [host]
+     * @param args optional arguments: [port] [host] [keystore-path]
      * @throws IOException on startup or socket binding errors
      */
     public static void main(String[] args) throws Exception {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : ProtocolInfo.DEFAULT_TLS_COMMAND_PORT;
         String host = args.length > 1 ? args[1] : "127.0.0.1";
         String keystorePath = args.length > 2 ? args[2] : System.getProperty("thogamura.tls.keystore-path", System.getenv("THOGAMURA_TLS_KEYSTORE_PATH"));
-        String keystorePass = args.length > 3 ? args[3] : System.getProperty("thogamura.tls.keystore-password", System.getenv("THOGAMURA_TLS_KEYSTORE_PASSWORD"));
+        String keystorePass = System.getProperty(
+                "thogamura.tls.keystore-password",
+                System.getenv("THOGAMURA_TLS_KEYSTORE_PASSWORD")
+        );
 
         boolean tls = keystorePath != null && !keystorePath.isBlank();
         TcpCommandServerConfig config = new TcpCommandServerConfig(
