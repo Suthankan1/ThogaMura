@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lk.thogamura.gateway.network.notifications.NotificationSubscriberLifecycle;
 import lk.thogamura.gateway.network.notifications.SubscriberStatus;
+import lk.thogamura.gateway.network.tcp.CommandCorrelationException;
+import lk.thogamura.gateway.network.tcp.CommandTimeoutException;
 import lk.thogamura.gateway.network.tcp.ServerUnavailableException;
 import lk.thogamura.gateway.network.tcp.TcpCommandClient;
 import lk.thogamura.gateway.network.tcp.TcpCommandClientConfig;
@@ -102,6 +104,47 @@ class NetworkStatusControllerTest {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.status").value("UNAVAILABLE"))
                 .andExpect(jsonPath("$.code").value("WAREHOUSE_UNAVAILABLE"))
+                .andExpect(jsonPath("$.warehouseHost").value("127.0.0.1"))
+                .andExpect(jsonPath("$.warehousePort").value(7443));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/ping returns 504 Gateway Timeout when socket read times out")
+    void shouldReturn504WhenSocketTimesOut() throws Exception {
+        TcpCommandClientConfig config = new TcpCommandClientConfig("127.0.0.1", 7443);
+        given(tcpCommandClient.getConfig()).willReturn(config);
+
+        given(tcpCommandClient.ping()).willThrow(new CommandTimeoutException(
+                "Read timed out after 5000ms awaiting response",
+                "test-req-id"
+        ));
+
+        mockMvc.perform(get("/api/v1/ping")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isGatewayTimeout())
+                .andExpect(jsonPath("$.status").value("TIMEOUT"))
+                .andExpect(jsonPath("$.code").value("WAREHOUSE_TIMEOUT"))
+                .andExpect(jsonPath("$.warehouseHost").value("127.0.0.1"))
+                .andExpect(jsonPath("$.warehousePort").value(7443));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/ping returns 502 Bad Gateway when response requestId is mismatched")
+    void shouldReturn502WhenRequestIdIsMismatched() throws Exception {
+        TcpCommandClientConfig config = new TcpCommandClientConfig("127.0.0.1", 7443);
+        given(tcpCommandClient.getConfig()).willReturn(config);
+
+        given(tcpCommandClient.ping()).willThrow(new CommandCorrelationException(
+                "Mismatched requestId",
+                "expected-id",
+                "received-id"
+        ));
+
+        mockMvc.perform(get("/api/v1/ping")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.status").value("ERROR"))
+                .andExpect(jsonPath("$.code").value("CORRELATION_ERROR"))
                 .andExpect(jsonPath("$.warehouseHost").value("127.0.0.1"))
                 .andExpect(jsonPath("$.warehousePort").value(7443));
     }
