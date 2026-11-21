@@ -1,11 +1,13 @@
 package lk.thogamura.gateway.network.tcp;
 
+import lk.thogamura.gateway.network.security.TlsSocketFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.net.SocketFactory;
+import java.net.InetAddress;
 
 /**
  * Spring configuration providing the {@link TcpCommandClient} bean.
@@ -43,6 +45,29 @@ public class TcpCommandClientConfiguration {
     public TcpCommandClient tcpCommandClient(
             TcpCommandClientConfig config,
             @org.springframework.beans.factory.annotation.Autowired(required = false) SocketFactory socketFactory) {
+        boolean isTls = socketFactory instanceof TlsSocketFactory;
+        if (!isTls && !isLoopback(config.getHost())) {
+            throw new IllegalStateException(
+                    "Plaintext TCP command transport is only permitted for loopback destinations (127.0.0.1, localhost). " +
+                    "Remote destination '" + config.getHost() + "' requires validated TLS to be enabled (thogamura.tls.client.enabled=true)."
+            );
+        }
         return new TcpCommandClient(config, (socketFactory != null) ? socketFactory : SocketFactory.getDefault());
+    }
+
+    public static boolean isLoopback(String host) {
+        if (host == null || host.isBlank()) {
+            return false;
+        }
+        String trimmed = host.trim();
+        if ("127.0.0.1".equals(trimmed) || "localhost".equalsIgnoreCase(trimmed) || "::1".equals(trimmed) || "0:0:0:0:0:0:0:1".equals(trimmed)) {
+            return true;
+        }
+        try {
+            InetAddress addr = InetAddress.getByName(trimmed);
+            return addr.isLoopbackAddress();
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

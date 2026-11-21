@@ -48,11 +48,15 @@ public class TlsSocketFactory extends SocketFactory {
             SSLSocketFactory delegate,
             String[] enabledProtocols,
             boolean hostnameVerification) {
+        if (!hostnameVerification) {
+            throw new IllegalArgumentException(
+                    "Disabling TLS hostname verification is prohibited. RFC 2818 endpoint identification must remain active.");
+        }
         this.delegate = Objects.requireNonNull(delegate, "delegate must not be null");
         this.enabledProtocols = (enabledProtocols != null && enabledProtocols.length > 0)
                 ? enabledProtocols.clone()
                 : new String[]{"TLSv1.3", "TLSv1.2"};
-        this.hostnameVerification = hostnameVerification;
+        this.hostnameVerification = true;
     }
 
     public TlsSocketFactory(

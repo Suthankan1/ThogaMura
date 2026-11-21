@@ -25,13 +25,19 @@ public class TlsClientSecurityConfiguration {
     @ConditionalOnProperty(prefix = "thogamura.tls.client", name = "enabled", havingValue = "true")
     public SocketFactory tlsSocketFactory(TlsClientProperties properties)
             throws GeneralSecurityException, IOException {
+        if (!properties.isHostnameVerification()) {
+            throw new IllegalStateException(
+                    "Disabling TLS hostname verification (thogamura.tls.client.hostname-verification=false) is prohibited. " +
+                    "Strict RFC 2818 endpoint identification must remain active for secure command transport."
+            );
+        }
         logger.info("Configuring TLS client socket factory using truststore at '{}'", properties.getTruststorePath());
         return TlsSocketFactory.fromTruststore(
                 Path.of(properties.getTruststorePath()),
                 properties.getTruststorePassword().toCharArray(),
                 properties.getTruststoreType(),
                 properties.getProtocolsArray(),
-                properties.isHostnameVerification()
+                true
         );
     }
 }
