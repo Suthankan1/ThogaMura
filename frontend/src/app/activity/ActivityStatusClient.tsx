@@ -139,8 +139,18 @@ export function ActivityStatusClient() {
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Command Transport
             </span>
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-              {networkDetails?.tlsCommand?.status || "Member 5"}
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                networkDetails?.tlsCommand?.status === "OPERATIONAL"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : networkDetails?.tlsCommand?.status === "DISABLED"
+                  ? "bg-slate-100 text-slate-700"
+                  : networkDetails?.tlsCommand?.status === "MISCONFIGURED"
+                  ? "bg-rose-100 text-rose-800"
+                  : "bg-amber-100 text-amber-800"
+              }`}
+            >
+              {networkDetails?.tlsCommand?.status || "DISABLED"}
             </span>
           </div>
           <h2 className="mt-2 text-lg font-bold text-slate-900">JSSE TLS Socket</h2>

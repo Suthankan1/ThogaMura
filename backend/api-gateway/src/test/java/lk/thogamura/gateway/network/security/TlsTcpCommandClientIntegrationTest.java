@@ -348,4 +348,52 @@ class TlsTcpCommandClientIntegrationTest {
         assertThatThrownBy(client::ping)
                 .isInstanceOf(ServerUnavailableException.class);
     }
+
+    @Test
+    @DisplayName("NetworkStatusController derives truthful OPERATIONAL status over live JSSE TLS connection")
+    void testNetworkStatusControllerReportsOperationalOverRealTls() throws Exception {
+        SSLServerSocket server = startTlsEchoServer(validBundle.serverKeystore(), validBundle.serverPassword());
+        int port = server.getLocalPort();
+
+        TlsSocketFactory socketFactory = TlsSocketFactory.fromTruststore(
+                validBundle.gatewayTruststore(),
+                validBundle.trustPassword(),
+                "PKCS12",
+                new String[]{"TLSv1.3", "TLSv1.2"},
+                true
+        );
+
+        TcpCommandClientConfig config = new TcpCommandClientConfig(
+                "localhost",
+                port,
+                ProtocolInfo.DEFAULT_CONNECT_TIMEOUT_MS,
+                ProtocolInfo.DEFAULT_READ_TIMEOUT_MS,
+                ProtocolInfo.MAX_FRAME_BYTES
+        );
+        TcpCommandClient client = new TcpCommandClient(config, socketFactory);
+
+        TlsClientProperties properties = new TlsClientProperties();
+        properties.setEnabled(true);
+        properties.setTruststorePath(validBundle.gatewayTruststore().toString());
+        properties.setHostnameVerification(true);
+
+        lk.thogamura.gateway.sse.SseNotificationBroadcaster mockSse = org.mockito.Mockito.mock(lk.thogamura.gateway.sse.SseNotificationBroadcaster.class);
+        lk.thogamura.gateway.web.NetworkStatusController controller = new lk.thogamura.gateway.web.NetworkStatusController(
+                "127.0.0.1",
+                7444,
+                false,
+                null,
+                mockSse,
+                client,
+                properties
+        );
+
+        java.util.Map<String, Object> status = controller.getNetworkStatus();
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> tlsCommand = (java.util.Map<String, Object>) status.get("tlsCommand");
+
+        assertThat(tlsCommand).isNotNull();
+        assertThat(tlsCommand.get("status")).isEqualTo("OPERATIONAL");
+        assertThat(tlsCommand.get("owner")).isEqualTo("Member 5");
+    }
 }
