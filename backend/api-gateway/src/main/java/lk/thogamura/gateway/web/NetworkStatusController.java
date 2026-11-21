@@ -3,6 +3,8 @@ package lk.thogamura.gateway.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import lk.thogamura.gateway.network.notifications.NotificationSubscriberLifecycle;
 import lk.thogamura.gateway.network.notifications.SubscriberStatus;
+import lk.thogamura.gateway.network.security.TlsClientProperties;
+import lk.thogamura.gateway.network.security.TlsSocketFactory;
 import lk.thogamura.gateway.network.tcp.CommandCorrelationException;
 import lk.thogamura.gateway.network.tcp.CommandTimeoutException;
 import lk.thogamura.gateway.network.tcp.CommandTransportException;
@@ -19,6 +21,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.net.SocketFactory;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -42,6 +47,7 @@ public class NetworkStatusController {
     private final Optional<NotificationSubscriberLifecycle> subscriberLifecycle;
     private final SseNotificationBroadcaster sseBroadcaster;
     private final Optional<TcpCommandClient> tcpCommandClient;
+    private final Optional<TlsClientProperties> tlsProperties;
 
     public NetworkStatusController(
             @Value("${thogamura.notifications.subscriber.host:127.0.0.1}") String centralHost,
@@ -49,13 +55,15 @@ public class NetworkStatusController {
             @Value("${thogamura.notifications.subscriber.enabled:false}") boolean subscriberEnabled,
             @Autowired(required = false) NotificationSubscriberLifecycle subscriberLifecycle,
             SseNotificationBroadcaster sseBroadcaster,
-            @Autowired(required = false) TcpCommandClient tcpCommandClient) {
+            @Autowired(required = false) TcpCommandClient tcpCommandClient,
+            @Autowired(required = false) TlsClientProperties tlsProperties) {
         this.centralHost = centralHost;
         this.nioPort = nioPort;
         this.subscriberEnabled = subscriberEnabled;
         this.subscriberLifecycle = Optional.ofNullable(subscriberLifecycle);
         this.sseBroadcaster = sseBroadcaster;
         this.tcpCommandClient = Optional.ofNullable(tcpCommandClient);
+        this.tlsProperties = Optional.ofNullable(tlsProperties);
     }
 
     @GetMapping("/network-status")
@@ -70,7 +78,7 @@ public class NetworkStatusController {
         if (subscriberLifecycle.isPresent()) {
             NotificationSubscriberLifecycle lifecycle = subscriberLifecycle.get();
             SubscriberStatus subStatus = lifecycle.getStatus();
-            nioFeed.put("status", subStatus.name());
+            nioFeed.put("status", subStatus != null ? subStatus.name() : SubscriberStatus.DISCONNECTED.name());
             nioFeed.put("connected", lifecycle.isConnected());
             if (lifecycle.getSubscriber() != null) {
                 nioFeed.put("lastReceivedVersion", lifecycle.getSubscriber().getLastReceivedVersion());
@@ -97,11 +105,49 @@ public class NetworkStatusController {
         status.put("sse", sse);
 
         Map<String, Object> tlsCommand = new LinkedHashMap<>();
-        tlsCommand.put("status", "NOT_IMPLEMENTED");
+        tlsCommand.put("status", determineTlsStatus());
         tlsCommand.put("owner", "Member 5");
         status.put("tlsCommand", tlsCommand);
 
         return status;
+    }
+
+    private String determineTlsStatus() {
+        if (tlsProperties.isEmpty() || !tlsProperties.get().isEnabled()) {
+            return "DISABLED";
+        }
+
+        TlsClientProperties props = tlsProperties.get();
+        if (!props.isHostnameVerification()) {
+            return "MISCONFIGURED";
+        }
+
+        String truststorePath = props.getTruststorePath();
+        if (truststorePath == null || truststorePath.isBlank()) {
+            return "MISCONFIGURED";
+        }
+        Path path = Path.of(truststorePath);
+        if (!Files.exists(path) || !Files.isReadable(path)) {
+            return "MISCONFIGURED";
+        }
+
+        if (tcpCommandClient.isEmpty()) {
+            return "UNREACHABLE";
+        }
+
+        TcpCommandClient client = tcpCommandClient.get();
+        SocketFactory sf = client.getSocketFactory();
+        if (sf != null && !(sf instanceof TlsSocketFactory)) {
+            return "MISCONFIGURED";
+        }
+
+        try {
+            client.ping();
+            return "OPERATIONAL";
+        } catch (Exception e) {
+            logger.debug("TLS diagnostic ping failed: {}", e.getMessage());
+            return "UNREACHABLE";
+        }
     }
 
     /**

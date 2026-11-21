@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lk.thogamura.gateway.network.notifications.NotificationSubscriberLifecycle;
 import lk.thogamura.gateway.network.notifications.SubscriberStatus;
+import lk.thogamura.gateway.network.security.TlsClientProperties;
 import lk.thogamura.gateway.network.tcp.CommandCorrelationException;
 import lk.thogamura.gateway.network.tcp.CommandTimeoutException;
 import lk.thogamura.gateway.network.tcp.ServerUnavailableException;
@@ -12,11 +13,15 @@ import lk.thogamura.gateway.network.tcp.TcpCommandClientConfig;
 import lk.thogamura.gateway.sse.SseNotificationBroadcaster;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -40,14 +45,18 @@ class NetworkStatusControllerTest {
     @MockitoBean
     private TcpCommandClient tcpCommandClient;
 
+    @MockitoBean
+    private TlsClientProperties tlsProperties;
+
     @Test
-    @DisplayName("GET /api/v1/network-status should report NIO feed and SSE status accurately")
+    @DisplayName("GET /api/v1/network-status should report NIO feed, SSE, and truthful DISABLED TLS status when TLS not enabled")
     void shouldReturnNetworkStatus() throws Exception {
         given(subscriberLifecycle.getStatus()).willReturn(SubscriberStatus.CONNECTED);
         given(subscriberLifecycle.isConnected()).willReturn(true);
         given(sseBroadcaster.getActiveEmitterCount()).willReturn(3);
         given(sseBroadcaster.getBroadcastCount()).willReturn(12L);
         given(sseBroadcaster.getLastBroadcastVersion()).willReturn(42L);
+        given(tlsProperties.isEnabled()).willReturn(false);
 
         mockMvc.perform(get("/api/v1/network-status")
                         .accept(MediaType.APPLICATION_JSON))
@@ -59,7 +68,75 @@ class NetworkStatusControllerTest {
                 .andExpect(jsonPath("$.sse.activeClients").value(3))
                 .andExpect(jsonPath("$.sse.broadcastCount").value(12))
                 .andExpect(jsonPath("$.sse.lastBroadcastVersion").value(42))
-                .andExpect(jsonPath("$.tlsCommand.status").value("NOT_IMPLEMENTED"));
+                .andExpect(jsonPath("$.tlsCommand.status").value("DISABLED"))
+                .andExpect(jsonPath("$.tlsCommand.owner").value("Member 5"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/network-status reports OPERATIONAL when TLS is enabled, configured, and diagnostic ping succeeds")
+    void shouldReportTlsOperationalWhenProbeSucceeds(@TempDir Path tempDir) throws Exception {
+        Path mockTruststore = tempDir.resolve("test-truststore.p12");
+        Files.writeString(mockTruststore, "dummy-truststore-content");
+
+        given(tlsProperties.isEnabled()).willReturn(true);
+        given(tlsProperties.isHostnameVerification()).willReturn(true);
+        given(tlsProperties.getTruststorePath()).willReturn(mockTruststore.toString());
+
+        ObjectNode pong = OBJECT_MAPPER.createObjectNode();
+        pong.put("status", "PONG");
+        given(tcpCommandClient.ping()).willReturn(pong);
+
+        mockMvc.perform(get("/api/v1/network-status")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tlsCommand.status").value("OPERATIONAL"))
+                .andExpect(jsonPath("$.tlsCommand.owner").value("Member 5"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/network-status reports UNREACHABLE when TLS is enabled but warehouse server is down")
+    void shouldReportTlsUnreachableWhenWarehouseServerFails(@TempDir Path tempDir) throws Exception {
+        Path mockTruststore = tempDir.resolve("test-truststore.p12");
+        Files.writeString(mockTruststore, "dummy-truststore-content");
+
+        given(tlsProperties.isEnabled()).willReturn(true);
+        given(tlsProperties.isHostnameVerification()).willReturn(true);
+        given(tlsProperties.getTruststorePath()).willReturn(mockTruststore.toString());
+
+        given(tcpCommandClient.ping()).willThrow(new ServerUnavailableException("TLS server down", "req-1"));
+
+        mockMvc.perform(get("/api/v1/network-status")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tlsCommand.status").value("UNREACHABLE"))
+                .andExpect(jsonPath("$.tlsCommand.owner").value("Member 5"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/network-status reports MISCONFIGURED when truststore file does not exist")
+    void shouldReportTlsMisconfiguredWhenTruststoreMissing() throws Exception {
+        given(tlsProperties.isEnabled()).willReturn(true);
+        given(tlsProperties.isHostnameVerification()).willReturn(true);
+        given(tlsProperties.getTruststorePath()).willReturn("/non/existent/path/truststore.p12");
+
+        mockMvc.perform(get("/api/v1/network-status")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tlsCommand.status").value("MISCONFIGURED"))
+                .andExpect(jsonPath("$.tlsCommand.owner").value("Member 5"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/network-status reports MISCONFIGURED when hostname verification is disabled")
+    void shouldReportTlsMisconfiguredWhenHostnameVerificationDisabled() throws Exception {
+        given(tlsProperties.isEnabled()).willReturn(true);
+        given(tlsProperties.isHostnameVerification()).willReturn(false);
+
+        mockMvc.perform(get("/api/v1/network-status")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tlsCommand.status").value("MISCONFIGURED"))
+                .andExpect(jsonPath("$.tlsCommand.owner").value("Member 5"));
     }
 
     @Test
