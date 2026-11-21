@@ -110,13 +110,24 @@ load_environment() {
         fi
     fi
 
-    # Read .env if present
+    # Read .env if present using portable parser compatible with macOS bash 3.2
     if [ -f .env ]; then
-        # Export non-comment lines
-        set -a
-        # shellcheck disable=SC1091
-        source <(grep -v '^#' .env | sed -E -e 's/^[[:space:]]+//' -e '/^$/d')
-        set +a
+        while IFS= read -r line || [ -n "$line" ]; do
+            local trimmed
+            trimmed=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+            case "$trimmed" in
+                \#*|"") continue ;;
+                *=*)
+                    local key="${trimmed%%=*}"
+                    local val="${trimmed#*=}"
+                    val="${val#\"}"
+                    val="${val%\"}"
+                    val="${val#\'}"
+                    val="${val%\'}"
+                    export "$key"="$val"
+                    ;;
+            esac
+        done < .env
     fi
 
     # Smart PostgreSQL port detection:
@@ -142,6 +153,7 @@ load_environment() {
         export THOGAMURA_DB_URL="jdbc:postgresql://localhost:5433/thogamura"
     else
         export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+        export THOGAMURA_DB_URL="${THOGAMURA_DB_URL:-jdbc:postgresql://localhost:${POSTGRES_PORT}/thogamura}"
     fi
 }
 
@@ -194,9 +206,18 @@ do_start() {
     local server_jar="backend/network-server/target/network-server-0.1.0-SNAPSHOT.jar"
     local gateway_jar="backend/api-gateway/target/api-gateway-0.1.0-SNAPSHOT.jar"
 
+    local needs_build=0
     if [ ! -f "$server_jar" ] || [ ! -f "$gateway_jar" ]; then
-        echo -e "\n${YELLOW}[BUILD] Backend jars not found. Packaging Maven reactor...${NC}"
-        mvn -f backend/pom.xml clean package -DskipTests
+        needs_build=1
+    elif [ -n "$(find backend -name '*.java' -newer "$server_jar" 2>/dev/null | head -n 1)" ]; then
+        needs_build=1
+    elif [ -n "$(find backend -name 'pom.xml' -newer "$server_jar" 2>/dev/null | head -n 1)" ]; then
+        needs_build=1
+    fi
+
+    if [ "$needs_build" -eq 1 ]; then
+        echo -e "\n${YELLOW}[BUILD] Backend jars are missing or outdated. Packaging Maven reactor...${NC}"
+        mvn -f backend/pom.xml package -DskipTests
     fi
 
     # 3. Start Central Java Network Server (Warehouse)
@@ -213,8 +234,20 @@ do_start() {
         echo $! > "$PID_SERVER"
 
         echo -n "Waiting for TCP Command Server (port ${PORT_COMMAND}) and NIO Feed (port ${PORT_NIO})..."
-        wait_for_port "127.0.0.1" "$PORT_COMMAND" 15 "TCP Command Server"
-        wait_for_port "127.0.0.1" "$PORT_NIO" 15 "NIO Notification Server"
+        if ! wait_for_port "127.0.0.1" "$PORT_COMMAND" 15 "TCP Command Server"; then
+            echo -e "\n${RED}[ERROR] Central Network Server failed to open TCP port ${PORT_COMMAND}.${NC}"
+            echo -e "${YELLOW}--- Last 25 lines of $LOG_SERVER ---${NC}"
+            tail -n 25 "$LOG_SERVER" 2>/dev/null || true
+            echo -e "${YELLOW}-------------------------------------${NC}"
+            exit 1
+        fi
+        if ! wait_for_port "127.0.0.1" "$PORT_NIO" 15 "NIO Notification Server"; then
+            echo -e "\n${RED}[ERROR] Central Network Server failed to open NIO port ${PORT_NIO}.${NC}"
+            echo -e "${YELLOW}--- Last 25 lines of $LOG_SERVER ---${NC}"
+            tail -n 25 "$LOG_SERVER" 2>/dev/null || true
+            echo -e "${YELLOW}-------------------------------------${NC}"
+            exit 1
+        fi
         echo -e "\n${GREEN}✓ Central Network Server started (PID: $(cat "$PID_SERVER"))${NC}"
     fi
 
@@ -246,7 +279,13 @@ do_start() {
         echo $! > "$PID_GATEWAY"
 
         echo -n "Waiting for Gateway REST/SSE endpoints (http://127.0.0.1:${PORT_GATEWAY})..."
-        wait_for_http "http://127.0.0.1:${PORT_GATEWAY}/actuator/health" 20 "API Gateway"
+        if ! wait_for_http "http://127.0.0.1:${PORT_GATEWAY}/actuator/health" 20 "API Gateway"; then
+            echo -e "\n${RED}[ERROR] API Gateway failed to become healthy.${NC}"
+            echo -e "${YELLOW}--- Last 25 lines of $LOG_GATEWAY ---${NC}"
+            tail -n 25 "$LOG_GATEWAY" 2>/dev/null || true
+            echo -e "${YELLOW}-------------------------------------${NC}"
+            exit 1
+        fi
         echo -e "\n${GREEN}✓ API Gateway started on http://127.0.0.1:${PORT_GATEWAY} (PID: $(cat "$PID_GATEWAY"))${NC}"
     fi
 
