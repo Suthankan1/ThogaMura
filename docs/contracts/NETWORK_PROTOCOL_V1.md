@@ -3,7 +3,7 @@
 - **Status:** **FROZEN** (2026-11-18)
 - **Owners:** Member 1 (@sankharavindu — TCP Transport) & Member 5 (@vibhathkalsara99 — TLS Security)
 - **Collaborators:** Member 2 (Supplier HTTP), Member 3 (NIO Feed), Member 4 (Durable Concurrency)
-- **Reference ADRs:** [ADR-001](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-001--explicit-java-socket-boundary-accepted-for-starter), [ADR-004](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [ADR-006](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-006--remove-udp-discovery-and-define-practical-network-features-2026-11-17-accepted-as-v2-design), [ADR-007](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-007--shared-network-protocol-v1-http-api-v1-and-security-contracts-freeze-2026-11-18-accepted)
+- **Reference ADRs:** [ADR-001](../decisions/DECISION_LOG.md#adr-001--explicit-java-socket-boundary-accepted-for-starter), [ADR-004](../decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [ADR-006](../decisions/DECISION_LOG.md#adr-006--remove-udp-discovery-and-define-practical-network-features-2026-11-17-accepted-as-v2-design), [ADR-007](../decisions/DECISION_LOG.md#adr-007--shared-network-protocol-v1-http-api-v1-and-security-contracts-freeze-2026-11-18-accepted)
 
 ---
 
@@ -182,6 +182,6 @@ For all mutating commands (`REQUEST_STOCK`, `MARK_PICKED`, `MARK_DISPATCHED`):
 ## 9. Protocol Governance & Modification Process
 
 This contract is **FROZEN**. No individual student or AI assistant may introduce modifications, new command types, altered envelopes, or modified error codes without:
-1. Creating a formal numbered ADR in [docs/decisions/DECISION_LOG.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md).
-2. Updating both this specification and [HTTP_API_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/HTTP_API_V1.md).
+1. Creating a formal numbered ADR in [docs/decisions/DECISION_LOG.md](../decisions/DECISION_LOG.md).
+2. Updating both this specification and [HTTP_API_V1.md](./HTTP_API_V1.md).
 3. Obtaining explicit agreement from all five group members.

@@ -4,7 +4,7 @@
 - **Track / Phase:** Member 5 (JSSE TLS Networking) / Week 1
 - **Lead Developer:** Vibhath Kalsara (@vibhathkalsara99)
 - **Reference Issue:** [#5 — [M5][W1] Define local TLS certificate and truststore workflow](https://github.com/Suthankan1/ThogaMura/issues/5)
-- **Governing ADRs:** [ADR-004 (TLS Identity Policy)](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [ADR-006 (Topology & Transport)](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-006--remove-udp-discovery-and-define-practical-network-features-2026-11-17-accepted-as-v2-design), [ADR-007 (Contracts Freeze)](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-007--shared-network-protocol-v1-http-api-v1-and-security-contracts-freeze-2026-11-18-accepted)
+- **Governing ADRs:** [ADR-004 (TLS Identity Policy)](./decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [ADR-006 (Topology & Transport)](./decisions/DECISION_LOG.md#adr-006--remove-udp-discovery-and-define-practical-network-features-2026-11-17-accepted-as-v2-design), [ADR-007 (Contracts Freeze)](./decisions/DECISION_LOG.md#adr-007--shared-network-protocol-v1-http-api-v1-and-security-contracts-freeze-2026-11-18-accepted)
 - **Status:** **APPROVED BASELINE**
 
 ---

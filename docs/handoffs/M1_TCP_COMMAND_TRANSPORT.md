@@ -7,7 +7,7 @@
 - **Reference Issues:** 
   - [#7 — [M1][W2] Implement real TCP command server and gateway socket client](https://github.com/Suthankan1/ThogaMura/issues/7)
   - [#9 — [SHARED][W1] Demonstrate first gateway-to-network-server round trip](https://github.com/Suthankan1/ThogaMura/issues/9)
-- **Contracts:** [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md) (v1.0.0 Frozen), [HTTP_API_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/HTTP_API_V1.md), [SECURITY_AND_LIMITATIONS.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/SECURITY_AND_LIMITATIONS.md)
+- **Contracts:** [NETWORK_PROTOCOL_V1.md](../contracts/NETWORK_PROTOCOL_V1.md) (v1.0.0 Frozen), [HTTP_API_V1.md](../contracts/HTTP_API_V1.md), [SECURITY_AND_LIMITATIONS.md](../SECURITY_AND_LIMITATIONS.md)
 
 ---
 

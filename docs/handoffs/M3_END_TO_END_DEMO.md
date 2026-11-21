@@ -3,7 +3,7 @@
 - **Developer & Role:** Suthankan Balenthiran (@Suthankan1) — Member 3 (M3): Java NIO and Real-Time Notifications.
 - **Repository:** https://github.com/Suthankan1/ThogaMura
 - **Branch / PR:** `test/m3-notification-integration-demo` targeting `main`.
-- **Primary Evidence File:** [reports/evidence/m3_e2e_integration_evidence.txt](file:///Users/suthankan/Desktop/Projects/ThogaMura/reports/evidence/m3_e2e_integration_evidence.txt)
+- **Primary Evidence File:** [reports/evidence/m3_e2e_integration_evidence.txt](../../reports/evidence/m3_e2e_integration_evidence.txt)
 - **Status:** Fully verified end-to-end across multiple real running processes and automated test suites.
 
 ---
@@ -72,7 +72,7 @@ During the multi-process integration audit, starting `network-server` as a real 
 
 ## 4. End-to-End Multi-Process Verification Evidence
 
-The full raw execution log is archived in [reports/evidence/m3_e2e_integration_evidence.txt](file:///Users/suthankan/Desktop/Projects/ThogaMura/reports/evidence/m3_e2e_integration_evidence.txt). Key milestones verified:
+The full raw execution log is archived in [reports/evidence/m3_e2e_integration_evidence.txt](../../reports/evidence/m3_e2e_integration_evidence.txt). Key milestones verified:
 
 | Step | Action | Actual Observed Result | Verification Status |
 | :--- | :--- | :--- | :--- |

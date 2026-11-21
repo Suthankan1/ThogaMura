@@ -6,7 +6,7 @@
 - **Status:** Complete (Implemented & Verified with real PostgreSQL 17 and real Java TCP sockets)
 - **Reference Issue:** [#21 — [M4][W3] PICKED and DISPATCHED transitions with one stock movement](https://github.com/Suthankan1/ThogaMura/issues/21) (Refs #21)
 - **Related PRs:** PR #49 (Issue #10 core transactions), PR #52 (Issue #10 TCP integration), PR #54 (Issue #12 worker pool concurrency)
-- **Contracts:** [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md), [BACKEND_PLAN.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/BACKEND_PLAN.md)
+- **Contracts:** [NETWORK_PROTOCOL_V1.md](../contracts/NETWORK_PROTOCOL_V1.md), [BACKEND_PLAN.md](../BACKEND_PLAN.md)
 
 ---
 

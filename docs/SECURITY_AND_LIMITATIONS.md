@@ -1,7 +1,7 @@
 # Security, deployment and known limits (v2)
 
 - **Status:** **FROZEN** (2026-11-18)
-- **Reference ADRs:** [ADR-004 (TLS Policy)](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [ADR-006 (Topology & Transport)](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-006--remove-udp-discovery-and-define-practical-network-features-2026-11-17-accepted-as-v2-design), [ADR-007 (Contracts Freeze)](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-007--shared-network-protocol-v1-http-api-v1-and-security-contracts-freeze-2026-11-18-accepted)
+- **Reference ADRs:** [ADR-004 (TLS Policy)](./decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [ADR-006 (Topology & Transport)](./decisions/DECISION_LOG.md#adr-006--remove-udp-discovery-and-define-practical-network-features-2026-11-17-accepted-as-v2-design), [ADR-007 (Contracts Freeze)](./decisions/DECISION_LOG.md#adr-007--shared-network-protocol-v1-http-api-v1-and-security-contracts-freeze-2026-11-18-accepted)
 
 > [!WARNING]
 > **Coursework prototype, not production-ready.** This system is designed and validated for demonstration across a trusted private demo LAN or loopback interfaces. It uses synthetic test data (`ITEM-007`, `ITEM-008`).
