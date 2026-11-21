@@ -465,9 +465,9 @@ class AtomicStockReservationIntegrationTest {
 
     @Test
     @Order(10)
-    @DisplayName("10. Java NIO notification is published only after commit and NOT published on replay or rejection")
+    @DisplayName("10. Java NIO notification is published post-commit for ACCEPTED and REJECTED requests, but NOT on replay (#59)")
     void shouldPublishNotificationOnlyAfterCommitAndNotOnReplay() {
-        // Step 1: Valid reservation triggers notification publication
+        // Step 1: Valid reservation (ACCEPTED) triggers notification publication
         UUID req1 = UUID.randomUUID();
         reservationService.reserveStock(req1, SyntheticInventoryFixtures.SKU_ITEM_007, 8);
         assertThat(recordingPublisher.getPublishCount()).isEqualTo(1);
@@ -477,10 +477,20 @@ class AtomicStockReservationIntegrationTest {
         reservationService.reserveStock(req1, SyntheticInventoryFixtures.SKU_ITEM_007, 8);
         assertThat(recordingPublisher.getPublishCount()).isEqualTo(1); // unchanged!
 
-        // Step 3: Rejected reservation (insufficient stock) must NOT publish an event
+        // Step 3: Rejected reservation (insufficient stock) persists request and receipt and DOES publish an event (#59)
         UUID req2 = UUID.randomUUID();
         reservationService.reserveStock(req2, SyntheticInventoryFixtures.SKU_ITEM_007, 8);
-        assertThat(recordingPublisher.getPublishCount()).isEqualTo(1); // unchanged!
+        assertThat(recordingPublisher.getPublishCount()).isEqualTo(2);
+        assertThat(recordingPublisher.getLastPublishedVersion()).isEqualTo(102L);
+
+        // Step 4: Replay of same REJECTED command must NOT publish a duplicate event
+        reservationService.reserveStock(req2, SyntheticInventoryFixtures.SKU_ITEM_007, 8);
+        assertThat(recordingPublisher.getPublishCount()).isEqualTo(2); // unchanged!
+
+        // Step 5: Validation error (non-positive quantity) does NOT persist or publish
+        UUID req3 = UUID.randomUUID();
+        reservationService.reserveStock(req3, SyntheticInventoryFixtures.SKU_ITEM_007, -1);
+        assertThat(recordingPublisher.getPublishCount()).isEqualTo(2); // unchanged!
     }
 
     @Test
