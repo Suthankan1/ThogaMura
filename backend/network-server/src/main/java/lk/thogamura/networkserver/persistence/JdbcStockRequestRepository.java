@@ -18,6 +18,8 @@ import java.util.UUID;
 @Repository
 public class JdbcStockRequestRepository implements StockRequestRepository {
 
+    public static final int MAX_QUERY_LIMIT = 500;
+
     private static final RowMapper<StockRequestRecord> ROW_MAPPER = (rs, rowNum) -> {
         Timestamp createdTs = rs.getTimestamp("created_at");
         Timestamp updatedTs = rs.getTimestamp("updated_at");
@@ -112,9 +114,10 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
         String sql = """
             SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
             FROM stock_requests
-            ORDER BY created_at ASC
+            ORDER BY created_at ASC, request_id ASC
+            LIMIT ?
             """;
-        return jdbcTemplate.query(sql, ROW_MAPPER);
+        return jdbcTemplate.query(sql, ROW_MAPPER, MAX_QUERY_LIMIT);
     }
 
     @Override
@@ -124,9 +127,10 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
             SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
             FROM stock_requests
             WHERE status = ?
-            ORDER BY created_at ASC
+            ORDER BY created_at ASC, request_id ASC
+            LIMIT ?
             """;
-        return jdbcTemplate.query(sql, ROW_MAPPER, status);
+        return jdbcTemplate.query(sql, ROW_MAPPER, status, MAX_QUERY_LIMIT);
     }
 
     @Override
@@ -136,8 +140,9 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
             SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
             FROM stock_requests
             WHERE sku = ?
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, request_id DESC
+            LIMIT ?
             """;
-        return jdbcTemplate.query(sql, ROW_MAPPER, sku);
+        return jdbcTemplate.query(sql, ROW_MAPPER, sku, MAX_QUERY_LIMIT);
     }
 }

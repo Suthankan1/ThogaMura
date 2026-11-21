@@ -656,6 +656,51 @@ class StockFulfillmentIntegrationTest {
         assertStockBalances(SyntheticInventoryFixtures.SKU_ITEM_007, 10, 0, 10);
     }
 
+    @Test
+    @Order(12)
+    @DisplayName("12. Large history exceeding 64 KB TCP frame limit returns explicit safe error without connection crash (#60)")
+    void shouldSafelyHandleOversizedQueryHistoryOverTcp() throws Exception {
+        // Bulk insert 450 requests that will exceed 65,536 bytes when serialized together
+        for (int i = 0; i < 450; i++) {
+            UUID reqId = UUID.randomUUID();
+            jdbcTemplate.update("""
+                INSERT INTO stock_requests (
+                    request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'ACCEPTED', 'Bulk synthetic history row to verify frame boundary limits', NOW() - interval '1 second' * ?, NOW())
+                """,
+                reqId,
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                SyntheticInventoryFixtures.SKU_ITEM_007,
+                1,
+                i
+            );
+        }
+
+        // 1. Query unfiltered GET_REQUESTS: Exceeds 64 KB -> returns safe error, connection survives
+        String getReqJson = TcpMessageCodec.formatRequest(
+                ProtocolInfo.COMMAND_GET_REQUESTS,
+                UUID.randomUUID().toString(),
+                null
+        );
+        JsonNode reqResult = sendCommand(tcpPort, getReqJson);
+
+        assertThat(reqResult.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_ERROR);
+        assertThat(reqResult.get("error").get("code").asText()).isEqualTo(ProtocolInfo.ERROR_INTERNAL);
+        assertThat(reqResult.get("error").get("message").asText()).contains("exceeds maximum TCP frame limit");
+
+        // 2. Query filtered GET_REQUESTS for 'PICKED' (0 items) -> fits cleanly in frame, returns ACCEPTED
+        String getFilteredJson = TcpMessageCodec.formatRequest(
+                ProtocolInfo.COMMAND_GET_REQUESTS,
+                UUID.randomUUID().toString(),
+                Map.of("status", "PICKED")
+        );
+        JsonNode filteredResult = sendCommand(tcpPort, getFilteredJson);
+
+        assertThat(filteredResult.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_ACCEPTED);
+        assertThat(filteredResult.get("data").get("requests").isArray()).isTrue();
+        assertThat(filteredResult.get("data").get("requests")).isEmpty();
+    }
+
     private JsonNode sendCommand(int port, String requestJson) throws IOException {
         try (Socket socket = new Socket("127.0.0.1", port);
              TcpFrameWriter writer = new TcpFrameWriter(socket.getOutputStream());

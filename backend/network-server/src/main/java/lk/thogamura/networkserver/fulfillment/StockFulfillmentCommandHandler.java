@@ -9,6 +9,7 @@ import lk.thogamura.protocol.tcp.TcpMessageCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -127,7 +128,17 @@ public class StockFulfillmentCommandHandler implements CommandHandler {
         }
 
         Map<String, Object> resultData = Map.of("requests", requestsList);
-        return TcpMessageCodec.formatResultResponse(commandRequestId.toString(), ProtocolInfo.STATUS_ACCEPTED, resultData);
+        String responseJson = TcpMessageCodec.formatResultResponse(commandRequestId.toString(), ProtocolInfo.STATUS_ACCEPTED, resultData);
+        if (responseJson.getBytes(StandardCharsets.UTF_8).length + 1 > ProtocolInfo.MAX_FRAME_BYTES) {
+            logger.warn("GET_REQUESTS response exceeded maximum frame limit of {} bytes for requestId '{}'",
+                    ProtocolInfo.MAX_FRAME_BYTES, commandRequestId);
+            return TcpMessageCodec.formatErrorResponse(
+                    commandRequestId.toString(),
+                    ProtocolInfo.ERROR_INTERNAL,
+                    "Response size exceeds maximum TCP frame limit of " + ProtocolInfo.MAX_FRAME_BYTES + " bytes"
+            );
+        }
+        return responseJson;
     }
 
     private String handleGetMovements(UUID commandRequestId) {
@@ -147,7 +158,17 @@ public class StockFulfillmentCommandHandler implements CommandHandler {
         }
 
         Map<String, Object> resultData = Map.of("movements", movementList);
-        return TcpMessageCodec.formatResultResponse(commandRequestId.toString(), ProtocolInfo.STATUS_ACCEPTED, resultData);
+        String responseJson = TcpMessageCodec.formatResultResponse(commandRequestId.toString(), ProtocolInfo.STATUS_ACCEPTED, resultData);
+        if (responseJson.getBytes(StandardCharsets.UTF_8).length + 1 > ProtocolInfo.MAX_FRAME_BYTES) {
+            logger.warn("GET_MOVEMENTS response exceeded maximum frame limit of {} bytes for requestId '{}'",
+                    ProtocolInfo.MAX_FRAME_BYTES, commandRequestId);
+            return TcpMessageCodec.formatErrorResponse(
+                    commandRequestId.toString(),
+                    ProtocolInfo.ERROR_INTERNAL,
+                    "Response size exceeds maximum TCP frame limit of " + ProtocolInfo.MAX_FRAME_BYTES + " bytes"
+            );
+        }
+        return responseJson;
     }
 
     private UUID extractStockRequestId(String requestIdStr, JsonNode requestNode) {
