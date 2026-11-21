@@ -18,6 +18,8 @@ import java.util.UUID;
 @Repository
 public class JdbcStockMovementRepository implements StockMovementRepository {
 
+    public static final int MAX_QUERY_LIMIT = 500;
+
     private static final RowMapper<StockMovementRecord> ROW_MAPPER = (rs, rowNum) -> {
         Timestamp occurredTs = rs.getTimestamp("occurred_at");
         return new StockMovementRecord(
@@ -79,7 +81,8 @@ public class JdbcStockMovementRepository implements StockMovementRepository {
             SELECT id, stock_request_id, sku, quantity_delta, reason, occurred_at
             FROM stock_movements
             ORDER BY id ASC
+            LIMIT ?
             """;
-        return jdbcTemplate.query(sql, ROW_MAPPER);
+        return jdbcTemplate.query(sql, ROW_MAPPER, MAX_QUERY_LIMIT);
     }
 }

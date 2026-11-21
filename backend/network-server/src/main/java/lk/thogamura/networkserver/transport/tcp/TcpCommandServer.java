@@ -21,6 +21,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -239,7 +240,20 @@ public class TcpCommandServer {
                     logger.info("Dispatching command '{}' (requestId: '{}') from {}",
                             requestNode.path("type").asText(), requestNode.path("requestId").asText(), clientAddress);
                     String responseJson = dispatcher.dispatch(requestNode);
-                    writer.writeFrame(responseJson);
+                    byte[] payloadBytes = responseJson.getBytes(StandardCharsets.UTF_8);
+                    if (payloadBytes.length + 1 > ProtocolInfo.MAX_FRAME_BYTES) {
+                        logger.warn("Outgoing response for command '{}' (requestId: '{}') exceeded maximum frame limit of {} bytes (actual: {} bytes)",
+                                requestNode.path("type").asText(), requestNode.path("requestId").asText(),
+                                ProtocolInfo.MAX_FRAME_BYTES, payloadBytes.length + 1);
+                        String safeError = TcpMessageCodec.formatErrorResponse(
+                                requestNode.path("requestId").asText(),
+                                ProtocolInfo.ERROR_INTERNAL,
+                                "Response size exceeds maximum TCP frame limit of " + ProtocolInfo.MAX_FRAME_BYTES + " bytes"
+                        );
+                        writer.writeFrame(safeError);
+                    } else {
+                        writer.writeFrame(payloadBytes);
+                    }
                 }
             }
         } catch (IOException e) {
