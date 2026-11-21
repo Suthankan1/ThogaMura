@@ -82,15 +82,17 @@ compose.yaml       # local PostgreSQL development only
 Prerequisites: Java 21, Maven 3.9+, Node.js 22+, Docker Compose.
 
 ```bash
-cp .env.example .env
-# Set a unique local Postgres password in .env.
-docker compose up -d db
-mvn -f backend/pom.xml clean verify
-npm --prefix frontend ci
-npm --prefix frontend run dev
+# Start all components (PostgreSQL, Network Server, Supplier Simulator, API Gateway, Next.js UI):
+./start.sh
+
+# Check component status and live health probes:
+./status.sh
+
+# Stop all background services cleanly:
+./stop.sh
 ```
 
-Next.js application opens at http://localhost:3000. Start PostgreSQL (`docker compose up -d db`), Network Server (`mvn -f backend/pom.xml -pl network-server spring-boot:run`), API Gateway (`mvn -f backend/pom.xml -pl api-gateway spring-boot:run`), and Frontend (`npm --prefix frontend run dev`). For complete architecture and validation status, see [Architecture](docs/ARCHITECTURE.md), [Setup Guide](docs/SETUP.md), and [Validation Status](docs/VALIDATION_STATUS.md).
+Next.js application opens at http://localhost:3000. Alternatively, start services manually: PostgreSQL (`docker compose up -d db`), Network Server (`mvn -f backend/pom.xml -pl network-server spring-boot:run`), API Gateway (`mvn -f backend/pom.xml -pl api-gateway spring-boot:run`), and Frontend (`npm --prefix frontend run dev`). For complete architecture and validation status, see [Architecture](docs/ARCHITECTURE.md), [Setup Guide](docs/SETUP.md), and [Validation Status](docs/VALIDATION_STATUS.md).
 
 ## Group rules
 

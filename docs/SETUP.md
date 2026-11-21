@@ -15,7 +15,25 @@
 3. For each Java process, export `THOGAMURA_DB_URL`, `THOGAMURA_DB_USER` and `THOGAMURA_DB_PASSWORD` **only for the network-server**; gateway must not receive DB credentials.
 4. For Next.js, copy `frontend/.env.example` to `frontend/.env.local`.
 
-## Run database
+## Unified One-Command Orchestration
+
+To start and coordinate all services (PostgreSQL, Central Network Server, Supplier Simulator, API Gateway, and Next.js Web UI) with automatic dependency ordering and health checking:
+
+```bash
+# Start all components:
+./start.sh
+
+# Check live health and process status:
+./start.sh status   # or ./status.sh
+
+# Stop all background processes and containers cleanly:
+./start.sh stop     # or ./stop.sh
+
+# Tail component logs:
+./start.sh logs [server|gateway|frontend|supplier]
+```
+
+## Manual developer workflow
 
 ```bash
 docker compose up -d db
