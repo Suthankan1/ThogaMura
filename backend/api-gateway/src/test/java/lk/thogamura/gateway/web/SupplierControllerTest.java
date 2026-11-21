@@ -186,4 +186,52 @@ class SupplierControllerTest {
                 .andExpect(jsonPath("$.code").value("WAREHOUSE_UNAVAILABLE"))
                 .andExpect(jsonPath("$.message").value("Warehouse server is unreachable. Please verify warehouse connectivity and retry."));
     }
+
+    @Test
+    @DisplayName("Should return 504 Gateway Timeout with SUPPLIER_TIMEOUT when reachable warehouse reports supplier HTTP timeout (#66)")
+    void shouldReturn504WhenSupplierHttpTimeoutReportedByWarehouse() throws Exception {
+        ObjectNode result = OBJECT_MAPPER.createObjectNode();
+        result.put("v", 1);
+        result.put("type", "RESULT");
+        result.put("status", "UNAVAILABLE");
+
+        ObjectNode data = result.putObject("data");
+        data.put("sku", "ITEM-DELAY");
+        data.put("code", ProtocolInfo.ERROR_SUPPLIER_TIMEOUT);
+        data.put("message", "Supplier inquiry timed out");
+
+        given(tcpCommandClient.sendCommand(eq(ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK), eq(Map.of("sku", "ITEM-DELAY"))))
+                .willReturn(result);
+
+        mockMvc.perform(get("/api/v1/suppliers/availability")
+                        .param("sku", "ITEM-DELAY")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isGatewayTimeout())
+                .andExpect(jsonPath("$.code").value("SUPPLIER_TIMEOUT"))
+                .andExpect(jsonPath("$.message").value("Supplier inquiry timed out"));
+    }
+
+    @Test
+    @DisplayName("Should return 502 Bad Gateway with SUPPLIER_UNKNOWN when reachable warehouse reports supplier malformed response (#66)")
+    void shouldReturn502WhenSupplierMalformedReportedByWarehouse() throws Exception {
+        ObjectNode result = OBJECT_MAPPER.createObjectNode();
+        result.put("v", 1);
+        result.put("type", "RESULT");
+        result.put("status", "UNKNOWN");
+
+        ObjectNode data = result.putObject("data");
+        data.put("sku", "ITEM-MALFORMED");
+        data.put("code", ProtocolInfo.ERROR_SUPPLIER_UNKNOWN);
+        data.put("message", "Supplier returned invalid or malformed payload");
+
+        given(tcpCommandClient.sendCommand(eq(ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK), eq(Map.of("sku", "ITEM-MALFORMED"))))
+                .willReturn(result);
+
+        mockMvc.perform(get("/api/v1/suppliers/availability")
+                        .param("sku", "ITEM-MALFORMED")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("SUPPLIER_UNKNOWN"))
+                .andExpect(jsonPath("$.message").value("Supplier returned invalid or malformed payload"));
+    }
 }
