@@ -29,7 +29,6 @@ import java.util.regex.Pattern;
  */
 @RestController
 @RequestMapping("/api/v1")
-@CrossOrigin(origins = "*")
 public class SupplierController {
 
     private static final Logger logger = LoggerFactory.getLogger(SupplierController.class);
@@ -102,25 +101,34 @@ public class SupplierController {
         } catch (ServerUnavailableException e) {
             logger.warn("Warehouse server unavailable when querying supplier for SKU '{}': {}", trimmedSku, e.getMessage());
             Map<String, Object> err = new LinkedHashMap<>();
-            err.put("code", ProtocolInfo.ERROR_SUPPLIER_UNAVAILABLE);
-            err.put("message", "External supplier service is currently unreachable: " + e.getMessage());
+            err.put("code", "WAREHOUSE_UNAVAILABLE");
+            err.put("message", "Warehouse server is unreachable. Please verify warehouse connectivity and retry.");
             err.put("sku", trimmedSku);
+            if (e.getRequestId() != null) {
+                err.put("requestId", e.getRequestId());
+            }
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(err);
 
         } catch (CommandTimeoutException e) {
             logger.warn("Supplier command timed out for SKU '{}': {}", trimmedSku, e.getMessage());
             Map<String, Object> err = new LinkedHashMap<>();
-            err.put("code", ProtocolInfo.ERROR_SUPPLIER_TIMEOUT);
-            err.put("message", "Supplier inquiry timed out");
+            err.put("code", "WAREHOUSE_TIMEOUT");
+            err.put("message", "Warehouse command timed out awaiting response. Please retry.");
             err.put("sku", trimmedSku);
+            if (e.getRequestId() != null) {
+                err.put("requestId", e.getRequestId());
+            }
             return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(err);
 
         } catch (CommandTransportException e) {
             logger.error("Transport error executing GET_SUPPLIER_STOCK for SKU '{}': {}", trimmedSku, e.getMessage(), e);
             Map<String, Object> err = new LinkedHashMap<>();
             err.put("code", ProtocolInfo.ERROR_INTERNAL);
-            err.put("message", "Internal error communicating with warehouse server: " + e.getMessage());
+            err.put("message", "Internal transport error communicating with warehouse server.");
             err.put("sku", trimmedSku);
+            if (e.getRequestId() != null) {
+                err.put("requestId", e.getRequestId());
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
         }
     }

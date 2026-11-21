@@ -10,8 +10,8 @@
 
 | Issue | Title | Priority | Status | Branch / PR | Verification / Evidence |
 |---|---|---|---|---|---|
-| **#61** | [M5][P1] Fail closed for remote plaintext commands and disabled TLS hostname checks | P1 | IN PROGRESS | `fix/m5-fail-closed-remote-plaintext-61` | `TlsClientConfigurationTest` (6/6), `TlsTruststoreHostnameVerificationTest` (5/5), `TlsTcpCommandClientIntegrationTest` (9/9) passing |
-| **#62** | [M5][P1] Restrict gateway CORS and redact internal network errors | P1 | PENDING | | |
+| **#61** | [M5][P1] Fail closed for remote plaintext commands and disabled TLS hostname checks | P1 | CLOSED | PR #71 (Merged `a390354`) | Verified by `TlsClientConfigurationTest` (6/6), `TlsTruststoreHostnameVerificationTest` (5/5), `TlsTcpCommandClientIntegrationTest` (9/9) |
+| **#62** | [M5][P1] Restrict gateway CORS and redact internal network errors | P1 | IN PROGRESS | `feat/m5-restrict-cors-redact-errors-62` | Verified by `GatewayCorsSecurityTest` (5/5), `GatewayExceptionHandlerTest` (6/6), `EventsControllerTest` (4/4), `SupplierControllerTest` (8/8) |
 | **#63** | [M1][P1] Enforce canonical UUID v4 request IDs at TCP boundary | P1 | PENDING | | |
 | **#65** | [M2][P1] Reject mismatched or incomplete supplier HTTP 200 responses | P1 | PENDING | | |
 | **#59** | [M4][P2] Notify branch gateways when a stock request is rejected | P2 | PENDING | | |
@@ -39,4 +39,5 @@
 
 1. Initial audit completed: Verified all 22 open issues, confirmed previous 26 merged PRs, diagnosed Docker daemon requirement for Testcontainers and npm ci for frontend build.
 2. Verified baseline tests: Backend 242/242 tests passing, frontend 7/7 tests passing, tsc/lint/build passing.
-3. Implemented Issue #61: Fail-closed configuration check for remote plaintext destinations and prohibited disabling of TLS hostname verification. Added comprehensive tests in `TlsClientConfigurationTest`.
+3. Implemented Issue #61: Fail-closed configuration check for remote plaintext destinations and prohibited disabling of TLS hostname verification. Added comprehensive tests in `TlsClientConfigurationTest`. PR #71 merged into `main` and Issue #61 closed.
+4. Implemented Issue #62 (and #66 alignment): Restricted gateway CORS to approved frontend origins (`http://localhost:3000`, `http://127.0.0.1:3000`) without wildcard `*`, redacted internal network exceptions/paths/credentials from HTTP error bodies, added centralized exception handling for unhandled exceptions, and accurately separated warehouse outages from supplier outages in `SupplierController`. Verified with 103 passing tests in `api-gateway`.

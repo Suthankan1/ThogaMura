@@ -37,7 +37,7 @@ public class GatewayExceptionHandler {
         logger.warn("Warehouse server unavailable (requestId: '{}'): {}", e.getRequestId(), e.getMessage());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", "WAREHOUSE_UNAVAILABLE");
-        body.put("message", "Warehouse server is unreachable: " + e.getMessage());
+        body.put("message", "Warehouse server is unreachable. Please verify warehouse connectivity and retry.");
         if (e.getRequestId() != null) {
             body.put("requestId", e.getRequestId());
         }
@@ -49,7 +49,7 @@ public class GatewayExceptionHandler {
         logger.warn("Warehouse command timed out (requestId: '{}'): {}", e.getRequestId(), e.getMessage());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", "WAREHOUSE_TIMEOUT");
-        body.put("message", "Command timed out awaiting warehouse response: " + e.getMessage());
+        body.put("message", "Command timed out awaiting warehouse response. Please retry.");
         if (e.getRequestId() != null) {
             body.put("requestId", e.getRequestId());
         }
@@ -62,7 +62,7 @@ public class GatewayExceptionHandler {
                 e.getExpectedRequestId(), e.getReceivedRequestId());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", "CORRELATION_ERROR");
-        body.put("message", e.getMessage());
+        body.put("message", "Invalid or mismatched response received from warehouse server.");
         body.put("expectedRequestId", e.getExpectedRequestId());
         body.put("receivedRequestId", e.getReceivedRequestId());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
@@ -100,10 +100,19 @@ public class GatewayExceptionHandler {
         logger.error("Command transport error (requestId: '{}'): {}", e.getRequestId(), e.getMessage(), e);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", ProtocolInfo.ERROR_INTERNAL);
-        body.put("message", "Internal error communicating with warehouse server: " + e.getMessage());
+        body.put("message", "Internal transport error communicating with warehouse server.");
         if (e.getRequestId() != null) {
             body.put("requestId", e.getRequestId());
         }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGeneralException(Exception e) {
+        logger.error("Unhandled exception processing gateway request: {}", e.getMessage(), e);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", ProtocolInfo.ERROR_INTERNAL);
+        body.put("message", "An unexpected internal error occurred.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

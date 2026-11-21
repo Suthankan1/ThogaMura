@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(EventsController.class)
+@Import(GatewayCorsConfiguration.class)
 class EventsControllerTest {
 
     @Autowired
@@ -44,8 +46,8 @@ class EventsControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/events should support CORS for frontend origin")
-    void shouldAllowCrossOriginRequests() throws Exception {
+    @DisplayName("GET /api/v1/events should support CORS for approved frontend origin")
+    void shouldAllowCrossOriginRequestsForApprovedOrigin() throws Exception {
         SseEmitter emitter = new SseEmitter(0L);
         given(broadcaster.registerEmitter()).willReturn(emitter);
 
@@ -53,7 +55,19 @@ class EventsControllerTest {
                         .header("Origin", "http://localhost:3000")
                         .accept(MediaType.TEXT_EVENT_STREAM_VALUE))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "*"));
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/events should reject or omit CORS headers for untrusted origin")
+    void shouldRejectCORSForUntrustedOrigin() throws Exception {
+        SseEmitter emitter = new SseEmitter(0L);
+        given(broadcaster.registerEmitter()).willReturn(emitter);
+
+        mockMvc.perform(get("/api/v1/events")
+                        .header("Origin", "http://untrusted-origin.evil.com")
+                        .accept(MediaType.TEXT_EVENT_STREAM_VALUE))
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 
     @Test

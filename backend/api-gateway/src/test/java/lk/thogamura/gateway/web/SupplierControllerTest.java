@@ -169,7 +169,8 @@ class SupplierControllerTest {
                         .param("sku", "ITEM-008")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isGatewayTimeout())
-                .andExpect(jsonPath("$.code").value("SUPPLIER_TIMEOUT"));
+                .andExpect(jsonPath("$.code").value("WAREHOUSE_TIMEOUT"))
+                .andExpect(jsonPath("$.message").value("Warehouse command timed out awaiting response. Please retry."));
     }
 
     @Test
@@ -182,6 +183,7 @@ class SupplierControllerTest {
                         .param("sku", "ITEM-008")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.code").value("SUPPLIER_UNAVAILABLE"));
+                .andExpect(jsonPath("$.code").value("WAREHOUSE_UNAVAILABLE"))
+                .andExpect(jsonPath("$.message").value("Warehouse server is unreachable. Please verify warehouse connectivity and retry."));
     }
 }
