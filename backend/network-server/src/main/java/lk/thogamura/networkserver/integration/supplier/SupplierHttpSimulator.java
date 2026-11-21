@@ -64,6 +64,10 @@ public class SupplierHttpSimulator implements AutoCloseable {
     public static final String SKU_SIMULATE_503 = "ITEM-503";
     public static final String SKU_SIMULATE_TIMEOUT = "ITEM-DELAY";
     public static final String SKU_SIMULATE_MALFORMED = "ITEM-MALFORMED";
+    public static final String SKU_SIMULATE_WRONG_SKU = "ITEM-WRONG-SKU";
+    public static final String SKU_SIMULATE_MISSING_SUPPLIER = "ITEM-MISSING-SUPPLIER";
+    public static final String SKU_SIMULATE_BAD_TIMESTAMP = "ITEM-BAD-TIMESTAMP";
+    public static final String SKU_SIMULATE_NEGATIVE_RESTOCK = "ITEM-NEGATIVE-RESTOCK";
 
     private final String host;
     private final int requestedPort;
@@ -305,6 +309,50 @@ public class SupplierHttpSimulator implements AutoCloseable {
                 logger.info("[MOCK_SUPPLIER] Responding with MALFORMED JSON payload for SKU '{}'", sku);
                 byte[] rawBrokenJson = ("{\"sku\":\"" + escapeJson(sku) + "\",\"supplier\":\"" + DEFAULT_SUPPLIER_NAME + "\",\"availableUnits\":[MALFORMED_JSON_PAYLOAD_UNCLOSED").getBytes(StandardCharsets.UTF_8);
                 sendRawResponse(exchange, 200, "application/json; charset=UTF-8", rawBrokenJson);
+                return;
+            }
+
+            // 3b. Mismatched or invalid field simulations for contract verification (Issue #65)
+            if (SKU_SIMULATE_WRONG_SKU.equalsIgnoreCase(sku)) {
+                ObjectNode wrongRoot = OBJECT_MAPPER.createObjectNode();
+                wrongRoot.put("sku", "DIFFERENT-SKU-999");
+                wrongRoot.put("supplier", DEFAULT_SUPPLIER_NAME);
+                wrongRoot.put("availableUnits", 15);
+                wrongRoot.put("estimatedRestockDays", 2);
+                wrongRoot.put("checkedAt", DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+                sendJsonResponse(exchange, 200, wrongRoot);
+                return;
+            }
+
+            if (SKU_SIMULATE_MISSING_SUPPLIER.equalsIgnoreCase(sku)) {
+                ObjectNode missingRoot = OBJECT_MAPPER.createObjectNode();
+                missingRoot.put("sku", sku);
+                missingRoot.put("availableUnits", 10);
+                missingRoot.put("estimatedRestockDays", 2);
+                missingRoot.put("checkedAt", DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+                sendJsonResponse(exchange, 200, missingRoot);
+                return;
+            }
+
+            if (SKU_SIMULATE_BAD_TIMESTAMP.equalsIgnoreCase(sku)) {
+                ObjectNode badTimeRoot = OBJECT_MAPPER.createObjectNode();
+                badTimeRoot.put("sku", sku);
+                badTimeRoot.put("supplier", DEFAULT_SUPPLIER_NAME);
+                badTimeRoot.put("availableUnits", 10);
+                badTimeRoot.put("estimatedRestockDays", 2);
+                badTimeRoot.put("checkedAt", "invalid-non-iso-timestamp");
+                sendJsonResponse(exchange, 200, badTimeRoot);
+                return;
+            }
+
+            if (SKU_SIMULATE_NEGATIVE_RESTOCK.equalsIgnoreCase(sku)) {
+                ObjectNode negRestockRoot = OBJECT_MAPPER.createObjectNode();
+                negRestockRoot.put("sku", sku);
+                negRestockRoot.put("supplier", DEFAULT_SUPPLIER_NAME);
+                negRestockRoot.put("availableUnits", 10);
+                negRestockRoot.put("estimatedRestockDays", -5);
+                negRestockRoot.put("checkedAt", DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+                sendJsonResponse(exchange, 200, negRestockRoot);
                 return;
             }
 

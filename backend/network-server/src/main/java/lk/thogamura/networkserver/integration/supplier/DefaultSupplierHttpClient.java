@@ -163,6 +163,34 @@ public class DefaultSupplierHttpClient implements SupplierHttpClient {
                     );
                 }
 
+                // 1. Validate 'sku' presence and exact equality with requested SKU
+                if (!root.hasNonNull("sku") || !root.get("sku").isTextual() || root.get("sku").asText().isBlank()) {
+                    return SupplierStockResponse.unknown(
+                            sku,
+                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                            "Missing or empty required field 'sku' in supplier response"
+                    );
+                }
+                String responseSku = root.get("sku").asText();
+                if (!sku.equals(responseSku)) {
+                    return SupplierStockResponse.unknown(
+                            sku,
+                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                            "Supplier response SKU mismatch: requested '" + sku + "' but response was for '" + responseSku + "'"
+                    );
+                }
+
+                // 2. Validate 'supplier' presence
+                if (!root.hasNonNull("supplier") || !root.get("supplier").isTextual() || root.get("supplier").asText().isBlank()) {
+                    return SupplierStockResponse.unknown(
+                            sku,
+                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                            "Missing or empty required field 'supplier' in supplier response"
+                    );
+                }
+                String supplier = root.get("supplier").asText();
+
+                // 3. Validate 'availableUnits'
                 if (!root.hasNonNull("availableUnits") || !root.get("availableUnits").isInt()) {
                     return SupplierStockResponse.unknown(
                             sku,
@@ -170,7 +198,6 @@ public class DefaultSupplierHttpClient implements SupplierHttpClient {
                             "Missing or invalid integer field 'availableUnits' in supplier response"
                     );
                 }
-
                 int availableUnits = root.get("availableUnits").asInt();
                 if (availableUnits < 0) {
                     return SupplierStockResponse.unknown(
@@ -180,9 +207,41 @@ public class DefaultSupplierHttpClient implements SupplierHttpClient {
                     );
                 }
 
-                String supplier = root.hasNonNull("supplier") ? root.get("supplier").asText() : "Demo Supplier";
-                int restockDays = root.hasNonNull("estimatedRestockDays") ? root.get("estimatedRestockDays").asInt() : 0;
-                String checkedAt = root.hasNonNull("checkedAt") ? root.get("checkedAt").asText() : Instant.now().toString();
+                // 4. Validate 'estimatedRestockDays'
+                if (!root.hasNonNull("estimatedRestockDays") || !root.get("estimatedRestockDays").isInt()) {
+                    return SupplierStockResponse.unknown(
+                            sku,
+                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                            "Missing or invalid integer field 'estimatedRestockDays' in supplier response"
+                    );
+                }
+                int restockDays = root.get("estimatedRestockDays").asInt();
+                if (restockDays < 0) {
+                    return SupplierStockResponse.unknown(
+                            sku,
+                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                            "Negative 'estimatedRestockDays' reported by supplier: " + restockDays
+                    );
+                }
+
+                // 5. Validate 'checkedAt' as ISO-8601 timestamp
+                if (!root.hasNonNull("checkedAt") || !root.get("checkedAt").isTextual() || root.get("checkedAt").asText().isBlank()) {
+                    return SupplierStockResponse.unknown(
+                            sku,
+                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                            "Missing or empty required field 'checkedAt' in supplier response"
+                    );
+                }
+                String checkedAt = root.get("checkedAt").asText();
+                try {
+                    Instant.parse(checkedAt);
+                } catch (Exception e) {
+                    return SupplierStockResponse.unknown(
+                            sku,
+                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                            "Invalid ISO-8601 timestamp in 'checkedAt' supplier response: " + checkedAt
+                    );
+                }
 
                 return SupplierStockResponse.available(sku, supplier, availableUnits, restockDays, checkedAt);
 
