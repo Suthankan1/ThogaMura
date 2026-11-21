@@ -1,19 +1,23 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { ScaffoldNotice } from "@/components/ScaffoldNotice";
+import { SuppliersClient } from "./SuppliersClient";
 
-export const metadata: Metadata = { title: "Supplier Availability" };
+export const metadata: Metadata = {
+  title: "Advisory Supplier Availability",
+  description: "Query independent supplier HTTP simulator for out-of-stock items via Member 2 Java URL networking.",
+};
 
 export default function SuppliersPage() {
   return (
-    <ScaffoldNotice
-      heading="Advisory supplier availability"
-      purpose="When warehouse stock is unavailable, look up a configured supplier service over Java HTTP/URL networking. Supplier results are informational and cannot reserve central warehouse stock."
-      plannedFeatures={[
-        "Query a product SKU through the Spring Boot gateway and the independent supplier HTTP service",
-        "Show supplier-reported quantity, source and check timestamp only when verified",
-        "Distinguish unavailable supplier, unknown stock, timeouts and invalid responses",
-        "No automatic purchases or stock adjustments",
-      ]}
-    />
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-3xl animate-pulse space-y-4 p-8">
+          <div className="h-8 w-48 rounded-lg bg-slate-200" />
+          <div className="h-64 rounded-xl border border-slate-200 bg-slate-100" />
+        </div>
+      }
+    >
+      <SuppliersClient />
+    </Suspense>
   );
 }

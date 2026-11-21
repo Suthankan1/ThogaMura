@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { ScaffoldNotice } from "@/components/ScaffoldNotice";
+import { WarehouseQueueClient } from "./WarehouseQueueClient";
 
-export const metadata: Metadata = { title: "Warehouse queue" };
+export const metadata: Metadata = {
+  title: "Warehouse Fulfillment Queue",
+  description: "Picker queue executing verified state transitions from ACCEPTED to PICKED to DISPATCHED.",
+};
 
 export default function WarehousePage() {
-  return <ScaffoldNotice
-    heading="Warehouse fulfilment"
-    purpose="Picker reviews accepted stock requests, marks PICKED then DISPATCHED."
-    plannedFeatures={["Accessible queue grouped by status", "Explicit server-confirmed state transitions", "Double-dispatch protection and visible errors"]}
-  />;
+  return <WarehouseQueueClient />;
 }

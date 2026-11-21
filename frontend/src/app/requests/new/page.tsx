@@ -1,12 +1,23 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { ScaffoldNotice } from "@/components/ScaffoldNotice";
+import { NewRequestClient } from "./NewRequestClient";
 
-export const metadata: Metadata = { title: "New stock request" };
+export const metadata: Metadata = {
+  title: "New Stock Request",
+  description: "Submit an atomic, idempotent stock reservation request to the warehouse network server.",
+};
 
 export default function NewRequestPage() {
-  return <ScaffoldNotice
-    heading="Create a stock request"
-    purpose="Request one SKU and positive quantity; only show success after server confirmation."
-    plannedFeatures={["Required SKU and quantity with accessible validation", "One UUID per logical submission, reused for safe retries", "Confirmed ACCEPTED / REJECTED feedback; no optimistic stock mutation"]}
-  />;
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-2xl animate-pulse space-y-4 p-8">
+          <div className="h-8 w-48 rounded-lg bg-slate-200" />
+          <div className="h-64 rounded-xl border border-slate-200 bg-slate-100" />
+        </div>
+      }
+    >
+      <NewRequestClient />
+    </Suspense>
+  );
 }
