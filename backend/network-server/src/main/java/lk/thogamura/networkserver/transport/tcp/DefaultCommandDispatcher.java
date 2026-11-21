@@ -6,6 +6,8 @@ import lk.thogamura.networkserver.fulfillment.StockFulfillmentService;
 import lk.thogamura.networkserver.integration.supplier.SupplierCommandHandler;
 import lk.thogamura.networkserver.inventory.StockReservationCommandHandler;
 import lk.thogamura.networkserver.inventory.StockReservationService;
+import lk.thogamura.networkserver.persistence.ProductStock;
+import lk.thogamura.networkserver.persistence.ProductStockRepository;
 import lk.thogamura.protocol.ProtocolInfo;
 import lk.thogamura.protocol.tcp.TcpMessageCodec;
 import org.slf4j.Logger;
@@ -13,9 +15,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -32,37 +39,59 @@ public class DefaultCommandDispatcher implements CommandDispatcher {
     private static final Logger logger = LoggerFactory.getLogger(DefaultCommandDispatcher.class);
 
     private final Map<String, CommandHandler> handlers = new ConcurrentHashMap<>();
+    private final ProductStockRepository productStockRepository;
 
     public DefaultCommandDispatcher() {
-        this((StockReservationService) null, (SupplierCommandHandler) null, (StockFulfillmentService) null);
+        this((StockReservationService) null, (SupplierCommandHandler) null, (StockFulfillmentService) null, (ProductStockRepository) null);
     }
 
     public DefaultCommandDispatcher(SupplierCommandHandler supplierCommandHandler) {
-        this((StockReservationService) null, supplierCommandHandler, (StockFulfillmentService) null);
+        this((StockReservationService) null, supplierCommandHandler, (StockFulfillmentService) null, (ProductStockRepository) null);
     }
 
     public DefaultCommandDispatcher(StockReservationService stockReservationService) {
-        this(stockReservationService, (SupplierCommandHandler) null, (StockFulfillmentService) null);
+        this(stockReservationService, (SupplierCommandHandler) null, (StockFulfillmentService) null, (ProductStockRepository) null);
     }
 
     public DefaultCommandDispatcher(StockReservationCommandHandler reservationHandler) {
-        this(reservationHandler, (SupplierCommandHandler) null, (StockFulfillmentService) null);
+        this(reservationHandler, (SupplierCommandHandler) null, (StockFulfillmentService) null, (ProductStockRepository) null);
     }
 
     public DefaultCommandDispatcher(StockReservationService stockReservationService, StockFulfillmentService stockFulfillmentService) {
-        this(stockReservationService, (SupplierCommandHandler) null, stockFulfillmentService);
+        this(stockReservationService, (SupplierCommandHandler) null, stockFulfillmentService, (ProductStockRepository) null);
     }
 
     public DefaultCommandDispatcher(
             StockReservationCommandHandler reservationHandler,
             SupplierCommandHandler supplierCommandHandler) {
-        this(reservationHandler, supplierCommandHandler, (StockFulfillmentService) null);
+        this(reservationHandler, supplierCommandHandler, (StockFulfillmentService) null, (ProductStockRepository) null);
     }
 
     public DefaultCommandDispatcher(
             StockReservationCommandHandler reservationHandler,
             SupplierCommandHandler supplierCommandHandler,
             StockFulfillmentService stockFulfillmentService) {
+        this(reservationHandler, supplierCommandHandler, stockFulfillmentService, (ProductStockRepository) null);
+    }
+
+    public DefaultCommandDispatcher(
+            StockReservationService stockReservationService,
+            SupplierCommandHandler supplierCommandHandler,
+            StockFulfillmentService stockFulfillmentService) {
+        this(
+                stockReservationService != null ? new StockReservationCommandHandler(stockReservationService) : null,
+                supplierCommandHandler,
+                stockFulfillmentService,
+                (ProductStockRepository) null
+        );
+    }
+
+    public DefaultCommandDispatcher(
+            StockReservationCommandHandler reservationHandler,
+            SupplierCommandHandler supplierCommandHandler,
+            StockFulfillmentService stockFulfillmentService,
+            ProductStockRepository productStockRepository) {
+        this.productStockRepository = productStockRepository;
         registerHandler(ProtocolInfo.COMMAND_PING, this::handlePing);
         if (reservationHandler != null) {
             registerHandler(ProtocolInfo.COMMAND_REQUEST_STOCK, reservationHandler);
@@ -80,30 +109,24 @@ public class DefaultCommandDispatcher implements CommandDispatcher {
             registerHandler(ProtocolInfo.COMMAND_GET_MOVEMENTS, fulfillmentHandler);
             logger.info("Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'");
         }
+        if (productStockRepository != null) {
+            registerHandler(ProtocolInfo.COMMAND_GET_PRODUCTS, this::handleGetProducts);
+            logger.info("Registered command handler for '{}'", ProtocolInfo.COMMAND_GET_PRODUCTS);
+        }
     }
 
     @Autowired
     public DefaultCommandDispatcher(
             @Autowired(required = false) StockReservationService stockReservationService,
             @Autowired(required = false) SupplierCommandHandler supplierCommandHandler,
-            @Autowired(required = false) StockFulfillmentService stockFulfillmentService) {
-        registerHandler(ProtocolInfo.COMMAND_PING, this::handlePing);
-        if (stockReservationService != null) {
-            registerHandler(ProtocolInfo.COMMAND_REQUEST_STOCK, new StockReservationCommandHandler(stockReservationService));
-            logger.info("Registered command handler for '{}'", ProtocolInfo.COMMAND_REQUEST_STOCK);
-        }
-        if (supplierCommandHandler != null) {
-            registerHandler(ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK, supplierCommandHandler);
-            logger.info("Registered command handler for '{}'", ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK);
-        }
-        if (stockFulfillmentService != null) {
-            StockFulfillmentCommandHandler fulfillmentHandler = new StockFulfillmentCommandHandler(stockFulfillmentService);
-            registerHandler(ProtocolInfo.COMMAND_MARK_PICKED, fulfillmentHandler);
-            registerHandler(ProtocolInfo.COMMAND_MARK_DISPATCHED, fulfillmentHandler);
-            registerHandler(ProtocolInfo.COMMAND_GET_REQUESTS, fulfillmentHandler);
-            registerHandler(ProtocolInfo.COMMAND_GET_MOVEMENTS, fulfillmentHandler);
-            logger.info("Registered fulfillment command handlers for 'MARK_PICKED', 'MARK_DISPATCHED', 'GET_REQUESTS', 'GET_MOVEMENTS'");
-        }
+            @Autowired(required = false) StockFulfillmentService stockFulfillmentService,
+            @Autowired(required = false) ProductStockRepository productStockRepository) {
+        this(
+                stockReservationService != null ? new StockReservationCommandHandler(stockReservationService) : null,
+                supplierCommandHandler,
+                stockFulfillmentService,
+                productStockRepository
+        );
     }
 
     /**
@@ -154,5 +177,30 @@ public class DefaultCommandDispatcher implements CommandDispatcher {
                 ProtocolInfo.STATUS_PONG,
                 Map.of("serverTime", serverTime)
         );
+    }
+
+    private String handleGetProducts(JsonNode requestNode) {
+        String requestId = requestNode.hasNonNull("requestId") ? requestNode.get("requestId").asText() : UUID.randomUUID().toString();
+        List<ProductStock> stocks = (productStockRepository != null) ? productStockRepository.findAll() : List.of();
+        List<Map<String, Object>> productList = new ArrayList<>(stocks.size());
+        for (ProductStock ps : stocks) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("sku", ps.sku());
+            map.put("name", ps.name());
+            map.put("onHand", ps.onHand());
+            map.put("reserved", ps.reserved());
+            map.put("available", ps.available());
+            productList.add(map);
+        }
+        String response = TcpMessageCodec.formatResultResponse(requestId, ProtocolInfo.STATUS_ACCEPTED, Map.of("products", productList));
+        if (response.getBytes(StandardCharsets.UTF_8).length > ProtocolInfo.MAX_FRAME_BYTES) {
+            logger.error("GET_PRODUCTS payload exceeds maximum frame bytes limit (65536) for requestId: '{}'", requestId);
+            return TcpMessageCodec.formatErrorResponse(
+                    requestId,
+                    ProtocolInfo.ERROR_INTERNAL,
+                    "Product inventory query results exceed maximum wire frame capacity"
+            );
+        }
+        return response;
     }
 }
