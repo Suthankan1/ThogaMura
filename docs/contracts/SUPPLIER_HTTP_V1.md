@@ -3,7 +3,7 @@
 - **Status:** **FROZEN** (2026-11-18)
 - **Owner:** Member 2 (@sandunikarunarathna — Supplier HTTP Integration)
 - **Assessed Concept:** Java `java.net.URI`, `java.net.URL`, `HttpURLConnection` / `HttpsURLConnection`, DNS resolution, and HTTP status handling.
-- **Reference Contracts:** [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md), [HTTP_API_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/HTTP_API_V1.md)
+- **Reference Contracts:** [NETWORK_PROTOCOL_V1.md](./NETWORK_PROTOCOL_V1.md), [HTTP_API_V1.md](./HTTP_API_V1.md)
 
 ---
 

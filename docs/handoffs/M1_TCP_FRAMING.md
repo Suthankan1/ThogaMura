@@ -5,7 +5,7 @@
 - **Module:** `backend/protocol` (`lk.thogamura.protocol.tcp`)
 - **Status:** Complete (Verified with unit and real-socket integration tests)
 - **Reference Issue:** [#6 — [M1][W1] Implement bounded UTF-8 newline JSON TCP framing](https://github.com/Suthankan1/ThogaMura/issues/6)
-- **Contract:** [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md) (v1.0.0 Frozen)
+- **Contract:** [NETWORK_PROTOCOL_V1.md](../contracts/NETWORK_PROTOCOL_V1.md) (v1.0.0 Frozen)
 
 ---
 

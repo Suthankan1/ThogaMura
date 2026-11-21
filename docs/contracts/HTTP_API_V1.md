@@ -3,7 +3,7 @@
 - **Status:** **FROZEN** (2026-11-18)
 - **Owners:** Member 2 (@sandunikarunarathna — UI / REST) & Member 1 (@sankharavindu — TCP Gateway Adapter)
 - **Base URL:** `http://localhost:8080/api/v1` (Next.js proxies via `/api/v1/:path*`)
-- **Reference Contracts:** [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md), [SUPPLIER_HTTP_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/SUPPLIER_HTTP_V1.md)
+- **Reference Contracts:** [NETWORK_PROTOCOL_V1.md](./NETWORK_PROTOCOL_V1.md), [SUPPLIER_HTTP_V1.md](./SUPPLIER_HTTP_V1.md)
 
 ---
 

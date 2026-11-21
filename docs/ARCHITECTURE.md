@@ -4,7 +4,7 @@
 
 1. **Branch machine:** Next.js browser UI (`frontend/`, port 3000) and Spring Boot API gateway (`backend/api-gateway/`, port 8080). Gateway exposes REST/SSE, holds configured warehouse host, and uses **Java TLS/TCP** to communicate with central server. It never accesses PostgreSQL directly.
 2. **Warehouse machine:** Spring Boot **Java network server** (`backend/network-server/`), custom `java.net` TLS/TCP listener, NIO selector change feed, bounded worker pool, stock persistence in PostgreSQL. No duplicate REST write path.
-3. **Supplier availability simulator:** separate lightweight HTTP process (planned; not yet implemented), configured URL, used by Member 2's central Java `HttpURLConnection` client for mock data. A real integration requires supplier API access and credentials not provided by this coursework.
+3. **Supplier availability simulator:** separate lightweight HTTP process (`lk.thogamura.networkserver.integration.supplier.SupplierSimulatorServer`), running on configurable port (default 8090) with an allowlisted URL, queried by Member 2's central Java `HttpURLConnection` client (`DefaultSupplierStockClient`) for advisory stock availability. Timeouts, 503 errors, and invalid JSON return structured UNAVAILABLE/UNKNOWN without mutating warehouse stock.
 
 This boundary is justified by **actual branch-to-warehouse process/machine separation**, not by claiming a raw TCP protocol is superior to HTTP.
 

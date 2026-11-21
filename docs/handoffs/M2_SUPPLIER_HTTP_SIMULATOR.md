@@ -5,7 +5,7 @@
 - **Module:** `backend/network-server` (`lk.thogamura.networkserver.integration.supplier`)
 - **Status:** Complete (Verified with unit, real-socket, and multi-process integration tests)
 - **Reference Issue:** [#31 — [M2][W3] Build independent supplier HTTP simulator for real network tests](https://github.com/Suthankan1/ThogaMura/issues/31)
-- **Contract:** [SUPPLIER_HTTP_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/SUPPLIER_HTTP_V1.md) (v1.0.0 Frozen)
+- **Contract:** [SUPPLIER_HTTP_V1.md](../contracts/SUPPLIER_HTTP_V1.md) (v1.0.0 Frozen)
 - **Receiving Task:** [#32 — [M2][W3] Implement Java URI/HttpURLConnection supplier availability connector](https://github.com/Suthankan1/ThogaMura/issues/32)
 
 ---

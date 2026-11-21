@@ -6,7 +6,7 @@
 - **Status:** Complete (Verified with JDK 21+ JSSE and standard Java `keytool`)
 - **Reference Issue:** [#5 — [M5][W1] Define local TLS certificate and truststore workflow](https://github.com/Suthankan1/ThogaMura/issues/5)
 - **Pull Request:** [PR #47 — docs(m5): establish TLS certificate and truststore workflow](https://github.com/Suthankan1/ThogaMura/pull/47)
-- **Governing Contracts:** [ADR-004 (TLS Identity Policy)](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md#8-tls--transport-security-specification-port-7443), [SECURITY_AND_LIMITATIONS.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/SECURITY_AND_LIMITATIONS.md)
+- **Governing Contracts:** [ADR-004 (TLS Identity Policy)](../decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [NETWORK_PROTOCOL_V1.md](../contracts/NETWORK_PROTOCOL_V1.md#8-tls--transport-security-specification-port-7443), [SECURITY_AND_LIMITATIONS.md](../SECURITY_AND_LIMITATIONS.md)
 
 ---
 

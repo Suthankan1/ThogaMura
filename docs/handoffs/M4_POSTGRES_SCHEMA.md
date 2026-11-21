@@ -5,7 +5,7 @@
 - **Module:** `backend/network-server` (`lk.thogamura.networkserver.persistence`, `lk.thogamura.networkserver.inventory`)
 - **Status:** Complete (Verified with real PostgreSQL 17)
 - **Reference Issue:** [#8 — [M4][W1] Verify PostgreSQL schema, constraints and synthetic seed data](https://github.com/Suthankan1/ThogaMura/issues/8)
-- **Contracts:** [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md) & [V1__initial_schema.sql](file:///Users/suthankan/Desktop/Projects/ThogaMura/backend/network-server/src/main/resources/db/migration/V1__initial_schema.sql)
+- **Contracts:** [NETWORK_PROTOCOL_V1.md](../contracts/NETWORK_PROTOCOL_V1.md) & [V1__initial_schema.sql](../../backend/network-server/src/main/resources/db/migration/V1__initial_schema.sql)
 
 ---
 

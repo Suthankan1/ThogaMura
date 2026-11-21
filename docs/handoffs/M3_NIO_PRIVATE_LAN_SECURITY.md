@@ -145,7 +145,7 @@ nc -zv -w 2 192.168.1.10 7444
 
 ## 5. Automated Test Suite Results
 
-Test class: [`NioPrivateNetworkSecurityTest.java`](file:///Users/suthankan/Desktop/Projects/ThogaMura/backend/network-server/src/test/java/lk/thogamura/networkserver/notifications/NioPrivateNetworkSecurityTest.java)
+Test class: [`NioPrivateNetworkSecurityTest.java`](../../backend/network-server/src/test/java/lk/thogamura/networkserver/notifications/NioPrivateNetworkSecurityTest.java)
 
 | Test ID | Method | Verified Behavior |
 | :--- | :--- | :--- |
@@ -160,7 +160,7 @@ Test class: [`NioPrivateNetworkSecurityTest.java`](file:///Users/suthankan/Deskt
 
 Full reactor execution:
 - Total tests: **78 / 78** passing (35 in `network-server`, 43 in `api-gateway`).
-- Evidence file: [`reports/evidence/m3_nio_private_lan.txt`](file:///Users/suthankan/Desktop/Projects/ThogaMura/reports/evidence/m3_nio_private_lan.txt).
+- Evidence file: [`reports/evidence/m3_nio_private_lan.txt`](../../reports/evidence/m3_nio_private_lan.txt).
 
 ---
 

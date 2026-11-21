@@ -6,8 +6,8 @@
 - **Status:** Complete (Fully verified with real Java TCP sockets, Java NIO notification server, and real PostgreSQL 17)
 - **Reference Issue:** [#10 — [M4][W2] Atomic stock reservation with durable command receipts](https://github.com/Suthankan1/ThogaMura/issues/10) (Refs #10)
 - **Related PRs:** PR #49 (Slice 10a: core transactions), PR #48 (Member 1: TCP transport)
-- **Contracts:** [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md), [BACKEND_PLAN.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/BACKEND_PLAN.md)
-- **Primary Evidence File:** [reports/evidence/m4_atomic_reservation_evidence.txt](file:///Users/suthankan/Desktop/Projects/ThogaMura/reports/evidence/m4_atomic_reservation_evidence.txt)
+- **Contracts:** [NETWORK_PROTOCOL_V1.md](../contracts/NETWORK_PROTOCOL_V1.md), [BACKEND_PLAN.md](../BACKEND_PLAN.md)
+- **Primary Evidence File:** [reports/evidence/m4_atomic_reservation_evidence.txt](../../reports/evidence/m4_atomic_reservation_evidence.txt)
 
 ---
 

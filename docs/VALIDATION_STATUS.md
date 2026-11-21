@@ -58,3 +58,45 @@ Environment validation executed by @Yasiru-ruwantha (Member 4 — PostgreSQL Tra
 7. Only after those checks start Member 1's real socket implementation.
 
 Do not interpret a successful frontend build or gateway metadata test as evidence that networking has been implemented.
+
+---
+
+## Current Implementation & Verification Status — 2026-11-22
+
+The project has advanced from the initial starter scaffold into a fully integrated, verified multi-module application implementing all five distinct Java networking and concurrency concepts across separate processes.
+
+### 1. Five Individually Owned Networking Concepts
+
+| Member | Technical Domain | Implementation Components | Key Verification Tests | Status |
+| --- | --- | --- | --- | --- |
+| **M1** | Java TCP Sockets & Framing | `TcpFrameReader`, `TcpFrameWriter`, `TcpMessageCodec`, `FrameDeadlineInputStream`, `TcpCommandServer`, `TcpCommandClient` | `TcpSocketNetworkFramingTest` (6), `SeparateProcessTcpCommandIntegrationTest` (6), `TcpCommandServerTest` (12), `TcpCommandClientIntegrationTest` (7) | **Verified** |
+| **M2** | Java URI/URL HTTP Supplier Client | `DefaultSupplierStockClient`, `SupplierSimulatorServer`, `SupplierCommandHandler`, `SupplierController` | `SupplierHttpClientIntegrationTest` (10), `SupplierSimulatorServerTest` (7), `SupplierControllerTest` (6) | **Verified** |
+| **M3** | Java NIO Channels & Selectors | `NioNotificationServer`, `NioNotificationSubscriber`, `NioFrameDecoder`, `SseNotificationBridge` | `NioNotificationServerIntegrationTest` (8), `NioPrivateNetworkSecurityTest` (4), `NotificationFrameDecoderTest` (7), `NioGatewayClientIntegrationTest` (6) | **Verified** |
+| **M4** | PostgreSQL Transactions & Concurrency | `DefaultStockReservationService`, `DefaultStockFulfillmentService`, `JdbcStockRequestRepository`, Flyway migrations `V1` & `V2` | `AtomicStockReservationIntegrationTest` (8), `StockFulfillmentIntegrationTest` (12), `TcpAtomicReservationSocketIntegrationTest` (7), `InventoryWorkerPoolTest` (5) | **Verified** |
+| **M5** | JSSE TLS & Network Security | `TlsServerSocketFactory`, `TlsSocketFactory`, `NetworkSecurityProperties`, `NetworkStatusController` | `TlsTcpCommandServerIntegrationTest` (8), `TlsTcpCommandClientIntegrationTest` (10), `NetworkStatusControllerTest` (9), `CorsAndSecurityHeadersFilterTest` (5) | **Verified** |
+
+### 2. Frontend Next.js Client Implementation
+
+The Next.js frontend has transitioned from placeholder notice banners to interactive client components backed by the Spring Boot API Gateway:
+- **Products Catalog (`/products`):** Live stock levels, visual health indicators, and real-time SSE cache invalidation via `useStockEvents`.
+- **Stock Request Form (`/requests/new`):** Canonical UUID v4 idempotency key generated once and preserved across retries, atomic reservation response handling.
+- **Request Lifecycle Filter (`/requests`):** Filter by `ACCEPTED`, `REJECTED`, `PICKED`, and `DISPATCHED` states with full decision audit reasons.
+- **Warehouse Queue (`/warehouse`):** Picker/dispatch action queue with transitions from `ACCEPTED -> PICKED -> DISPATCHED` and double-dispatch prevention.
+- **Advisory Supplier Inquiry (`/suppliers`):** Real-time lookup against the mock supplier simulator returning `AVAILABLE`, `CONFIRMED ZERO`, `UNKNOWN`, or outage status without mutating local warehouse stock.
+- **Frontend Automated Verification:** 16 unit tests across 3 suites (`tests/routeDiscovery.test.ts`, `tests/networkStatusUx.test.ts`, `tests/inventoryUx.test.ts`) passing via `node --experimental-strip-types --test`. Zero ESLint warnings, clean TypeScript compilation, and successful Next.js production build (`npm run build`).
+
+### 3. Security, Hardening & Contract Invariants Verified
+
+- **Canonical UUID v4 Validation (#63):** Rejects invalid characters, non-hexadecimal symbols, and incorrect length across all endpoints.
+- **Slow-Trickle TCP Frame Deadline (#64):** `FrameDeadlineInputStream` enforces total elapsed byte-delivery deadline, preventing connection exhaustion attacks.
+- **Bounded Responses (#60):** PostgreSQL queries for request and movement history enforce bounded record limits, ensuring serialized JSON frames never exceed 65,536 bytes.
+- **Monotonic Version Sequence (#67):** Flyway `V2__change_version_sequence.sql` creates PostgreSQL sequence `warehouse_change_version_seq` guaranteeing monotonic change hints across central server restarts.
+- **Strict Supplier Validation & Failure Classification (#65, #66):** Rejects payload mismatches, timestamps within 5-minute drift, and distinct classification between central warehouse outages (`HTTP 503 WAREHOUSE_UNAVAILABLE`) and supplier outages (`HTTP 502 SUPPLIER_UNAVAILABLE`).
+- **Truthful TLS Diagnostics (#70):** Gateway health diagnostic verifies live TLS socket handshake with the central server, distinguishing `OPERATIONAL`, `UNREACHABLE`, `MISCONFIGURED`, and `DISABLED` without leaking credentials or internal file paths.
+
+### 4. Remaining Delivery Tasks
+
+The remaining open issues represent human demonstration and final coursework packaging activities:
+- **Issue #2:** Formal lecturer proposal and architecture sign-off (academic procedure).
+- **Issue #27:** Full two-machine physical LAN demonstration following `docs/DEMO_SCRIPT.md`.
+- **Issue #28:** Compilation of the final coursework PDF report and Moodle submission bundle.

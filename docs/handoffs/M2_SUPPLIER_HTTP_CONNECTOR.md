@@ -9,9 +9,9 @@
 - **Status:** Complete (Verified with unit tests, wire-level mock tests, gateway controller tests, and multi-tier end-to-end integration tests)
 - **Reference Issue:** [#32 — [M2][W3] Implement Java URI/HttpURLConnection supplier availability connector](https://github.com/Suthankan1/ThogaMura/issues/32)
 - **Contracts:**
-  - [SUPPLIER_HTTP_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/SUPPLIER_HTTP_V1.md) (v1.0.0 Frozen)
-  - [NETWORK_PROTOCOL_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/NETWORK_PROTOCOL_V1.md) (v1.0.0 Frozen)
-  - [HTTP_API_V1.md](file:///Users/suthankan/Desktop/Projects/ThogaMura/docs/contracts/HTTP_API_V1.md) (v1.0.0 Frozen)
+  - [SUPPLIER_HTTP_V1.md](../contracts/SUPPLIER_HTTP_V1.md) (v1.0.0 Frozen)
+  - [NETWORK_PROTOCOL_V1.md](../contracts/NETWORK_PROTOCOL_V1.md) (v1.0.0 Frozen)
+  - [HTTP_API_V1.md](../contracts/HTTP_API_V1.md) (v1.0.0 Frozen)
 - **Preceding Task:** [#31 — [M2][W3] Build independent supplier HTTP simulator for real network tests](https://github.com/Suthankan1/ThogaMura/issues/31) (PR #46)
 - **Receiving Task:** Issue #30 — Supplier failure handling in the frontend (after Issue #13 is ready)
 
