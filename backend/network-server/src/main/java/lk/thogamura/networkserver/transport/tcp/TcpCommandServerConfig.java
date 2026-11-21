@@ -16,10 +16,13 @@ import java.util.Objects;
  */
 public class TcpCommandServerConfig {
 
+    public static final int DEFAULT_FRAME_DEADLINE_MS = 10000;
+
     private final String host;
     private final int port;
     private final int backlog;
     private final int readTimeoutMs;
+    private final int frameDeadlineMs;
     private final int maxClients;
     private final int maxFrameBytes;
     private final boolean allowNonLoopbackPlaintext;
@@ -30,6 +33,7 @@ public class TcpCommandServerConfig {
             int port,
             int backlog,
             int readTimeoutMs,
+            int frameDeadlineMs,
             int maxClients,
             int maxFrameBytes,
             boolean allowNonLoopbackPlaintext,
@@ -38,10 +42,23 @@ public class TcpCommandServerConfig {
         this.port = port;
         this.backlog = backlog > 0 ? backlog : 50;
         this.readTimeoutMs = readTimeoutMs >= 0 ? readTimeoutMs : ProtocolInfo.DEFAULT_READ_TIMEOUT_MS;
+        this.frameDeadlineMs = frameDeadlineMs > 0 ? frameDeadlineMs : Math.max(this.readTimeoutMs * 2, DEFAULT_FRAME_DEADLINE_MS);
         this.maxClients = maxClients > 0 ? maxClients : 50;
         this.maxFrameBytes = maxFrameBytes > 0 ? maxFrameBytes : ProtocolInfo.MAX_FRAME_BYTES;
         this.allowNonLoopbackPlaintext = allowNonLoopbackPlaintext;
         this.tlsEnabled = tlsEnabled;
+    }
+
+    public TcpCommandServerConfig(
+            String host,
+            int port,
+            int backlog,
+            int readTimeoutMs,
+            int maxClients,
+            int maxFrameBytes,
+            boolean allowNonLoopbackPlaintext,
+            boolean tlsEnabled) {
+        this(host, port, backlog, readTimeoutMs, Math.max(readTimeoutMs * 2, DEFAULT_FRAME_DEADLINE_MS), maxClients, maxFrameBytes, allowNonLoopbackPlaintext, tlsEnabled);
     }
 
     public TcpCommandServerConfig(
@@ -72,6 +89,9 @@ public class TcpCommandServerConfig {
         }
         if (readTimeoutMs < 0) {
             throw new IllegalArgumentException("readTimeoutMs must be non-negative: " + readTimeoutMs);
+        }
+        if (frameDeadlineMs <= 0) {
+            throw new IllegalArgumentException("frameDeadlineMs must be positive: " + frameDeadlineMs);
         }
         if (maxClients <= 0) {
             throw new IllegalArgumentException("maxClients must be positive: " + maxClients);
@@ -110,6 +130,10 @@ public class TcpCommandServerConfig {
         return readTimeoutMs;
     }
 
+    public int getFrameDeadlineMs() {
+        return frameDeadlineMs;
+    }
+
     public int getMaxClients() {
         return maxClients;
     }
@@ -133,6 +157,7 @@ public class TcpCommandServerConfig {
         return port == that.port &&
                 backlog == that.backlog &&
                 readTimeoutMs == that.readTimeoutMs &&
+                frameDeadlineMs == that.frameDeadlineMs &&
                 maxClients == that.maxClients &&
                 maxFrameBytes == that.maxFrameBytes &&
                 allowNonLoopbackPlaintext == that.allowNonLoopbackPlaintext &&
@@ -142,7 +167,7 @@ public class TcpCommandServerConfig {
 
     @Override
     public int hashCode() {
-        return Objects.hash(host, port, backlog, readTimeoutMs, maxClients, maxFrameBytes, allowNonLoopbackPlaintext, tlsEnabled);
+        return Objects.hash(host, port, backlog, readTimeoutMs, frameDeadlineMs, maxClients, maxFrameBytes, allowNonLoopbackPlaintext, tlsEnabled);
     }
 
     @Override
@@ -152,6 +177,7 @@ public class TcpCommandServerConfig {
                 ", port=" + port +
                 ", backlog=" + backlog +
                 ", readTimeoutMs=" + readTimeoutMs +
+                ", frameDeadlineMs=" + frameDeadlineMs +
                 ", maxClients=" + maxClients +
                 ", maxFrameBytes=" + maxFrameBytes +
                 ", allowNonLoopbackPlaintext=" + allowNonLoopbackPlaintext +

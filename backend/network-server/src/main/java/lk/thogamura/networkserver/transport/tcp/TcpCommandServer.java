@@ -168,7 +168,10 @@ public class TcpCommandServer {
             }
 
             try (socket;
-                 InputStream in = socket.getInputStream();
+                 InputStream rawIn = socket.getInputStream();
+                 FrameDeadlineInputStream in = new FrameDeadlineInputStream(
+                         rawIn, socket, config.getReadTimeoutMs(), config.getFrameDeadlineMs()
+                 );
                  OutputStream out = socket.getOutputStream();
                  TcpFrameReader reader = new TcpFrameReader(in, config.getMaxFrameBytes());
                  TcpFrameWriter writer = new TcpFrameWriter(out, config.getMaxFrameBytes())) {
