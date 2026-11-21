@@ -8,8 +8,15 @@ import lk.thogamura.gateway.network.tcp.ServerUnavailableException;
 import lk.thogamura.protocol.ProtocolInfo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Map;
 
@@ -87,6 +94,65 @@ class GatewayExceptionHandlerTest {
         assertThat(res.getBody()).containsEntry("code", ProtocolInfo.ERROR_INTERNAL);
         assertThat((String) res.getBody().get("message")).doesNotContain("/var/data/key.pem");
         assertThat((String) res.getBody().get("message")).contains("Internal transport error communicating with warehouse server");
+    }
+
+    @Test
+    @DisplayName("Should map HttpMessageNotReadableException to 400 Bad Request with VALIDATION_ERROR")
+    void shouldMapHttpMessageNotReadableTo400() {
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException(
+                "JSON parse error", new MockHttpInputMessage("invalid json".getBytes())
+        );
+        ResponseEntity<Map<String, Object>> res = handler.handleMessageNotReadable(ex);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(res.getBody()).containsEntry("code", ProtocolInfo.ERROR_VALIDATION);
+        assertThat((String) res.getBody().get("message")).contains("Malformed JSON request body");
+    }
+
+    @Test
+    @DisplayName("Should map MissingRequestHeaderException to 400 Bad Request with MISSING_HEADER")
+    void shouldMapMissingHeaderTo400() throws Exception {
+        java.lang.reflect.Method method = getClass().getDeclaredMethod("shouldMapMissingHeaderTo400");
+        org.springframework.core.MethodParameter param = new org.springframework.core.MethodParameter(method, -1);
+        MissingRequestHeaderException ex = new MissingRequestHeaderException("Idempotency-Key", param);
+        ResponseEntity<Map<String, Object>> res = handler.handleMissingHeader(ex);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(res.getBody()).containsEntry("code", "MISSING_HEADER");
+        assertThat((String) res.getBody().get("message")).contains("Idempotency-Key");
+    }
+
+    @Test
+    @DisplayName("Should map MissingServletRequestParameterException to 400 Bad Request with MISSING_PARAMETER")
+    void shouldMapMissingParameterTo400() {
+        MissingServletRequestParameterException ex = new MissingServletRequestParameterException("sku", "String");
+        ResponseEntity<Map<String, Object>> res = handler.handleMissingParameter(ex);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(res.getBody()).containsEntry("code", "MISSING_PARAMETER");
+        assertThat((String) res.getBody().get("message")).contains("sku");
+    }
+
+    @Test
+    @DisplayName("Should map HttpRequestMethodNotSupportedException to 405 Method Not Allowed")
+    void shouldMapMethodNotSupportedTo405() {
+        HttpRequestMethodNotSupportedException ex = new HttpRequestMethodNotSupportedException("GET");
+        ResponseEntity<Map<String, Object>> res = handler.handleMethodNotSupported(ex);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        assertThat(res.getBody()).containsEntry("code", "METHOD_NOT_ALLOWED");
+        assertThat((String) res.getBody().get("message")).contains("GET");
+    }
+
+    @Test
+    @DisplayName("Should map NoResourceFoundException to 404 Not Found")
+    void shouldMapNoResourceFoundTo404() {
+        NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "/api/v1/nonexistent");
+        ResponseEntity<Map<String, Object>> res = handler.handleNoResourceFound(ex);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(res.getBody()).containsEntry("code", ProtocolInfo.ERROR_NOT_FOUND);
+        assertThat((String) res.getBody().get("message")).contains("does not exist");
     }
 
     @Test

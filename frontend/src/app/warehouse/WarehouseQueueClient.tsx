@@ -132,6 +132,10 @@ export function WarehouseQueueClient() {
     }
   }
 
+  const pendingPicks = queue.filter((r) => r.status === "ACCEPTED").length;
+  const pendingDispatches = queue.filter((r) => r.status === "PICKED").length;
+  const totalMovements = movements.length;
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -168,6 +172,22 @@ export function WarehouseQueueClient() {
           </svg>
           Refresh Queue
         </button>
+      </div>
+
+      {/* Metrics Summary */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Pending Pick</span>
+          <p className="mt-1 font-mono text-2xl font-bold text-blue-900">{pendingPicks}</p>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">Pending Dispatch</span>
+          <p className="mt-1 font-mono text-2xl font-bold text-amber-900">{pendingDispatches}</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Audit Movements</span>
+          <p className="mt-1 font-mono text-2xl font-bold text-emerald-900">{totalMovements}</p>
+        </div>
       </div>
 
       {/* Network Warning */}

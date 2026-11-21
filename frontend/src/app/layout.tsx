@@ -6,8 +6,8 @@ import { StockEventsProvider } from "@/lib/events/StockEventsContext";
 import { ConnectionIndicator } from "@/components/ConnectionIndicator";
 
 export const metadata: Metadata = {
-  title: { default: "ThogaMura | Project Starter", template: "%s | ThogaMura" },
-  description: "LAN-first branch-to-warehouse requests and supplier availability — coursework scaffold",
+  title: { default: "ThogaMura | Branch-to-Warehouse Stock Coordination", template: "%s | ThogaMura" },
+  description: "LAN-first branch-to-warehouse stock requests and supplier availability powered by real Java networking",
   icons: {
     icon: "/images/ThogaMura-logo.svg",
   },

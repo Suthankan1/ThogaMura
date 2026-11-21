@@ -10,6 +10,7 @@ export function ProductsClient() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [stockFilter, setStockFilter] = useState<"ALL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK">("ALL");
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
@@ -71,12 +72,21 @@ export function ProductsClient() {
   }, [subscribeInvalidation, loadAuthoritativeProducts]);
 
   const filteredProducts = useMemo(() => {
-    if (!search.trim()) return products;
+    let result = products;
+    if (stockFilter === "IN_STOCK") {
+      result = result.filter((p) => p.available > 0);
+    } else if (stockFilter === "LOW_STOCK") {
+      result = result.filter((p) => p.available > 0 && p.available <= 3);
+    } else if (stockFilter === "OUT_OF_STOCK") {
+      result = result.filter((p) => p.available <= 0);
+    }
+
+    if (!search.trim()) return result;
     const q = search.toLowerCase().trim();
-    return products.filter(
+    return result.filter(
       (p) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
     );
-  }, [products, search]);
+  }, [products, search, stockFilter]);
 
   return (
     <div className="space-y-6">
@@ -165,32 +175,58 @@ export function ProductsClient() {
       )}
 
       {/* Search and Filters */}
-      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1">
-          <label htmlFor="search-input" className="sr-only">
-            Search products
-          </label>
-          <input
-            id="search-input"
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by SKU (e.g. ITEM-007) or name..."
-            className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-teal-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-teal-600"
-          />
-        </div>
-        <div className="flex items-center gap-4 text-xs text-slate-500">
-          <span>
-            Status:{" "}
-            <strong className={isLive ? "text-emerald-700" : "text-amber-700"}>
-              {isLive ? "Live NIO/SSE Synced" : "Polling / Stale"}
-            </strong>
-          </span>
-          {lastRefreshed && (
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1">
+            <label htmlFor="search-input" className="sr-only">
+              Search products
+            </label>
+            <input
+              id="search-input"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by SKU (e.g. ITEM-007) or name..."
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-teal-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-teal-600"
+            />
+          </div>
+          <div className="flex items-center gap-4 text-xs text-slate-500">
             <span>
-              Updated: <strong>{lastRefreshed.toLocaleTimeString()}</strong>
+              Status:{" "}
+              <strong className={isLive ? "text-emerald-700" : "text-amber-700"}>
+                {isLive ? "Live NIO/SSE Synced" : "Polling / Stale"}
+              </strong>
             </span>
-          )}
+            {lastRefreshed && (
+              <span>
+                Updated: <strong>{lastRefreshed.toLocaleTimeString()}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Stock Health Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs">
+          <span className="font-semibold text-slate-500">Filter Stock:</span>
+          {[
+            { label: "All Items", value: "ALL" as const },
+            { label: "In Stock", value: "IN_STOCK" as const },
+            { label: "Low Stock (≤ 3)", value: "LOW_STOCK" as const },
+            { label: "Out of Stock (0)", value: "OUT_OF_STOCK" as const },
+          ].map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setStockFilter(tab.value)}
+              className={`rounded-full px-3 py-1 font-medium transition-colors ${
+                stockFilter === tab.value
+                  ? "bg-teal-700 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 

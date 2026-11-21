@@ -16,6 +16,8 @@ import java.util.Optional;
 @Repository
 public class JdbcProductStockRepository implements ProductStockRepository {
 
+    public static final int MAX_QUERY_LIMIT = 500;
+
     private static final RowMapper<ProductStock> ROW_MAPPER = (rs, rowNum) -> new ProductStock(
             rs.getString("sku"),
             rs.getString("name"),
@@ -75,7 +77,7 @@ public class JdbcProductStockRepository implements ProductStockRepository {
 
     @Override
     public List<ProductStock> findAll() {
-        String sql = "SELECT sku, name, on_hand, reserved FROM product_stock ORDER BY sku";
-        return jdbcTemplate.query(sql, ROW_MAPPER);
+        String sql = "SELECT sku, name, on_hand, reserved FROM product_stock ORDER BY sku LIMIT ?";
+        return jdbcTemplate.query(sql, ROW_MAPPER, MAX_QUERY_LIMIT);
     }
 }
