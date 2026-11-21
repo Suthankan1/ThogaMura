@@ -202,9 +202,9 @@ class PostCommitNioNotificationIntegrationTest {
 
     @Test
     @Order(3)
-    @DisplayName("3. Rejected stock reservation does NOT produce an NIO notification")
-    void shouldNotPublishNioNotificationOnRejectedRequest() throws Exception {
-        // Reserve 8 first
+    @DisplayName("3. Rejected stock reservation commits request and receipt and produces version-only post-commit NIO notification (#59)")
+    void shouldPublishNioNotificationOnRejectedRequestPostCommit() throws Exception {
+        // Reserve 8 first -> ACCEPTED, publishes version 101
         UUID firstId = UUID.randomUUID();
         String firstReq = TcpMessageCodec.formatRequest(
                 ProtocolInfo.COMMAND_REQUEST_STOCK,
@@ -225,7 +225,40 @@ class PostCommitNioNotificationIntegrationTest {
         JsonNode secondRes = sendCommand(tcpPort, secondReq);
         assertThat(secondRes.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_REJECTED);
 
-        // Ensure NO new notification is received
+        // 1. Database state: REJECTED request and durable receipt must be committed
+        Integer requestCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM stock_requests WHERE request_id = ? AND status = 'REJECTED'",
+                Integer.class,
+                secondId
+        );
+        assertThat(requestCount).isEqualTo(1);
+
+        Integer receiptCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM command_receipts WHERE command_request_id = ?",
+                Integer.class,
+                secondId
+        );
+        assertThat(receiptCount).isEqualTo(1);
+
+        // 2. NIO subscriber receives single-line version-only notification for committed rejection
+        String secondNotification = nioReader.readLine();
+        assertThat(secondNotification).isNotNull();
+
+        JsonNode notificationNode = OBJECT_MAPPER.readTree(secondNotification);
+        assertThat(notificationNode.get("v").asInt()).isEqualTo(1);
+        assertThat(notificationNode.get("type").asText()).isEqualTo("CHANGED");
+        assertThat(notificationNode.get("version").asLong()).isEqualTo(102L);
+
+        // Privacy verification: NO business data leaked
+        assertThat(secondNotification).doesNotContain(SyntheticInventoryFixtures.SKU_ITEM_007);
+        assertThat(secondNotification).doesNotContain("quantity");
+        assertThat(secondNotification).doesNotContain(secondId.toString());
+        assertThat(secondNotification).doesNotContain("exceeds available stock");
+
+        // 3. Replaying identical rejected command does NOT produce a duplicate notification
+        JsonNode replayRes = sendCommand(tcpPort, secondReq);
+        assertThat(replayRes.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_REJECTED);
+
         nioSubscriberSocket.setSoTimeout(500);
         assertThatThrownBy(() -> nioReader.readLine())
                 .isInstanceOf(SocketTimeoutException.class);
@@ -290,6 +323,38 @@ class PostCommitNioNotificationIntegrationTest {
                 requestId
         );
         assertThat(count).isEqualTo(1);
+    }
+
+    @Test
+    @Order(6)
+    @DisplayName("6. Validation errors and unknown SKUs without persisted records do NOT produce NIO notifications")
+    void shouldNotPublishNioNotificationOnValidationErrorOrUnknownSku() throws Exception {
+        // Validation error: negative quantity
+        UUID invalidId = UUID.randomUUID();
+        String invalidReq = TcpMessageCodec.formatRequest(
+                ProtocolInfo.COMMAND_REQUEST_STOCK,
+                invalidId.toString(),
+                Map.of("sku", SyntheticInventoryFixtures.SKU_ITEM_007, "quantity", -5)
+        );
+        JsonNode invalidRes = sendCommand(tcpPort, invalidReq);
+        assertThat(invalidRes.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_ERROR);
+        assertThat(invalidRes.get("error").get("code").asText()).isEqualTo(ProtocolInfo.ERROR_VALIDATION);
+
+        // Unknown SKU error
+        UUID unknownId = UUID.randomUUID();
+        String unknownReq = TcpMessageCodec.formatRequest(
+                ProtocolInfo.COMMAND_REQUEST_STOCK,
+                unknownId.toString(),
+                Map.of("sku", "NON-EXISTENT-SKU", "quantity", 2)
+        );
+        JsonNode unknownRes = sendCommand(tcpPort, unknownReq);
+        assertThat(unknownRes.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_ERROR);
+        assertThat(unknownRes.get("error").get("code").asText()).isEqualTo(ProtocolInfo.ERROR_NOT_FOUND);
+
+        // Ensure NO notification was sent for either unpersisted error
+        nioSubscriberSocket.setSoTimeout(500);
+        assertThatThrownBy(() -> nioReader.readLine())
+                .isInstanceOf(SocketTimeoutException.class);
     }
 
     private JsonNode sendCommand(int port, String requestJson) throws IOException {

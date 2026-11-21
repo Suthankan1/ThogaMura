@@ -177,6 +177,9 @@ public class DefaultStockReservationService implements StockReservationService {
                     );
                     commandReceiptRepository.insert(receipt);
 
+                    // Register post-commit notification trigger for rejected request (#59)
+                    registerPostCommitNotification();
+
                     log.info("Rejected stock reservation for SKU '{}', requested={}, available={}",
                             sku, quantity, available);
 
