@@ -28,7 +28,8 @@
 | **#14** | [M1][W2] Test TCP partial frames, disconnects and recovery on two JVMs | P3 | CLOSED | PR #83 (Merged `2a97963`) | Verified by `SeparateProcessTcpCommandIntegrationTest` (6/6), `TcpSocketNetworkFramingTest` (6/6), and `m1_tcp_framing_and_failure_evidence.txt` |
 | **#25** | [M4][W4] Prove restart replay, receipt conflicts and dispatch concurrency | P3 | CLOSED | PR #58 (Merged `feat/m4-restart-replay`) | Verified by `AtomicStockReservationIntegrationTest`, `StockFulfillmentIntegrationTest`, `TcpAtomicReservationSocketIntegrationTest`, and `m4_issue25_evidence.txt` |
 | **#68** | [SHARED][P2] Refresh stale implementation status and repair machine-local links | P4 | CLOSED | PR #84 (Merged `e5fe577`) | Fixed all machine-local links, reconciled `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `VALIDATION_STATUS.md` |
-| **GAPS-PASS** | [SHARED] Resolve backend exception handling, input validations, bounded queries, and UI/UX gaps | P2 | CLOSED | `fix/backend-ui-gaps-and-improvements` | Verified by 131 backend tests (0 failures), 18 frontend tests, Next.js build, and typecheck |
+| **GAPS-PASS** | [SHARED] Resolve backend exception handling, input validations, bounded queries, and UI/UX gaps | P2 | CLOSED | PR #85 (Merged `6f8f4ef`) | Verified by 131 backend tests (0 failures), 18 frontend tests, Next.js build, and typecheck |
+| **SCRIPTS** | [SHARED] Unified orchestration scripts (`start.sh`, `status.sh`, `stop.sh`) and standalone server keep-alive | P2 | CLOSED | `feat/orchestration-scripts-and-lifecycle` | Tested full live lifecycle across PostgreSQL, Network Server, Supplier Simulator, Gateway, and UI |
 | **#1** | [START HERE] Five-member ownership and issue roadmap | META | ACTIVE | | |
 | **#2** | [SHARED][W1] Confirm lecturer scope and five distinct member concepts | EXTERNAL | BLOCKED | | Pending human lecturer confirmation session |
 | **#27** | [SHARED][W5] Full two-machine LAN acceptance rehearsal and evidence | DEMO | BLOCKED | | Requires two physical machines on LAN |
@@ -78,4 +79,18 @@
       - One-click supplier scenario test buttons (`ITEM-008` Available, `ITEM-ZERO` Confirmed 0, `ITEM-UNKNOWN` 404, `ITEM-OUTAGE` 503) in `SuppliersClient.tsx`.
       - 3-metric fulfillment status counter (Pending Pick, Pending Dispatch, Audit Movements) in `WarehouseQueueClient.tsx`.
       - Stock health filter tabs (`All Items`, `In Stock`, `Low Stock`, `Out of Stock`) in `ProductsClient.tsx`.
-    - **Automated Verification:** Expanded `inventoryUx.test.ts` (18 frontend unit tests passing). Verified 100% pass across all 131 backend tests (0 failures, 0 errors, 0 skipped), Next.js typecheck, ESLint, and optimized production build.
+    - **Automated Verification:** Expanded `inventoryUx.test.ts` (18 frontend unit tests passing). Verified 100% pass across all 131 backend tests (0 failures, 0 errors, 0 skipped), Next.js typecheck, ESLint, and optimized production build. PR #85 merged into `main`.
+19. Unified Application Orchestration & Lifecycle Automation (`start.sh`, `status.sh`, `stop.sh`):
+    - **Unified Runner (`start.sh`):** Created POSIX bash script automating the complete multi-process lifecycle:
+      - Validates prerequisites (`docker`, `java`, `node`, `npm`).
+      - Auto-initializes `.env` from `.env.example` if absent.
+      - Detects local port 5432 availability; automatically maps Docker PostgreSQL to port 5433 if 5432 is already bound by an external host process.
+      - Starts and verifies PostgreSQL via `docker compose up -d db` and polls `pg_isready`.
+      - Starts Central Java Network Server on ports 7443 (TCP) and 7444 (NIO) in the background with PID recording and port probing.
+      - Starts Independent Supplier HTTP Simulator on port 8090.
+      - Starts Spring Boot API Gateway on port 8080 and verifies `/actuator/health`.
+      - Starts Next.js Web UI on port 3000 in a detached session with health checks.
+    - **Status Checker (`status.sh` / `./start.sh status`):** Displays a formatted, colorized status table reporting PID, ports, status (`RUNNING (UP)`, `RUNNING (OK)`, `HEALTHY`, `STOPPED`), and log paths.
+    - **Clean Shutdown (`stop.sh` / `./start.sh stop`):** Gracefully terminates all background JVM and Node processes in reverse dependency order and stops Docker containers cleanly.
+    - **Standalone Network Server Keep-Alive:** Updated `NetworkServerApplication.java` with a context-close synchronization latch, ensuring standalone `java -jar` executions run continuously until explicitly terminated.
+    - **Resilient Testcontainers Fallback:** Updated `PostgresTestHelper` and `PostgresSchemaConstraintIntegrationTest` to verify connection to any `.env`-specified database before adopting it, automatically falling back to dynamic Testcontainers if credentials or host ports are invalid.

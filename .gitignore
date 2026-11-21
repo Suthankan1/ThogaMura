@@ -28,6 +28,7 @@ certs/
 **/.turbo/
 **/coverage/
 *.tsbuildinfo
+frontend/AGENTS.md
 
 # Editor / OS
 .idea/
@@ -35,6 +36,7 @@ certs/
 *.iml
 .DS_Store
 Thumbs.db
+.run/
 
 # Data and generated artifacts
 *.sql.dump

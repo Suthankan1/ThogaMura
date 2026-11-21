@@ -65,7 +65,20 @@ public final class PostgresTestHelper {
             }
         }
 
-        if (jdbcUrl == null || jdbcUrl.isBlank()) {
+        boolean canConnect = false;
+        if (jdbcUrl != null && !jdbcUrl.isBlank()) {
+            PGSimpleDataSource probeDs = new PGSimpleDataSource();
+            probeDs.setUrl(jdbcUrl);
+            probeDs.setUser(username != null ? username : "thogamura");
+            probeDs.setPassword(password != null ? password : "");
+            try (java.sql.Connection conn = probeDs.getConnection()) {
+                canConnect = true;
+            } catch (Exception ignored) {
+                // Configured DB is unavailable or authentication failed; fall back to Testcontainers
+            }
+        }
+
+        if (!canConnect) {
             if (System.getProperty("DOCKER_API_VERSION") == null && System.getenv("DOCKER_API_VERSION") == null) {
                 System.setProperty("DOCKER_API_VERSION", "1.44");
                 System.setProperty("api.version", "1.44");
