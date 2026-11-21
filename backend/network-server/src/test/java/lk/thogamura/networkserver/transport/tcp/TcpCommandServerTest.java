@@ -297,4 +297,119 @@ class TcpCommandServerTest {
             assertThat(response.get("error").get("message").asText()).contains("not a valid canonical UUID v4");
         }
     }
+
+    @Test
+    @DisplayName("Total frame deadline terminates slow-trickle client and frees capacity for legitimate clients (#64)")
+    void shouldTerminateSlowTrickleClientAndFreeCapacity() throws Exception {
+        // Dedicated server with maxClients=1, readTimeout=2000ms, frameDeadline=800ms
+        TcpCommandServerConfig deadlineConfig = new TcpCommandServerConfig(
+                "127.0.0.1",
+                0,
+                10,
+                2000,
+                800, // 800ms total frame deadline
+                1,   // exactly 1 client capacity
+                ProtocolInfo.MAX_FRAME_BYTES,
+                false,
+                false
+        );
+        TcpCommandServer tightServer = new TcpCommandServer(deadlineConfig, new DefaultCommandDispatcher());
+        tightServer.start();
+        int tightPort = tightServer.getPort();
+
+        try {
+            // Client 1: Connect and trickle bytes every 250ms (well below 2000ms SO_TIMEOUT, but exceeds 800ms frame deadline)
+            try (Socket slowSocket = new Socket("127.0.0.1", tightPort)) {
+                slowSocket.setSoTimeout(3000);
+                OutputStream slowOut = slowSocket.getOutputStream();
+                InputStream slowIn = slowSocket.getInputStream();
+
+                byte[] trickleData = "{\"v\":1,\"type\":\"PING\",\"requestId\":\"79c5c24e-379e-4a69-a1d2-972f77f02d41\"}\n".getBytes(StandardCharsets.UTF_8);
+
+                // Write 4 fragments spaced by 250ms -> elapsed > 1000ms > 800ms deadline
+                boolean connectionTerminated = false;
+                for (int i = 0; i < trickleData.length; i++) {
+                    try {
+                        slowOut.write(trickleData[i]);
+                        slowOut.flush();
+                        Thread.sleep(250);
+                    } catch (IOException e) {
+                        connectionTerminated = true;
+                        break;
+                    }
+                }
+
+                // If not already detected during write, reading from disconnected socket returns EOF (-1)
+                if (!connectionTerminated) {
+                    int b = slowIn.read();
+                    assertThat(b).isEqualTo(-1);
+                }
+            }
+
+            // Client 2: Legitimate client can now connect and successfully execute PING
+            try (Socket goodSocket = new Socket("127.0.0.1", tightPort);
+                 TcpFrameWriter goodWriter = new TcpFrameWriter(goodSocket.getOutputStream());
+                 TcpFrameReader goodReader = new TcpFrameReader(goodSocket.getInputStream())) {
+
+                goodSocket.setSoTimeout(3000);
+                goodWriter.writeFrame("{\"v\":1,\"type\":\"PING\",\"requestId\":\"79c5c24e-379e-4a69-a1d2-972f77f02d41\"}");
+                JsonNode pong = goodReader.readNextFrameJson();
+
+                assertThat(pong).isNotNull();
+                assertThat(pong.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_PONG);
+                assertThat(pong.get("data").get("serverTime").asText()).isNotBlank();
+            }
+        } finally {
+            tightServer.stop();
+        }
+    }
+
+    @Test
+    @DisplayName("Fragmented frame arriving within deadline succeeds without timeout (#64)")
+    void shouldSucceedForFragmentedFramesWithinDeadline() throws Exception {
+        TcpCommandServerConfig deadlineConfig = new TcpCommandServerConfig(
+                "127.0.0.1",
+                0,
+                10,
+                2000,
+                1500, // 1500ms total frame deadline
+                5,
+                ProtocolInfo.MAX_FRAME_BYTES,
+                false,
+                false
+        );
+        TcpCommandServer serverWithDeadline = new TcpCommandServer(deadlineConfig, new DefaultCommandDispatcher());
+        serverWithDeadline.start();
+        int serverPort = serverWithDeadline.getPort();
+
+        try (Socket socket = new Socket("127.0.0.1", serverPort);
+             TcpFrameReader reader = new TcpFrameReader(socket.getInputStream())) {
+
+            socket.setSoTimeout(3000);
+            OutputStream out = socket.getOutputStream();
+
+            String fullMsg = "{\"v\":1,\"type\":\"PING\",\"requestId\":\"79c5c24e-379e-4a69-a1d2-972f77f02d41\"}\n";
+            byte[] bytes = fullMsg.getBytes(StandardCharsets.UTF_8);
+
+            // Send in 3 fragments spaced by 50ms (total ~100ms, well within 1500ms deadline)
+            int chunk = bytes.length / 3;
+            out.write(bytes, 0, chunk);
+            out.flush();
+            Thread.sleep(50);
+
+            out.write(bytes, chunk, chunk);
+            out.flush();
+            Thread.sleep(50);
+
+            out.write(bytes, chunk * 2, bytes.length - (chunk * 2));
+            out.flush();
+
+            JsonNode pong = reader.readNextFrameJson();
+            assertThat(pong).isNotNull();
+            assertThat(pong.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_PONG);
+            assertThat(pong.get("data").get("serverTime").asText()).isNotBlank();
+        } finally {
+            serverWithDeadline.stop();
+        }
+    }
 }
