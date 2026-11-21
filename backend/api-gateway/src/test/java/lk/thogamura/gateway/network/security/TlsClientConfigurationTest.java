@@ -67,4 +67,68 @@ class TlsClientConfigurationTest {
                     assertThat(client.getSocketFactory()).isSameAs(factory);
                 });
     }
+
+    @Test
+    @DisplayName("Plaintext connection to a remote (non-loopback) host fails closed at startup")
+    void testPlaintextFailsForNonLoopbackHost() {
+        contextRunner
+                .withPropertyValues(
+                        "thogamura.command.client.host=192.168.1.100",
+                        "thogamura.tls.client.enabled=false"
+                )
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .hasMessageContaining("Plaintext TCP command transport is only permitted for loopback destinations");
+                });
+    }
+
+    @Test
+    @DisplayName("Remote (non-loopback) host succeeds when TLS is enabled")
+    void testTlsClientEnabledWithRemoteHostSucceeds() {
+        contextRunner
+                .withPropertyValues(
+                        "thogamura.command.client.host=192.168.1.100",
+                        "thogamura.tls.client.enabled=true",
+                        "thogamura.tls.client.truststore-path=" + bundle.gatewayTruststore().toAbsolutePath(),
+                        "thogamura.tls.client.truststore-password=" + new String(bundle.trustPassword()),
+                        "thogamura.tls.client.truststore-type=PKCS12",
+                        "thogamura.tls.client.hostname-verification=true"
+                )
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(TcpCommandClient.class);
+                    TcpCommandClient client = context.getBean(TcpCommandClient.class);
+                    assertThat(client.getSocketFactory()).isInstanceOf(TlsSocketFactory.class);
+                });
+    }
+
+    @Test
+    @DisplayName("Disabling TLS hostname-verification fails closed at startup")
+    void testHostnameVerificationCannotBeDisabled() {
+        contextRunner
+                .withPropertyValues(
+                        "thogamura.tls.client.enabled=true",
+                        "thogamura.tls.client.truststore-path=" + bundle.gatewayTruststore().toAbsolutePath(),
+                        "thogamura.tls.client.truststore-password=" + new String(bundle.trustPassword()),
+                        "thogamura.tls.client.hostname-verification=false"
+                )
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .hasMessageContaining("Disabling TLS hostname verification");
+                });
+    }
+
+    @Test
+    @DisplayName("TlsSocketFactory constructor rejects hostnameVerification=false with IllegalArgumentException")
+    void testTlsSocketFactoryConstructorRejectsDisabledHostnameVerification() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                new TlsSocketFactory((javax.net.ssl.SSLSocketFactory) javax.net.ssl.SSLSocketFactory.getDefault(),
+                        new String[]{"TLSv1.3"}, false)
+        ).isInstanceOf(IllegalArgumentException.class)
+         .hasMessageContaining("Disabling TLS hostname verification is prohibited");
+    }
 }
