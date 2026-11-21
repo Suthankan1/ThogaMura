@@ -10,6 +10,8 @@ management:
         include: health,info
 
 thogamura:
+  cors:
+    allowed-origins: ${THOGAMURA_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
   command:
     client:
       host: ${THOGAMURA_WAREHOUSE_HOST:${THOGAMURA_COMMAND_HOST:127.0.0.1}}

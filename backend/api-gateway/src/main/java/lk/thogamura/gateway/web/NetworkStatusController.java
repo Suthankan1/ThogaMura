@@ -9,11 +9,12 @@ import lk.thogamura.gateway.network.tcp.CommandTransportException;
 import lk.thogamura.gateway.network.tcp.ServerUnavailableException;
 import lk.thogamura.gateway.network.tcp.TcpCommandClient;
 import lk.thogamura.gateway.sse.SseNotificationBroadcaster;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,8 +32,9 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/v1")
-@CrossOrigin(origins = "*")
 public class NetworkStatusController {
+
+    private static final Logger logger = LoggerFactory.getLogger(NetworkStatusController.class);
 
     private final String centralHost;
     private final int nioPort;
@@ -133,34 +135,38 @@ public class NetworkStatusController {
             body.put("warehousePort", port);
             return ResponseEntity.ok(body);
         } catch (CommandTimeoutException e) {
+            logger.warn("Warehouse command timed out during ping to {}:{}: {}", host, port, e.getMessage());
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("status", "TIMEOUT");
             body.put("code", "WAREHOUSE_TIMEOUT");
-            body.put("message", "Warehouse command timed out: " + e.getMessage());
+            body.put("message", "Warehouse command timed out. Please retry.");
             body.put("warehouseHost", host);
             body.put("warehousePort", port);
             return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(body);
         } catch (ServerUnavailableException e) {
+            logger.warn("Warehouse command server is unreachable during ping to {}:{}: {}", host, port, e.getMessage());
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("status", "UNAVAILABLE");
             body.put("code", "WAREHOUSE_UNAVAILABLE");
-            body.put("message", "Warehouse command server is unreachable: " + e.getMessage());
+            body.put("message", "Warehouse command server is unreachable. Please verify service status.");
             body.put("warehouseHost", host);
             body.put("warehousePort", port);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
         } catch (CommandCorrelationException e) {
+            logger.error("Command correlation error during ping: {}", e.getMessage());
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("status", "ERROR");
             body.put("code", "CORRELATION_ERROR");
-            body.put("message", "Mismatched requestId received from warehouse: " + e.getMessage());
+            body.put("message", "Invalid or mismatched response received from warehouse server.");
             body.put("warehouseHost", host);
             body.put("warehousePort", port);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
         } catch (CommandTransportException e) {
+            logger.error("Command transport error during ping to {}:{}: {}", host, port, e.getMessage(), e);
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("status", "ERROR");
             body.put("code", "INTERNAL_TRANSPORT_ERROR");
-            body.put("message", "Warehouse command transport error: " + e.getMessage());
+            body.put("message", "Warehouse command transport error occurred.");
             body.put("warehouseHost", host);
             body.put("warehousePort", port);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
