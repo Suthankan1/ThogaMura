@@ -227,6 +227,44 @@ class TcpFrameCodecTest {
                 .isInstanceOf(MalformedFrameException.class)
                 .hasMessageContaining("not a valid canonical UUID")
                 .satisfies(e -> assertThat(((MalformedFrameException) e).getRequestId()).isEqualTo("invalid-non-uuid-123"));
+
+        // UUID v1 (not version 4)
+        String v1Uuid = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+        String v1Req = "{\"v\":1,\"type\":\"PING\",\"requestId\":\"" + v1Uuid + "\"}\n";
+        JsonNode node3 = TcpMessageCodec.parseJsonObject(v1Req);
+        assertThatThrownBy(() -> TcpMessageCodec.validateEnvelope(node3))
+                .isInstanceOf(MalformedFrameException.class)
+                .hasMessageContaining("not a valid canonical UUID v4")
+                .satisfies(e -> assertThat(((MalformedFrameException) e).getRequestId()).isEqualTo(v1Uuid));
+
+        // Uppercase UUID v4 (not canonical lowercase)
+        String upperUuid = "A53E07FD-158B-4D77-9B97-51844197ED9C";
+        String upperReq = "{\"v\":1,\"type\":\"PING\",\"requestId\":\"" + upperUuid + "\"}\n";
+        JsonNode node4 = TcpMessageCodec.parseJsonObject(upperReq);
+        assertThatThrownBy(() -> TcpMessageCodec.validateEnvelope(node4))
+                .isInstanceOf(MalformedFrameException.class)
+                .hasMessageContaining("not a valid canonical UUID v4");
+
+        // Whitespace padded UUID v4
+        String paddedReq = "{\"v\":1,\"type\":\"PING\",\"requestId\":\" a53e07fd-158b-4d77-9b97-51844197ed9c \"}\n";
+        JsonNode node5 = TcpMessageCodec.parseJsonObject(paddedReq);
+        assertThatThrownBy(() -> TcpMessageCodec.validateEnvelope(node5))
+                .isInstanceOf(MalformedFrameException.class)
+                .hasMessageContaining("not a valid canonical UUID v4");
+
+        // Nil UUID (version 0)
+        String nilReq = "{\"v\":1,\"type\":\"PING\",\"requestId\":\"00000000-0000-0000-0000-000000000000\"}\n";
+        JsonNode node6 = TcpMessageCodec.parseJsonObject(nilReq);
+        assertThatThrownBy(() -> TcpMessageCodec.validateEnvelope(node6))
+                .isInstanceOf(MalformedFrameException.class)
+                .hasMessageContaining("not a valid canonical UUID v4");
+
+        // Non-textual integer requestId
+        String intReq = "{\"v\":1,\"type\":\"PING\",\"requestId\":12345}\n";
+        JsonNode node7 = TcpMessageCodec.parseJsonObject(intReq);
+        assertThatThrownBy(() -> TcpMessageCodec.validateEnvelope(node7))
+                .isInstanceOf(MalformedFrameException.class)
+                .hasMessageContaining("Missing required field 'requestId'");
     }
 
     @Test

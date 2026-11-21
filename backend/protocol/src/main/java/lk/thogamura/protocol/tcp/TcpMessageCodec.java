@@ -147,16 +147,31 @@ public final class TcpMessageCodec {
                     null
             );
         }
-        String requestIdStr = node.get("requestId").asText().trim();
-        try {
-            UUID.fromString(requestIdStr);
-        } catch (IllegalArgumentException e) {
+        String rawRequestIdStr = node.get("requestId").asText();
+        if (!isCanonicalUuidV4(rawRequestIdStr)) {
             throw new MalformedFrameException(
-                    "Field 'requestId' is not a valid canonical UUID: '" + requestIdStr + "'",
+                    "Field 'requestId' is not a valid canonical UUID v4: '" + rawRequestIdStr + "'",
                     ProtocolInfo.ERROR_VALIDATION,
-                    requestIdStr,
-                    e
+                    rawRequestIdStr
             );
+        }
+    }
+
+    /**
+     * Verifies that the string is a valid canonical lowercase UUID v4 (36 characters).
+     *
+     * @param str string to check
+     * @return true if valid canonical lowercase UUID v4, false otherwise
+     */
+    public static boolean isCanonicalUuidV4(String str) {
+        if (str == null || str.length() != 36) {
+            return false;
+        }
+        try {
+            UUID parsed = UUID.fromString(str);
+            return parsed.version() == 4 && parsed.toString().equals(str);
+        } catch (IllegalArgumentException e) {
+            return false;
         }
     }
 

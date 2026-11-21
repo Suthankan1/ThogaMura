@@ -252,4 +252,49 @@ class TcpCommandServerTest {
         assertThatThrownBy(() -> new Socket("127.0.0.1", port))
                 .isInstanceOf(IOException.class);
     }
+
+    @Test
+    @DisplayName("Real TCP socket rejects non-v4 UUID requestId with VALIDATION_ERROR")
+    void shouldRejectNonV4UuidRequestIdWithValidationError() throws Exception {
+        try (Socket socket = new Socket("127.0.0.1", port);
+             TcpFrameWriter writer = new TcpFrameWriter(socket.getOutputStream());
+             TcpFrameReader reader = new TcpFrameReader(socket.getInputStream())) {
+
+            socket.setSoTimeout(ProtocolInfo.DEFAULT_READ_TIMEOUT_MS);
+
+            // Send frame with a valid UUID v1 (not UUID v4)
+            String v1Uuid = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+            String rawJson = "{\"v\":1,\"type\":\"PING\",\"requestId\":\"" + v1Uuid + "\"}";
+            writer.writeFrame(rawJson);
+
+            JsonNode response = reader.readNextFrameJson();
+            assertThat(response).isNotNull();
+            assertThat(response.get("v").asInt()).isEqualTo(ProtocolInfo.WIRE_VERSION);
+            assertThat(response.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_ERROR);
+            assertThat(response.get("error").get("code").asText()).isEqualTo(ProtocolInfo.ERROR_VALIDATION);
+            assertThat(response.get("error").get("message").asText()).contains("not a valid canonical UUID v4");
+        }
+    }
+
+    @Test
+    @DisplayName("Real TCP socket rejects uppercase UUID requestId with VALIDATION_ERROR")
+    void shouldRejectUppercaseUuidRequestIdWithValidationError() throws Exception {
+        try (Socket socket = new Socket("127.0.0.1", port);
+             TcpFrameWriter writer = new TcpFrameWriter(socket.getOutputStream());
+             TcpFrameReader reader = new TcpFrameReader(socket.getInputStream())) {
+
+            socket.setSoTimeout(ProtocolInfo.DEFAULT_READ_TIMEOUT_MS);
+
+            // Send frame with uppercase UUID
+            String upperUuid = "A53E07FD-158B-4D77-9B97-51844197ED9C";
+            String rawJson = "{\"v\":1,\"type\":\"PING\",\"requestId\":\"" + upperUuid + "\"}";
+            writer.writeFrame(rawJson);
+
+            JsonNode response = reader.readNextFrameJson();
+            assertThat(response).isNotNull();
+            assertThat(response.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_ERROR);
+            assertThat(response.get("error").get("code").asText()).isEqualTo(ProtocolInfo.ERROR_VALIDATION);
+            assertThat(response.get("error").get("message").asText()).contains("not a valid canonical UUID v4");
+        }
+    }
 }
