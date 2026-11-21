@@ -180,6 +180,46 @@ class DefaultSupplierHttpClientTest {
     }
 
     @Test
+    @DisplayName("Should return UNKNOWN with SUPPLIER_UNKNOWN when supplier response SKU does not match requested SKU (#65)")
+    void shouldReturnUnknownWhenSupplierReturnsMismatchedSku() {
+        SupplierStockResponse response = client.checkAvailability(SupplierHttpSimulator.SKU_SIMULATE_WRONG_SKU);
+
+        assertThat(response.status()).isEqualTo("UNKNOWN");
+        assertThat(response.code()).isEqualTo(ProtocolInfo.ERROR_SUPPLIER_UNKNOWN);
+        assertThat(response.message()).contains("Supplier response SKU mismatch");
+    }
+
+    @Test
+    @DisplayName("Should return UNKNOWN with SUPPLIER_UNKNOWN when supplier response is missing required supplier field (#65)")
+    void shouldReturnUnknownWhenSupplierResponseMissingSupplier() {
+        SupplierStockResponse response = client.checkAvailability(SupplierHttpSimulator.SKU_SIMULATE_MISSING_SUPPLIER);
+
+        assertThat(response.status()).isEqualTo("UNKNOWN");
+        assertThat(response.code()).isEqualTo(ProtocolInfo.ERROR_SUPPLIER_UNKNOWN);
+        assertThat(response.message()).contains("Missing or empty required field 'supplier'");
+    }
+
+    @Test
+    @DisplayName("Should return UNKNOWN with SUPPLIER_UNKNOWN when supplier response has malformed checkedAt timestamp (#65)")
+    void shouldReturnUnknownWhenSupplierResponseHasMalformedTimestamp() {
+        SupplierStockResponse response = client.checkAvailability(SupplierHttpSimulator.SKU_SIMULATE_BAD_TIMESTAMP);
+
+        assertThat(response.status()).isEqualTo("UNKNOWN");
+        assertThat(response.code()).isEqualTo(ProtocolInfo.ERROR_SUPPLIER_UNKNOWN);
+        assertThat(response.message()).contains("Invalid ISO-8601 timestamp in 'checkedAt'");
+    }
+
+    @Test
+    @DisplayName("Should return UNKNOWN with SUPPLIER_UNKNOWN when supplier response has negative estimatedRestockDays (#65)")
+    void shouldReturnUnknownWhenSupplierResponseHasNegativeRestockDays() {
+        SupplierStockResponse response = client.checkAvailability(SupplierHttpSimulator.SKU_SIMULATE_NEGATIVE_RESTOCK);
+
+        assertThat(response.status()).isEqualTo("UNKNOWN");
+        assertThat(response.code()).isEqualTo(ProtocolInfo.ERROR_SUPPLIER_UNKNOWN);
+        assertThat(response.message()).contains("Negative 'estimatedRestockDays'");
+    }
+
+    @Test
     @DisplayName("Should return VALIDATION_ERROR when SKU is blank or contains invalid characters")
     void shouldReturnValidationErrorWhenSkuIsInvalidOrBlank() {
         SupplierStockResponse blank = client.checkAvailability("   ");
