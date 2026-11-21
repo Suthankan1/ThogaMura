@@ -102,8 +102,51 @@ export function SuppliersClient() {
               {loading ? "Querying Supplier..." : "Inquire Availability"}
             </button>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Try <code className="font-mono">ITEM-008</code> (available units), <code className="font-mono">ITEM-ZERO</code> (confirmed 0), or <code className="font-mono">ITEM-UNKNOWN</code> (404 unknown).
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+            <span>Demo Scenarios:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setSku("ITEM-008");
+                void executeInquiry("ITEM-008");
+              }}
+              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-teal-800 hover:bg-slate-200"
+            >
+              ITEM-008 (Available Units)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSku("ITEM-ZERO");
+                void executeInquiry("ITEM-ZERO");
+              }}
+              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-amber-800 hover:bg-slate-200"
+            >
+              ITEM-ZERO (Confirmed Zero)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSku("ITEM-UNKNOWN");
+                void executeInquiry("ITEM-UNKNOWN");
+              }}
+              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-700 hover:bg-slate-200"
+            >
+              ITEM-UNKNOWN (404 Catalog)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSku("ITEM-OUTAGE");
+                void executeInquiry("ITEM-OUTAGE");
+              }}
+              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-rose-700 hover:bg-slate-200"
+            >
+              ITEM-OUTAGE (503 Service Outage)
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Click any scenario button above to test the Java URL HTTP mock connector response mapping.
           </p>
         </div>
       </form>

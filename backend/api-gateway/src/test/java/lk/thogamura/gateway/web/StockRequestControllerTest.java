@@ -173,4 +173,44 @@ class StockRequestControllerTest {
                 .andExpect(jsonPath("$[0].quantity").value(8))
                 .andExpect(jsonPath("$[0].status").value("ACCEPTED"));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/requests rejects SKU containing invalid characters or newlines with 400 Bad Request")
+    void shouldRejectInvalidSkuCharacters() throws Exception {
+        mockMvc.perform(post("/api/v1/requests")
+                        .header("Idempotency-Key", VALID_IDEMPOTENCY_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sku\":\"ITEM 007!@#\",\"quantity\":5}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("contains invalid characters")));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/requests rejects invalid status filter with 400 Bad Request")
+    void shouldRejectInvalidStatusFilter() throws Exception {
+        mockMvc.perform(get("/api/v1/requests?status=INVALID_STATUS_XYZ").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Invalid status filter")));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/requests accepts status=ALL as unrestricted query")
+    void shouldAcceptAllStatusFilter() throws Exception {
+        ObjectNode response = OBJECT_MAPPER.createObjectNode();
+        response.put("v", 1);
+        response.put("type", "RESULT");
+        response.put("status", "ACCEPTED");
+        response.put("requestId", "123e4567-e89b-12d3-a456-426614174000");
+
+        ObjectNode data = response.putObject("data");
+        data.putArray("requests");
+
+        given(tcpCommandClient.sendCommand(eq(ProtocolInfo.COMMAND_GET_REQUESTS), any(), any()))
+                .willReturn(response);
+
+        mockMvc.perform(get("/api/v1/requests?status=ALL").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
 }

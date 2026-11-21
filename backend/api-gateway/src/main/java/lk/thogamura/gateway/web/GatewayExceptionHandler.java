@@ -10,8 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -105,6 +111,60 @@ public class GatewayExceptionHandler {
             body.put("requestId", e.getRequestId());
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleMessageNotReadable(HttpMessageNotReadableException e) {
+        logger.warn("Malformed HTTP request body: {}", e.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", ProtocolInfo.ERROR_VALIDATION);
+        body.put("message", "Malformed JSON request body syntax.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingHeader(MissingRequestHeaderException e) {
+        logger.warn("Missing required request header: {}", e.getHeaderName());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", "MISSING_HEADER");
+        body.put("message", "Required header '" + e.getHeaderName() + "' is missing.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingParameter(MissingServletRequestParameterException e) {
+        logger.warn("Missing required query parameter: {}", e.getParameterName());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", "MISSING_PARAMETER");
+        body.put("message", "Required parameter '" + e.getParameterName() + "' is missing.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        logger.warn("Parameter type mismatch for parameter '{}': {}", e.getName(), e.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", ProtocolInfo.ERROR_VALIDATION);
+        body.put("message", "Invalid parameter value for '" + e.getName() + "'.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+        logger.warn("HTTP method not supported: {}", e.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", "METHOD_NOT_ALLOWED");
+        body.put("message", "HTTP method '" + e.getMethod() + "' is not supported for this endpoint.");
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(NoResourceFoundException e) {
+        logger.warn("Resource not found: {}", e.getResourcePath());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", ProtocolInfo.ERROR_NOT_FOUND);
+        body.put("message", "Requested resource or endpoint does not exist.");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     @ExceptionHandler(Exception.class)

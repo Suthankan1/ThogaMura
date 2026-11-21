@@ -189,6 +189,30 @@ export function NewRequestClient() {
               placeholder="e.g. ITEM-007"
               className="mt-1.5 block w-full rounded-lg border border-slate-300 px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono"
             />
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+              <span>Quick Fill:</span>
+              <button
+                type="button"
+                onClick={() => setSku("ITEM-007")}
+                className="rounded bg-slate-100 px-2 py-0.5 font-mono text-teal-800 hover:bg-slate-200"
+              >
+                ITEM-007 (Carrots)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSku("ITEM-008")}
+                className="rounded bg-slate-100 px-2 py-0.5 font-mono text-teal-800 hover:bg-slate-200"
+              >
+                ITEM-008 (Onions)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSku("ITEM-009")}
+                className="rounded bg-slate-100 px-2 py-0.5 font-mono text-teal-800 hover:bg-slate-200"
+              >
+                ITEM-009 (Potatoes)
+              </button>
+            </div>
             <p className="mt-1 text-xs text-slate-500">
               Exact item identifier in warehouse database.
             </p>
@@ -216,14 +240,23 @@ export function NewRequestClient() {
           </div>
 
           <div className="rounded-lg bg-slate-50 p-3.5 border border-slate-100 text-xs space-y-1">
-            <span className="font-semibold text-slate-700 block">
-              Durable Idempotency Key (RFC 4122 v4):
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-700">
+                Durable Idempotency Key (RFC 4122 v4):
+              </span>
+              <button
+                type="button"
+                onClick={() => setIdempotencyKey(generateUuidV4())}
+                className="text-[11px] font-semibold text-teal-700 hover:text-teal-800 underline"
+              >
+                Generate New Key
+              </button>
+            </div>
             <code className="block font-mono text-slate-600 break-all select-all">
               {idempotencyKey}
             </code>
             <p className="text-slate-500 text-[11px] pt-1">
-              Preserved across retries so duplicate submissions cannot reserve stock twice.
+              Preserved across retries so duplicate submissions cannot reserve stock twice. Re-submitting with the same key safely replays the cached reservation decision.
             </p>
           </div>
         </div>

@@ -77,4 +77,37 @@ describe("Frontend Inventory & Fulfillment Model (Issues #13, #22, #30, #26)", (
     assert.equal(outageSupplier.status, "SUPPLIER_UNAVAILABLE");
     assert.equal(outageSupplier.reportedQuantity, undefined);
   });
+
+  it("correctly categorizes stock health levels into In Stock, Low Stock, and Out of Stock", () => {
+    const products: Product[] = [
+      { sku: "ITEM-001", name: "High Stock", onHand: 20, reserved: 5, available: 15 },
+      { sku: "ITEM-002", name: "Low Stock", onHand: 5, reserved: 3, available: 2 },
+      { sku: "ITEM-003", name: "Zero Stock", onHand: 10, reserved: 10, available: 0 },
+    ];
+
+    const inStock = products.filter((p) => p.available > 0);
+    const lowStock = products.filter((p) => p.available > 0 && p.available <= 3);
+    const outOfStock = products.filter((p) => p.available <= 0);
+
+    assert.equal(inStock.length, 2);
+    assert.equal(lowStock.length, 1);
+    assert.equal(lowStock[0].sku, "ITEM-002");
+    assert.equal(outOfStock.length, 1);
+    assert.equal(outOfStock[0].sku, "ITEM-003");
+  });
+
+  it("validates warehouse queue actionable states versus terminal states", () => {
+    const allRequests: StockRequest[] = [
+      { requestId: "req-1", sku: "ITEM-001", quantity: 5, status: "ACCEPTED" },
+      { requestId: "req-2", sku: "ITEM-002", quantity: 2, status: "PICKED" },
+      { requestId: "req-3", sku: "ITEM-003", quantity: 8, status: "REJECTED" },
+      { requestId: "req-4", sku: "ITEM-004", quantity: 3, status: "DISPATCHED" },
+    ];
+
+    const actionable = allRequests.filter((r) => r.status === "ACCEPTED" || r.status === "PICKED");
+    const terminal = allRequests.filter((r) => r.status === "REJECTED" || r.status === "DISPATCHED");
+
+    assert.equal(actionable.length, 2);
+    assert.equal(terminal.length, 2);
+  });
 });

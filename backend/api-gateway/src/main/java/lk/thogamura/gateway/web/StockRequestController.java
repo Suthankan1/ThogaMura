@@ -24,7 +24,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * REST endpoint for stock reservation requests and queue queries conforming to
@@ -38,6 +40,8 @@ import java.util.UUID;
 public class StockRequestController {
 
     private static final Logger logger = LoggerFactory.getLogger(StockRequestController.class);
+    private static final Pattern SKU_PATTERN = Pattern.compile("^[A-Za-z0-9_-]{1,64}$");
+    private static final Set<String> ALLOWED_STATUS_FILTERS = Set.of("ACCEPTED", "REJECTED", "PICKED", "DISPATCHED");
 
     private final TcpCommandClient tcpCommandClient;
 
@@ -72,7 +76,16 @@ public class StockRequestController {
         if (payload == null || payload.sku() == null || payload.sku().isBlank()) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("code", "VALIDATION_ERROR");
-            body.put("message", "Field 'sku' is required");
+            body.put("message", "Field 'sku' is required and must not be blank");
+            body.put("requestId", trimmedKey);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+
+        String trimmedSku = payload.sku().trim();
+        if (!SKU_PATTERN.matcher(trimmedSku).matches()) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("code", "VALIDATION_ERROR");
+            body.put("message", "Field 'sku' contains invalid characters: " + trimmedSku);
             body.put("requestId", trimmedKey);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
@@ -168,7 +181,16 @@ public class StockRequestController {
         try {
             Map<String, Object> data = null;
             if (statusFilter != null && !statusFilter.isBlank()) {
-                data = Map.of("status", statusFilter.trim());
+                String trimmed = statusFilter.trim().toUpperCase();
+                if (!"ALL".equals(trimmed)) {
+                    if (!ALLOWED_STATUS_FILTERS.contains(trimmed)) {
+                        Map<String, Object> error = new LinkedHashMap<>();
+                        error.put("code", "VALIDATION_ERROR");
+                        error.put("message", "Invalid status filter '" + statusFilter + "'. Allowed values: ALL, ACCEPTED, REJECTED, PICKED, DISPATCHED");
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                    }
+                    data = Map.of("status", trimmed);
+                }
             }
 
             JsonNode response = tcpCommandClient.sendCommand(ProtocolInfo.COMMAND_GET_REQUESTS, requestId, data);
