@@ -38,109 +38,119 @@ const technicalConcepts = [
   },
 ];
 
-const operationalActions = [
+const operationalCards = [
   {
-    title: "Browse Stock",
-    desc: "Check authoritative on-hand, reserved, and available quantities across all warehouse items in real time.",
+    title: "Inventory Catalog",
+    desc: "Check authoritative on-hand, reserved, and available stock quantities across all central warehouse items in real time.",
     href: "/products",
-    badge: "Inventory Catalog",
-    cta: "Browse Stock →",
+    badge: "Live Stock Levels",
+    badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    action: "Browse Inventory →",
+    actionColor: "text-emerald-800 hover:text-emerald-950",
   },
   {
-    title: "Create Request",
-    desc: "Submit a new stock reservation for customer fulfillment with automatic duplicate-submission protection.",
+    title: "New Stock Request",
+    desc: "Submit atomic stock reservations for customer fulfillment with automatic duplicate-submission protection.",
     href: "/requests/new",
     badge: "Branch Orders",
-    cta: "Create Request →",
+    badgeColor: "bg-teal-50 text-teal-800 border-teal-200",
+    action: "Create Request →",
+    actionColor: "text-teal-800 hover:text-teal-950",
   },
   {
-    title: "Open Warehouse Queue",
-    desc: "Review accepted reservations and execute pick and dispatch stages to fulfill branch orders.",
+    title: "Warehouse Fulfillment",
+    desc: "Pickers and dispatchers fulfill accepted reservations through strict Pick and Dispatch lifecycle stages.",
     href: "/warehouse",
-    badge: "Fulfillment",
-    cta: "Open Warehouse Queue →",
+    badge: "Fulfillment Queue",
+    badgeColor: "bg-blue-50 text-blue-800 border-blue-200",
+    action: "Open Warehouse Queue →",
+    actionColor: "text-blue-800 hover:text-blue-950",
   },
   {
-    title: "Check Supplier Stock",
-    desc: "Look up advisory availability and restock turnaround from external suppliers when central inventory is depleted.",
+    title: "External Supplier Advisory",
+    desc: "Query external supplier availability and restock timelines when central warehouse inventory is depleted.",
     href: "/suppliers",
-    badge: "External Advisory",
-    cta: "Check Supplier Stock →",
+    badge: "Supplier Inquiry",
+    badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
+    action: "Check Supplier Stock →",
+    actionColor: "text-amber-800 hover:text-amber-950",
   },
 ];
 
 export default function Home() {
   return (
-    <div className="space-y-10">
-      {/* Hero Section with Primary Daily Actions (QA-13) */}
-      <section className="rounded-3xl bg-slate-900 px-6 py-10 text-white shadow-xl sm:px-12 sm:py-14">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="rounded-full bg-teal-400/10 border border-teal-400/30 px-3 py-0.5 text-xs font-semibold tracking-wider uppercase text-teal-300">
-            Branch-to-Warehouse Coordination
-          </span>
-          <span className="rounded-full bg-emerald-400/10 border border-emerald-400/30 px-3 py-0.5 text-xs font-semibold text-emerald-300">
-            Authoritative Inventory
-          </span>
-        </div>
-        <h1 className="mt-4 max-w-3xl text-3xl font-bold tracking-tight sm:text-5xl">
-          Central Stock Management &amp; Fulfillment
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
-          Check live inventory levels, reserve stock for branch orders, coordinate picking and dispatch, and query advisory supplier stock.
-        </p>
+    <div className="space-y-8">
+      {/* Page Header & High-Level Action Bar */}
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs sm:p-8">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-800 border border-teal-200">
+                Central Operations
+              </span>
+              <span className="text-xs text-slate-400">·</span>
+              <span className="text-xs font-medium text-slate-500">Branch-to-Warehouse Coordination</span>
+            </div>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Stock Coordination &amp; Fulfillment Dashboard
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Check live inventory levels, reserve stock for branch orders, coordinate picking and dispatch, and query advisory supplier stock.
+            </p>
+          </div>
 
-        {/* Primary Three Homepage Actions (QA-13) */}
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/products"
-            className="inline-flex items-center rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 focus:outline-hidden focus:ring-2 focus:ring-teal-400"
-          >
-            Browse stock
-          </Link>
-          <Link
-            href="/requests/new"
-            className="inline-flex items-center rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-700 focus:outline-hidden focus:ring-2 focus:ring-slate-500"
-          >
-            Create request
-          </Link>
-          <Link
-            href="/warehouse"
-            className="inline-flex items-center rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-700 focus:outline-hidden focus:ring-2 focus:ring-slate-500"
-          >
-            Open warehouse queue
-          </Link>
+          {/* Primary Quick Actions */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0">
+            <Link
+              href="/requests/new"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition-colors"
+            >
+              + New Request
+            </Link>
+            <Link
+              href="/products"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition-colors"
+            >
+              Browse Stock
+            </Link>
+            <Link
+              href="/warehouse"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition-colors"
+            >
+              Fulfillment Queue
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Operational Workflows Grid */}
       <section aria-labelledby="operations-title">
-        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="operations-title" className="text-xl font-bold text-slate-900 sm:text-2xl">
-            Operational Workflows
+        <div className="mb-4 flex items-center justify-between">
+          <h2 id="operations-title" className="text-lg font-bold text-slate-900 sm:text-xl">
+            Core Workflows
           </h2>
-          <span className="text-xs text-slate-500">
-            Real-time branch inventory dashboard
-          </span>
+          <span className="text-xs font-medium text-slate-500">Select an operational workspace</span>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          {operationalActions.map((op) => (
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {operationalCards.map((op) => (
             <div
               key={op.title}
-              className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition-shadow hover:shadow-md"
+              className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all hover:border-teal-200 hover:shadow-sm"
             >
               <div>
-                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${op.badgeColor}`}>
                   {op.badge}
                 </span>
-                <h3 className="mt-3 text-lg font-bold text-slate-900">{op.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{op.desc}</p>
+                <h3 className="mt-2.5 text-base font-bold text-slate-900">{op.title}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{op.desc}</p>
               </div>
-              <div className="mt-6 border-t border-slate-100 pt-4">
+              <div className="mt-5 border-t border-slate-100 pt-3">
                 <Link
                   href={op.href}
-                  className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800"
+                  className={`inline-flex items-center text-xs font-bold ${op.actionColor}`}
                 >
-                  {op.cta}
+                  {op.action}
                 </Link>
               </div>
             </div>
@@ -148,68 +158,72 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Dedicated Academic Architecture & Demo Contributions Panel (QA-13) */}
-      <details className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs group" open>
-        <summary className="cursor-pointer select-none font-bold text-lg text-slate-900 hover:text-teal-700 flex items-center justify-between">
-          <div>
-            <span>Academic Architecture &amp; Technical Ownership</span>
-            <p className="mt-1 text-xs font-normal text-slate-500">
-              Java Network Programming Assignment 02 · Five distinct individually owned concepts
+      {/* Dedicated Academic Architecture & Verification Disclosure (For Lecturer / Evaluation) */}
+      <section>
+        <details className="group rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-all">
+          <summary className="flex cursor-pointer items-center justify-between p-5 text-sm font-bold text-slate-900 hover:bg-slate-50 rounded-2xl select-none">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-teal-100 text-teal-800 text-xs font-bold">
+                ⚙
+              </span>
+              <span>Academic Architecture &amp; Member Evaluation Reference (Assignment 02)</span>
+            </div>
+            <span className="text-xs font-medium text-slate-500 group-open:rotate-180 transition-transform">
+              ▼
+            </span>
+          </summary>
+
+          <div className="border-t border-slate-100 p-5 space-y-6">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              ThogaMura demonstrates five distinct Java networking and distributed system concepts owned individually by team members, complying strictly with Coursework Assignment 02:
             </p>
-          </div>
-          <span className="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
-        </summary>
 
-        <div className="mt-6 space-y-6 border-t border-slate-100 pt-5">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {technicalConcepts.map((item) => (
-              <div
-                key={item.title}
-                className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/50 p-4"
-              >
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-                    {item.member}
-                  </p>
-                  <h3 className="mt-1 text-sm font-bold text-slate-900">{item.title}</h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{item.concept}</p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {technicalConcepts.map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-xl border border-slate-200/60 bg-slate-50/70 p-4 text-xs space-y-2"
+                >
+                  <div className="font-bold text-slate-900">{item.title}</div>
+                  <div className="font-semibold text-teal-800">{item.member}</div>
+                  <p className="text-slate-600 leading-normal">{item.concept}</p>
+                  <div className="pt-1">
+                    <Link
+                      href={item.href}
+                      className="inline-flex items-center font-bold text-teal-700 hover:text-teal-900"
+                    >
+                      {item.actionLabel} →
+                    </Link>
+                  </div>
                 </div>
-                <div className="mt-4 border-t border-slate-200/60 pt-2.5">
-                  <Link
-                    href={item.href}
-                    className="text-xs font-semibold text-slate-700 hover:text-teal-700"
-                  >
-                    {item.actionLabel} →
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Non-Negotiable Architecture Invariants */}
-          <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-5 text-slate-800">
-            <h3 className="text-sm font-bold text-teal-950">Architectural Invariants</h3>
-            <ul className="mt-2.5 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
-              <li className="flex items-start gap-2">
-                <span className="font-bold text-teal-800">1.</span>
-                <span>PostgreSQL 17 is the sole database authority; no direct browser or gateway DB access.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="font-bold text-teal-800">2.</span>
-                <span>Stock commands travel across Java TCP/TLS sockets in a separate JVM process.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="font-bold text-teal-800">3.</span>
-                <span>Java NIO on port 7444 delivers private-LAN version-only invalidation signals.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="font-bold text-teal-800">4.</span>
-                <span>Supplier inquiries use outbound Java HTTP networking to an independent mock service.</span>
-              </li>
-            </ul>
+            {/* Non-Negotiable Architecture Invariants */}
+            <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-5 text-slate-800">
+              <h3 className="text-sm font-bold text-teal-950">Architectural Invariants</h3>
+              <ul className="mt-2.5 grid gap-2 text-xs text-slate-700 sm:grid-cols-2">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-teal-800">1.</span>
+                  <span>PostgreSQL 17 is the sole database authority; no direct browser or gateway DB access.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-teal-800">2.</span>
+                  <span>Stock commands travel across Java TCP/TLS sockets in a separate JVM process.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-teal-800">3.</span>
+                  <span>Java NIO on port 7444 delivers private-LAN version-only invalidation signals.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-teal-800">4.</span>
+                  <span>Supplier inquiries use outbound Java HTTP networking to an independent mock service.</span>
+                </li>
+              </ul>
+            </div>
           </div>
-        </div>
-      </details>
+        </details>
+      </section>
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
 export function WarehouseQueueClient() {
   const [queue, setQueue] = useState<StockRequest[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [activeTab, setActiveTab] = useState<"QUEUE" | "MOVEMENTS">("QUEUE");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -125,7 +126,7 @@ export function WarehouseQueueClient() {
 
     try {
       await pickStockRequest(requestId);
-      setSuccessMessage(`Request ${requestId.slice(0, 8)}... successfully marked as PICKED.`);
+      setSuccessMessage(`Request ${requestId.slice(0, 8)}... marked as PICKED.`);
       await loadWarehouseData(false);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -146,7 +147,7 @@ export function WarehouseQueueClient() {
     try {
       await dispatchStockRequest(requestId);
       setSuccessMessage(
-        `Request ${requestId.slice(0, 8)}... successfully marked as DISPATCHED. PostgreSQL balances decremented.`
+        `Request ${requestId.slice(0, 8)}... DISPATCHED. Stock balances permanently decremented in PostgreSQL.`
       );
       await loadWarehouseData(false);
     } catch (err) {
@@ -160,23 +161,27 @@ export function WarehouseQueueClient() {
     }
   }
 
-  const pendingPicks = queue.filter((r) => r.status === "ACCEPTED").length;
-  const pendingDispatches = queue.filter((r) => r.status === "PICKED").length;
+  const pendingPicks = queue.filter((r) => r.status === "ACCEPTED");
+  const pendingDispatches = queue.filter((r) => r.status === "PICKED");
   const totalMovements = movements.length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-            Operations &amp; Fulfillment
-          </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Warehouse Queue
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-800 border border-teal-200">
+              Warehouse Floor
+            </span>
+            <span className="text-xs text-slate-400">·</span>
+            <span className="text-xs font-medium text-slate-500">Pick &amp; Dispatch Fulfillment</span>
+          </div>
+          <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            Warehouse Fulfillment Queue
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Pickers review accepted reservations and execute strict ACCEPTED → PICKED → DISPATCHED transitions.
+          <p className="mt-1 text-xs text-slate-600 sm:text-sm">
+            Review accepted branch reservations and execute Pick and Dispatch workflow transitions.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -184,7 +189,7 @@ export function WarehouseQueueClient() {
             type="button"
             onClick={() => void loadWarehouseData(true)}
             disabled={loading || refreshing}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
           >
             <svg
               className={`h-4 w-4 ${refreshing || loading ? "animate-spin text-teal-600" : ""}`}
@@ -204,60 +209,91 @@ export function WarehouseQueueClient() {
         </div>
       </div>
 
-      {/* Metrics Summary (QA-04: Show Queue unavailable if no successful fetch exists) */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Pending Pick</span>
+      {/* Metrics Summary Strip */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="rounded-xl border border-blue-200/80 bg-blue-50/50 p-4">
+          <span className="text-xs font-bold uppercase tracking-wider text-blue-700">To Pick</span>
           {hasLoadedOnce ? (
-            <p className="mt-1 font-mono text-2xl font-bold text-blue-900">{pendingPicks}</p>
+            <p className="mt-1 font-mono text-2xl font-extrabold text-blue-900">{pendingPicks.length}</p>
           ) : (
-            <p className="mt-1 text-sm font-semibold text-slate-500">Queue unavailable</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Unavailable</p>
           )}
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">Pending Dispatch</span>
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-4">
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-700">To Dispatch</span>
           {hasLoadedOnce ? (
-            <p className="mt-1 font-mono text-2xl font-bold text-amber-900">{pendingDispatches}</p>
+            <p className="mt-1 font-mono text-2xl font-extrabold text-amber-900">{pendingDispatches.length}</p>
           ) : (
-            <p className="mt-1 text-sm font-semibold text-slate-500">Queue unavailable</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Unavailable</p>
           )}
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Audit Movements</span>
+        <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-4">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Audit Records</span>
           {hasLoadedOnce ? (
-            <p className="mt-1 font-mono text-2xl font-bold text-emerald-900">{totalMovements}</p>
+            <p className="mt-1 font-mono text-2xl font-extrabold text-emerald-900">{totalMovements}</p>
           ) : (
-            <p className="mt-1 text-sm font-semibold text-slate-500">Queue unavailable</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Unavailable</p>
           )}
         </div>
       </div>
 
-      {/* Real-time Invalidation Disruption Warning (QA-05) */}
+      {/* Navigation Tabs (Active Queue vs Audit Records) */}
+      <div className="flex border-b border-slate-200 gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("QUEUE")}
+          className={`flex items-center gap-2 border-b-2 py-3 px-4 text-xs sm:text-sm font-bold transition-colors ${
+            activeTab === "QUEUE"
+              ? "border-teal-700 text-teal-800"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <span>Active Queue</span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+            {queue.length}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("MOVEMENTS")}
+          className={`flex items-center gap-2 border-b-2 py-3 px-4 text-xs sm:text-sm font-bold transition-colors ${
+            activeTab === "MOVEMENTS"
+              ? "border-teal-700 text-teal-800"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <span>Stock Movement Audit</span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+            {movements.length}
+          </span>
+        </button>
+      </div>
+
+      {/* Network / Success / Error Notifications */}
       {warningMessage && (
         <div
           role="alert"
           className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
         >
-          <svg className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
               d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
               clipRule="evenodd"
             />
           </svg>
-          <div>
-            <h2 className="font-semibold text-amber-900">Live updates disconnected</h2>
-            <p className="mt-1 text-sm text-amber-800">{warningMessage}</p>
+          <div className="text-xs">
+            <strong className="font-semibold text-amber-900 block">Live updates disconnected</strong>
+            <p className="text-amber-800 mt-0.5">{warningMessage}</p>
           </div>
         </div>
       )}
 
-      {/* Action / Refresh Notice */}
       {refreshNotice && (
         <div
           role="status"
           aria-live="polite"
-          className="rounded-xl border border-teal-200 bg-teal-50 p-4 text-xs font-semibold text-teal-900"
+          className="rounded-xl border border-teal-200 bg-teal-50 p-3 text-xs font-semibold text-teal-900"
         >
           ✓ {refreshNotice}
         </div>
@@ -267,7 +303,7 @@ export function WarehouseQueueClient() {
         <div
           role="status"
           aria-live="polite"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-900"
         >
           ✓ {successMessage}
         </div>
@@ -277,221 +313,234 @@ export function WarehouseQueueClient() {
         <div
           role="alert"
           aria-live="assertive"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-900"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-900"
         >
           ⚠ {error}
         </div>
       )}
 
-      {/* Actionable Queue */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xl font-bold text-slate-900">
-            Pending Fulfillment ({hasLoadedOnce ? queue.length : "—"})
-          </h2>
-          <div className="flex items-center gap-3 text-xs text-slate-500">
-            <span>
-              Feed status:{" "}
-              <strong className={isLive ? "text-emerald-700" : "text-amber-700"}>
-                {isLive ? "Live NIO/SSE Synced" : "Live updates disconnected"}
-              </strong>
-            </span>
-            {lastFetchedAt && (
-              <span>
-                Last successful fetch:{" "}
-                <strong className="font-mono text-slate-700">
-                  {formatOperationalTime(lastFetchedAt)}
-                </strong>
-              </span>
-            )}
-          </div>
-        </div>
+      {/* Tab 1: Active Queue */}
+      {activeTab === "QUEUE" && (
+        <div className="space-y-6">
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 animate-pulse rounded-xl border border-slate-200 bg-slate-100" />
+              ))}
+            </div>
+          ) : !hasLoadedOnce && error ? (
+            <div className="rounded-2xl border border-dashed border-rose-300 bg-rose-50/50 p-10 text-center">
+              <h3 className="font-bold text-rose-900">Queue unavailable</h3>
+              <p className="mt-1 text-xs text-rose-700">
+                Could not retrieve fulfillment items from the warehouse command server.
+              </p>
+              <button
+                type="button"
+                onClick={() => void loadWarehouseData(true)}
+                className="mt-4 inline-flex min-h-[40px] items-center rounded-xl bg-rose-700 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-800"
+              >
+                Retry Connection
+              </button>
+            </div>
+          ) : queue.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center bg-white">
+              <h3 className="font-bold text-slate-900 text-base">
+                Fulfillment queue is clear {formatFreshness(lastFetchedAt)}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                All accepted stock reservations have been picked and dispatched. No pending work in queue.
+              </p>
+              <div className="mt-4">
+                <Link
+                  href="/requests/new"
+                  className="inline-flex min-h-[40px] items-center rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white hover:bg-teal-800"
+                >
+                  Create Stock Request
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Stage 1: Items to Pick */}
+              {pendingPicks.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-800 text-xs font-bold">
+                        1
+                      </span>
+                      <span>To Pick from Shelves ({pendingPicks.length})</span>
+                    </h2>
+                    <span className="text-xs text-slate-500">Accepted customer reservations</span>
+                  </div>
 
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-20 animate-pulse rounded-xl border border-slate-200 bg-slate-100"
-              />
-            ))}
-          </div>
-        ) : !hasLoadedOnce && error ? (
-          <div className="rounded-xl border border-dashed border-rose-300 bg-rose-50/50 p-10 text-center">
-            <h3 className="font-semibold text-rose-900">Queue unavailable</h3>
-            <p className="mt-1 text-xs text-rose-700">
-              Could not retrieve the fulfillment queue from the warehouse server.
-            </p>
-            <button
-              type="button"
-              onClick={() => void loadWarehouseData(true)}
-              className="mt-4 inline-flex items-center rounded-lg bg-rose-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-800"
-            >
-              Retry Connection
-            </button>
-          </div>
-        ) : queue.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center">
-            <h3 className="font-semibold text-slate-900">
-              No pending work {formatFreshness(lastFetchedAt)}
-            </h3>
-            <p className="mt-1 text-xs text-slate-500">
-              All accepted stock reservations have been picked and dispatched. No pending work in queue.
-            </p>
-            <Link
-              href="/requests/new"
-              className="mt-4 inline-flex items-center rounded-lg bg-teal-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-800"
-            >
-              Create Stock Request
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  <tr>
-                    <th scope="col" className="px-6 py-3">
-                      Request ID
-                    </th>
-                    <th scope="col" className="px-6 py-3">
-                      Item
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right">
-                      Quantity
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-center">
-                      Current Stage
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right">
-                      Picker Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {queue.map((r) => {
-                    const isProcessing = !!actionLoading[r.requestId];
-                    return (
-                      <tr key={r.requestId} className="hover:bg-slate-50">
-                        <td className="px-6 py-4 font-mono text-xs text-slate-900 select-all">
-                          {r.requestId}
-                        </td>
-                        <td className="px-6 py-4 font-mono font-semibold text-slate-900">
-                          {r.sku}
-                        </td>
-                        <td className="px-6 py-4 text-right font-mono font-bold text-slate-800">
-                          {r.quantity}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              r.status === "ACCEPTED"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-amber-100 text-amber-800"
-                            }`}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {pendingPicks.map((r) => {
+                      const isProcessing = !!actionLoading[r.requestId];
+                      return (
+                        <div
+                          key={r.requestId}
+                          className="rounded-xl border border-blue-200/90 bg-white p-4 shadow-xs space-y-3 flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <span className="font-mono font-bold text-lg text-slate-900 block">{r.sku}</span>
+                                <span className="font-mono text-xs text-slate-400">Ref: {r.requestId.slice(0, 10)}...</span>
+                              </div>
+                              <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                                Accepted
+                              </span>
+                            </div>
+
+                            <div className="mt-3 border-t border-slate-100 pt-2.5 flex items-baseline justify-between text-xs">
+                              <span className="text-slate-500">Quantity to Pick:</span>
+                              <strong className="font-mono text-xl font-bold text-slate-900">
+                                {r.quantity} units
+                              </strong>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => void handlePick(r.requestId)}
+                            disabled={isProcessing}
+                            className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700 disabled:opacity-50 transition-colors"
                           >
-                            {r.status}
-                          </span>
+                            {isProcessing ? "Confirming Pick..." : "Confirm Pick"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Stage 2: Items to Dispatch */}
+              {pendingDispatches.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+                        2
+                      </span>
+                      <span>To Dispatch for Courier Release ({pendingDispatches.length})</span>
+                    </h2>
+                    <span className="text-xs text-slate-500">Picked items staged in loading bay</span>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {pendingDispatches.map((r) => {
+                      const isProcessing = !!actionLoading[r.requestId];
+                      return (
+                        <div
+                          key={r.requestId}
+                          className="rounded-xl border border-amber-200/90 bg-white p-4 shadow-xs space-y-3 flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <span className="font-mono font-bold text-lg text-slate-900 block">{r.sku}</span>
+                                <span className="font-mono text-xs text-slate-400">Ref: {r.requestId.slice(0, 10)}...</span>
+                              </div>
+                              <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                                Picked &amp; Staged
+                              </span>
+                            </div>
+
+                            <div className="mt-3 border-t border-slate-100 pt-2.5 flex items-baseline justify-between text-xs">
+                              <span className="text-slate-500">Quantity to Dispatch:</span>
+                              <strong className="font-mono text-xl font-bold text-slate-900">
+                                {r.quantity} units
+                              </strong>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleDispatch(r.requestId)}
+                            disabled={isProcessing}
+                            className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 disabled:opacity-50 transition-colors"
+                          >
+                            {isProcessing ? "Confirming Dispatch..." : "Confirm Dispatch"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Stock Movements Audit Records */}
+      {activeTab === "MOVEMENTS" && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Stock Movements History</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Immutable PostgreSQL audit records of completed stock dispatches.
+            </p>
+          </div>
+
+          {movements.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center bg-white text-xs text-slate-500">
+              No stock movements recorded yet. Completed dispatches will record durable audit rows here.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+                  <thead className="bg-slate-50 font-semibold uppercase tracking-wider text-slate-600">
+                    <tr>
+                      <th scope="col" className="px-4 py-3">
+                        Movement ID
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        Request ID
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        SKU
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-right">
+                        Quantity Delta
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        Reason
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        Timestamp
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
+                    {movements.map((m) => (
+                      <tr key={m.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-bold text-slate-900">#{m.id}</td>
+                        <td className="px-4 py-3 text-slate-600 select-all" title={m.stockRequestId}>
+                          {m.stockRequestId.slice(0, 16)}...
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          {r.status === "ACCEPTED" && (
-                            <button
-                              type="button"
-                              onClick={() => void handlePick(r.requestId)}
-                              disabled={isProcessing}
-                              className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 disabled:opacity-50"
-                            >
-                              {isProcessing ? "Processing..." : "Mark Picked"}
-                            </button>
-                          )}
-                          {r.status === "PICKED" && (
-                            <button
-                              type="button"
-                              onClick={() => void handleDispatch(r.requestId)}
-                              disabled={isProcessing}
-                              className="inline-flex items-center rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 disabled:opacity-50"
-                            >
-                              {isProcessing ? "Processing..." : "Mark Dispatched"}
-                            </button>
-                          )}
+                        <td className="px-4 py-3 font-semibold text-slate-900">{m.sku}</td>
+                        <td className="px-4 py-3 text-right font-bold text-rose-700">
+                          {m.quantityDelta}
+                        </td>
+                        <td className="px-4 py-3 font-sans font-semibold text-slate-600">
+                          {m.reason}
+                        </td>
+                        <td className="px-4 py-3 font-sans text-slate-500" title={m.occurredAt}>
+                          {formatFullDateTime(m.occurredAt)}
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Dispatch Movement History */}
-      <div className="space-y-4 pt-6 border-t border-slate-200">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Stock Movements History</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Immutable PostgreSQL audit records of completed stock dispatches.
-          </p>
+          )}
         </div>
-
-        {movements.length === 0 ? (
-          <p className="text-xs text-slate-500 rounded-lg border border-dashed border-slate-200 p-6 text-center">
-            No stock movements recorded yet. Completed dispatches will appear here.
-          </p>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-                <thead className="bg-slate-50 font-semibold uppercase tracking-wider text-slate-600">
-                  <tr>
-                    <th scope="col" className="px-4 py-2.5">
-                      Movement ID
-                    </th>
-                    <th scope="col" className="px-4 py-2.5">
-                      Request ID
-                    </th>
-                    <th scope="col" className="px-4 py-2.5">
-                      SKU
-                    </th>
-                    <th scope="col" className="px-4 py-2.5 text-right">
-                      Quantity Delta
-                    </th>
-                    <th scope="col" className="px-4 py-2.5">
-                      Reason
-                    </th>
-                    <th scope="col" className="px-4 py-2.5">
-                      Timestamp
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
-                  {movements.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-2.5 font-bold text-slate-900">#{m.id}</td>
-                      <td className="px-4 py-2.5 text-slate-600 select-all" title={m.stockRequestId}>
-                        {m.stockRequestId.slice(0, 18)}...
-                      </td>
-                      <td className="px-4 py-2.5 font-semibold text-slate-900">{m.sku}</td>
-                      <td className="px-4 py-2.5 text-right font-bold text-rose-700">
-                        {m.quantityDelta}
-                      </td>
-                      <td className="px-4 py-2.5 font-sans font-semibold text-slate-600">
-                        {m.reason}
-                      </td>
-                      <td
-                        className="px-4 py-2.5 font-sans text-slate-500"
-                        title={m.occurredAt}
-                      >
-                        {formatFullDateTime(m.occurredAt)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

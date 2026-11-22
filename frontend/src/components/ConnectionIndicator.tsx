@@ -4,7 +4,11 @@ import React from "react";
 import Link from "next/link";
 import { useStockEvents } from "../lib/events/useStockEvents";
 
-export function ConnectionIndicator() {
+interface ConnectionIndicatorProps {
+  compact?: boolean;
+}
+
+export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProps) {
   const {
     sseStatus,
     upstreamNioStatus,
@@ -19,27 +23,47 @@ export function ConnectionIndicator() {
   let statusText = "Connecting...";
   let statusBadgeStyle = "bg-slate-100 text-slate-700 border-slate-200";
   let dotStyle = "bg-slate-400";
+  let compactBg = "bg-slate-100 border-slate-200";
 
   if (isRefreshing) {
     statusText = "Refreshing feeds...";
     statusBadgeStyle = "bg-teal-50 text-teal-800 border-teal-200";
     dotStyle = "bg-teal-600 animate-pulse";
+    compactBg = "bg-teal-50 border-teal-200";
   } else if (isLive) {
     statusText = lastVersion ? `Live (v${lastVersion})` : "Live updates active";
     statusBadgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200";
     dotStyle = "bg-emerald-500";
+    compactBg = "bg-emerald-50 border-emerald-200";
   } else if (sseStatus === "CONNECTED" && upstreamNioStatus !== "CONNECTED") {
     statusText = "Warehouse feed interrupted";
     statusBadgeStyle = "bg-amber-50 text-amber-800 border-amber-200";
     dotStyle = "bg-amber-500 animate-pulse";
+    compactBg = "bg-amber-50 border-amber-200";
   } else if (sseStatus === "DISCONNECTED" || sseStatus === "ERROR") {
     statusText = "Live updates disconnected";
     statusBadgeStyle = "bg-rose-50 text-rose-800 border-rose-200";
     dotStyle = "bg-rose-500 animate-ping";
+    compactBg = "bg-rose-50 border-rose-200";
+  }
+
+  // Mobile compact presentation: safe 36x36px icon indicator linking to /activity
+  if (compact) {
+    return (
+      <Link
+        href="/activity"
+        aria-label={`Network status: ${statusText}. Tap to view System Status.`}
+        title={`${statusText}. Tap to view System Status.`}
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border ${compactBg} transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600`}
+      >
+        <span className={`inline-block h-2.5 w-2.5 rounded-full ${dotStyle}`} aria-hidden="true" />
+        <span className="sr-only">{statusText}</span>
+      </Link>
+    );
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
+    <div className="flex items-center gap-2 text-xs">
       {/* Live accessibility announcement */}
       <span className="sr-only" role="status" aria-live="polite">
         Network status: {statusText}. {warningMessage ? warningMessage : ""}
@@ -79,23 +103,6 @@ export function ConnectionIndicator() {
         </svg>
         Reconcile
       </button>
-
-      {/* Stale data warning banner when disconnected */}
-      {warningMessage && (
-        <div
-          role="alert"
-          className="flex w-full items-center gap-1.5 rounded-md bg-amber-50 px-3 py-1 text-xs text-amber-900 border border-amber-200"
-        >
-          <svg className="h-4 w-4 shrink-0 text-amber-700" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span>{warningMessage} Displayed inventory may be outdated.</span>
-        </div>
-      )}
     </div>
   );
 }

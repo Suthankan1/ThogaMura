@@ -111,13 +111,17 @@ export function ProductsClient() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-            Authoritative Inventory
-          </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Product Catalog
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-800 border border-teal-200">
+              PostgreSQL Authority
+            </span>
+            <span className="text-xs text-slate-400">·</span>
+            <span className="text-xs font-medium text-slate-500">Real-time NIO Synchronization</span>
+          </div>
+          <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            Inventory &amp; Stock Levels
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-1 text-xs text-slate-600 sm:text-sm">
             Authoritative on-hand, reserved, and available stock levels stored in PostgreSQL.
           </p>
         </div>
@@ -126,7 +130,7 @@ export function ProductsClient() {
             type="button"
             onClick={() => void loadAuthoritativeProducts(true)}
             disabled={loading || refreshing}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
           >
             <svg
               className={`h-4 w-4 ${loading || refreshing ? "animate-spin text-teal-600" : ""}`}
@@ -145,7 +149,7 @@ export function ProductsClient() {
           </button>
           <Link
             href="/requests/new"
-            className="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
+            className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition-colors"
           >
             + New Request
           </Link>
@@ -326,94 +330,164 @@ export function ProductsClient() {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                <tr>
-                  <th scope="col" className="px-6 py-3">
-                    Product / SKU
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right">
-                    On Hand
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right">
-                    Reserved
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right">
-                    Available
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-center">
-                    Stock Health
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredProducts.map((p) => {
-                  const isOutOfStock = p.available === 0;
-                  const isLowStock = p.available >= 1 && p.available <= 3;
+        <>
+          {/* Mobile Product Card Stack (< 768px) - Zero Horizontal Scrolling */}
+          <div className="space-y-3 md:hidden">
+            {filteredProducts.map((p) => {
+              const isOutOfStock = p.available === 0;
+              const isLowStock = p.available >= 1 && p.available <= 3;
 
-                  return (
-                    <tr key={p.sku} className="hover:bg-slate-50">
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900">{p.name}</div>
-                        <div className="font-mono text-xs text-slate-500">{p.sku}</div>
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono text-slate-700">
-                        {p.onHand}
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono text-slate-500">
-                        {p.reserved}
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono text-base font-bold text-slate-900">
-                        {p.available}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            isOutOfStock
-                              ? "bg-rose-100 text-rose-800"
-                              : isLowStock
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-emerald-100 text-emerald-800"
-                          }`}
-                        >
-                          {isOutOfStock
-                            ? "Out of Stock (0)"
-                            : isLowStock
-                            ? "Low Stock (1–3)"
-                            : "In Stock (4+)"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {/* QA-07: Explicit 'Request stock' label with prefilled SKU */}
-                          <Link
-                            href={`/requests/new?sku=${encodeURIComponent(p.sku)}`}
-                            className="inline-flex items-center rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100"
-                          >
-                            Request stock
-                          </Link>
-                          {isOutOfStock && (
-                            <Link
-                              href={`/suppliers?sku=${encodeURIComponent(p.sku)}`}
-                              className="inline-flex items-center rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
-                            >
-                              Check Supplier
-                            </Link>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              return (
+                <div
+                  key={p.sku}
+                  className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="font-bold text-slate-900 text-base">{p.name}</h2>
+                      <p className="font-mono text-xs text-slate-500 mt-0.5">{p.sku}</p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 ${
+                        isOutOfStock
+                          ? "bg-rose-100 text-rose-800"
+                          : isLowStock
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
+                      {isOutOfStock
+                        ? "Out of Stock"
+                        : isLowStock
+                        ? "Low Stock (1–3)"
+                        : "In Stock (4+)"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-baseline justify-between border-t border-slate-100 pt-2.5">
+                    <div>
+                      <span className="text-xs text-slate-500">Available: </span>
+                      <strong className="font-mono text-lg font-bold text-slate-900">
+                        {p.available} units
+                      </strong>
+                    </div>
+                    <div className="text-xs text-slate-500 font-mono">
+                      On Hand: {p.onHand} · Res: {p.reserved}
+                    </div>
+                  </div>
+
+                  <div className="pt-1">
+                    {isOutOfStock ? (
+                      <Link
+                        href={`/suppliers?sku=${encodeURIComponent(p.sku)}`}
+                        className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition-colors"
+                      >
+                        Check Supplier Stock
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/requests/new?sku=${encodeURIComponent(p.sku)}`}
+                        className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-800 transition-colors"
+                      >
+                        Request Stock
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+
+          {/* Desktop Table (>= 768px) */}
+          <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  <tr>
+                    <th scope="col" className="px-6 py-3">
+                      Product / SKU
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right">
+                      On Hand
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right">
+                      Reserved
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right">
+                      Available
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-center">
+                      Stock Health
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredProducts.map((p) => {
+                    const isOutOfStock = p.available === 0;
+                    const isLowStock = p.available >= 1 && p.available <= 3;
+
+                    return (
+                      <tr key={p.sku} className="hover:bg-slate-50">
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-slate-900">{p.name}</div>
+                          <div className="font-mono text-xs text-slate-500">{p.sku}</div>
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-slate-700">
+                          {p.onHand}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-slate-500">
+                          {p.reserved}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-base font-bold text-slate-900">
+                          {p.available}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              isOutOfStock
+                                ? "bg-rose-100 text-rose-800"
+                                : isLowStock
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-emerald-100 text-emerald-800"
+                            }`}
+                          >
+                            {isOutOfStock
+                              ? "Out of Stock (0)"
+                              : isLowStock
+                              ? "Low Stock (1–3)"
+                              : "In Stock (4+)"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {isOutOfStock ? (
+                              <Link
+                                href={`/suppliers?sku=${encodeURIComponent(p.sku)}`}
+                                className="inline-flex items-center rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+                              >
+                                Check Supplier
+                              </Link>
+                            ) : (
+                              <Link
+                                href={`/requests/new?sku=${encodeURIComponent(p.sku)}`}
+                                className="inline-flex items-center rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100"
+                              >
+                                Request stock
+                              </Link>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

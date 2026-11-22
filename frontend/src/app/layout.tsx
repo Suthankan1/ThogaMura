@@ -21,8 +21,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <main id="main" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
             {children}
           </main>
-          <footer className="mx-auto max-w-6xl px-4 pb-10 text-sm text-slate-500 sm:px-6">
-            Java Network Programming — Assignment 02 · Real-time Java NIO &amp; SSE invalidation.
+          <footer className="mx-auto max-w-6xl px-4 pb-12 pt-6 text-xs text-slate-500 sm:px-6 border-t border-slate-200/60 mt-12 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>ThogaMura Logistics Platform · Branch-to-Warehouse Stock Coordination</p>
+            <p className="text-slate-400">Java Network Programming — Assignment 02</p>
           </footer>
         </StockEventsProvider>
       </body>

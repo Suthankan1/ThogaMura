@@ -2,10 +2,10 @@
 
 :root {
   color-scheme: light;
-  --ink: #16304a;
-  --muted: #587180;
-  --canvas: #f4f8fa;
-  --teal: #117b80;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --canvas: #f8fafc;
+  --teal: #0f766e;
 }
 
 html {
@@ -14,17 +14,20 @@ html {
 
 body {
   min-height: 100vh;
-  background: var(--canvas);
+  background-color: var(--canvas);
   color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid #0b6aca;
-  outline-offset: 3px;
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
 }
 
 .skip-link {
@@ -35,6 +38,9 @@ select:focus-visible {
   padding: 0.7rem 1rem;
   background: #fff;
   border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  font-weight: 600;
+  color: #0f766e;
 }
 
 .skip-link:focus {

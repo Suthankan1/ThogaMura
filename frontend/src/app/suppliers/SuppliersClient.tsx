@@ -58,40 +58,38 @@ export function SuppliersClient() {
     result && result.status === "AVAILABLE" && (result.reportedQuantity ?? 0) > 0;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-8">
       {/* Page Header */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-          Member 2 — URL/HttpURLConnection Integration
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Advisory Supplier Availability
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-800 border border-teal-200">
+            External Sourcing
+          </span>
+          <span className="text-xs text-slate-400">·</span>
+          <span className="text-xs font-medium text-slate-500">Advisory Stock Lookup</span>
+        </div>
+        <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          Check Supplier Stock
         </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          When warehouse stock is depleted, query the independent supplier HTTP simulator. Results are strictly advisory and never fabricate or alter central stock.
+        <p className="mt-1.5 text-xs text-slate-600 sm:text-sm">
+          Query advisory stock availability from external suppliers when central warehouse inventory is depleted.
         </p>
       </div>
 
-      {/* Architectural Disclaimer */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 space-y-1">
-        <strong className="text-slate-900 block font-semibold">
-          Architectural Notice (Member 2 Technical Area):
-        </strong>
-        <p>
-          The central warehouse server executes outbound Java <code className="font-mono text-teal-800">java.net.HttpURLConnection</code> requests to the configured mock supplier service. This data is read-only and does not automatically purchase goods or mutate PostgreSQL inventory balances.
-        </p>
-      </div>
-
-      {/* Inquiry Form */}
+      {/* Primary Inquiry Form */}
       <form
         onSubmit={handleSubmit}
-        className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4"
+        className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4"
       >
         <div>
           <label htmlFor="supplier-sku-input" className="block text-sm font-semibold text-slate-900">
             Product SKU to Inquire
           </label>
-          <div className="mt-2 flex gap-3">
+          <p className="text-xs text-slate-500 mt-0.5">
+            Enter any warehouse product SKU to query external supplier stock via HTTP.
+          </p>
+
+          <div className="mt-3 flex flex-col sm:flex-row gap-3">
             <input
               id="supplier-sku-input"
               type="text"
@@ -99,68 +97,22 @@ export function SuppliersClient() {
               value={sku}
               onChange={(e) => setSku(e.target.value)}
               placeholder="e.g. ITEM-008"
-              className="flex-1 rounded-lg border border-slate-300 px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono"
+              className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono"
             />
             <button
               type="submit"
               disabled={loading || !sku.trim()}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50 transition-colors"
             >
               {loading && (
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg className="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
               )}
-              {loading ? "Querying Supplier..." : "Inquire Availability"}
+              {loading ? "Checking..." : "Check Availability"}
             </button>
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-            <span>Demo Scenarios:</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSku("ITEM-008");
-                void executeInquiry("ITEM-008");
-              }}
-              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-teal-800 hover:bg-slate-200"
-            >
-              ITEM-008 (Available Units)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSku("ITEM-ZERO");
-                void executeInquiry("ITEM-ZERO");
-              }}
-              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-amber-800 hover:bg-slate-200"
-            >
-              ITEM-ZERO (Confirmed Zero)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSku("ITEM-UNKNOWN");
-                void executeInquiry("ITEM-UNKNOWN");
-              }}
-              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-700 hover:bg-slate-200"
-            >
-              ITEM-UNKNOWN (404 Catalog)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSku("ITEM-OUTAGE");
-                void executeInquiry("ITEM-OUTAGE");
-              }}
-              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-rose-700 hover:bg-slate-200"
-            >
-              ITEM-OUTAGE (503 Service Outage)
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Click any scenario button above to test the Java URL HTTP mock connector response mapping.
-          </p>
         </div>
       </form>
 
@@ -172,7 +124,7 @@ export function SuppliersClient() {
             <div
               role="status"
               aria-live="polite"
-              className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-xs text-emerald-950 space-y-4"
+              className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 shadow-xs text-emerald-950 space-y-4"
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
@@ -183,22 +135,26 @@ export function SuppliersClient() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 rounded-lg bg-white/70 p-4 text-xs">
+              <div>
+                <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider block">Available Quantity</span>
+                <p className="mt-1 font-mono text-3xl font-extrabold text-emerald-900">
+                  {result.reportedQuantity} units
+                </p>
+                <p className="mt-1 text-xs text-emerald-800">
+                  Supplier confirms stock is on hand. Note: Supplier data is advisory and does not automatically purchase goods or alter central inventory.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 rounded-xl bg-white/80 p-4 text-xs border border-emerald-100">
                 <div>
                   <span className="text-slate-500 block">Product SKU:</span>
-                  <span className="font-mono font-bold text-base text-slate-900">{result.sku}</span>
+                  <span className="font-mono font-bold text-sm text-slate-900">{result.sku}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Reported Quantity:</span>
-                  <span className="font-mono font-bold text-base text-emerald-700">
-                    {result.reportedQuantity} units
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Supplier Name:</span>
+                  <span className="text-slate-500 block">Supplier:</span>
                   <span className="font-semibold text-slate-800">{result.supplier || "Demo Supplier"}</span>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <span className="text-slate-500 block">Checked At:</span>
                   <span className="font-mono text-slate-700" title={result.checkedAt || ""}>
                     {formatFullDateTime(result.checkedAt)}
@@ -213,7 +169,7 @@ export function SuppliersClient() {
             <div
               role="status"
               aria-live="polite"
-              className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-xs text-amber-950 space-y-4"
+              className="rounded-2xl border border-amber-200 bg-amber-50/70 p-6 shadow-xs text-amber-950 space-y-4"
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
@@ -225,30 +181,25 @@ export function SuppliersClient() {
               </div>
 
               <div>
-                <h2 className="text-base font-bold text-amber-900">
-                  Out of stock at supplier (0 units)
-                </h2>
-                <p className="mt-1 text-sm text-amber-800">
-                  The supplier confirmed that SKU <code className="font-mono font-semibold">{result.sku}</code> is cataloged, but currently has 0 available units in stock.
+                <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider block">Available Quantity</span>
+                <p className="mt-1 font-mono text-3xl font-extrabold text-amber-900">
+                  0 units
+                </p>
+                <p className="mt-1 text-xs text-amber-800">
+                  The supplier confirmed that SKU <code className="font-mono font-semibold">{result.sku}</code> is in catalog, but currently has 0 available units.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 rounded-lg bg-white/70 p-4 text-xs">
+              <div className="grid grid-cols-2 gap-4 rounded-xl bg-white/80 p-4 text-xs border border-amber-100">
                 <div>
                   <span className="text-slate-500 block">Product SKU:</span>
-                  <span className="font-mono font-bold text-base text-slate-900">{result.sku}</span>
+                  <span className="font-mono font-bold text-sm text-slate-900">{result.sku}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Reported Quantity:</span>
-                  <span className="font-mono font-bold text-base text-amber-700">
-                    0 units
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Supplier Name:</span>
+                  <span className="text-slate-500 block">Supplier:</span>
                   <span className="font-semibold text-slate-800">{result.supplier || "Demo Supplier"}</span>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <span className="text-slate-500 block">Checked At:</span>
                   <span className="font-mono text-slate-700" title={result.checkedAt || ""}>
                     {formatFullDateTime(result.checkedAt)}
@@ -263,22 +214,19 @@ export function SuppliersClient() {
             <div
               role="status"
               aria-live="polite"
-              className="rounded-xl border border-slate-300 bg-slate-50 p-6 shadow-xs text-slate-900 space-y-3"
+              className="rounded-2xl border border-slate-300 bg-slate-50 p-6 shadow-xs text-slate-900 space-y-3"
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-800">
-                  SKU NOT FOUND IN SUPPLIER CATALOG
+                  SKU NOT FOUND
                 </span>
                 <span className="text-xs font-mono text-slate-500">HTTP 404</span>
               </div>
               <h2 className="text-base font-bold text-slate-900">
                 SKU not found in supplier catalog
               </h2>
-              <p className="text-sm text-slate-700">
-                The supplier returned HTTP 404: SKU <code className="font-mono font-semibold">{result.sku}</code> is not carried in the supplier product catalog.
-              </p>
-              <p className="text-xs text-slate-500">
-                You can edit the SKU above and try another catalog lookup.
+              <p className="text-xs text-slate-600">
+                The supplier returned HTTP 404: SKU <code className="font-mono font-semibold">{result.sku}</code> is not carried in the supplier product catalog. You can edit the SKU above to try another search.
               </p>
             </div>
           )}
@@ -288,11 +236,11 @@ export function SuppliersClient() {
             <div
               role="alert"
               aria-live="assertive"
-              className="rounded-xl border border-rose-200 bg-rose-50 p-6 shadow-xs text-rose-950 space-y-4"
+              className="rounded-2xl border border-rose-200 bg-rose-50/80 p-6 shadow-xs text-rose-950 space-y-4"
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
-                  SUPPLIER SERVICE UNAVAILABLE
+                  SUPPLIER OUTAGE
                 </span>
                 <span className="text-xs font-mono text-rose-700">HTTP 503 / Timeout</span>
               </div>
@@ -300,11 +248,8 @@ export function SuppliersClient() {
                 <h2 className="text-base font-bold text-rose-900">
                   Supplier service unavailable. Try again.
                 </h2>
-                <p className="mt-1 text-sm text-rose-800">
-                  {result.message || "Supplier HTTP service is offline, timed out, or returned an error. Stock cannot be confirmed."}
-                </p>
-                <p className="mt-1 text-xs text-rose-700">
-                  Note: A supplier timeout or outage is not evidence that stock is zero.
+                <p className="mt-1 text-xs text-rose-800">
+                  {result.message || "Supplier HTTP service timed out or returned an error. Outages do not mean stock is zero."}
                 </p>
               </div>
               <div>
@@ -312,11 +257,8 @@ export function SuppliersClient() {
                   type="button"
                   onClick={() => void executeInquiry(sku)}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-800 focus:outline-hidden focus:ring-2 focus:ring-rose-600 disabled:opacity-50"
+                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-800 focus:outline-hidden focus:ring-2 focus:ring-rose-600 disabled:opacity-50"
                 >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
                   Retry inquiry
                 </button>
               </div>
@@ -328,19 +270,19 @@ export function SuppliersClient() {
             <div
               role="alert"
               aria-live="assertive"
-              className="rounded-xl border border-rose-200 bg-rose-50 p-6 shadow-xs text-rose-950 space-y-4"
+              className="rounded-2xl border border-rose-200 bg-rose-50/80 p-6 shadow-xs text-rose-950 space-y-4"
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
-                  WAREHOUSE GATEWAY OUTAGE
+                  GATEWAY OUTAGE
                 </span>
                 <span className="text-xs font-mono text-rose-700">TCP Socket Outage</span>
               </div>
               <div>
                 <h2 className="text-base font-bold text-rose-900">
-                  Warehouse gateway unavailable
+                  Warehouse command server unreachable
                 </h2>
-                <p className="mt-1 text-sm text-rose-800">
+                <p className="mt-1 text-xs text-rose-800">
                   {result.message || "The central warehouse command server is unreachable over Java TCP."}
                 </p>
               </div>
@@ -349,9 +291,9 @@ export function SuppliersClient() {
                   type="button"
                   onClick={() => void executeInquiry(sku)}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-800 focus:outline-hidden focus:ring-2 focus:ring-rose-600 disabled:opacity-50"
+                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-800 focus:outline-hidden focus:ring-2 focus:ring-rose-600 disabled:opacity-50"
                 >
-                  Retry warehouse connection
+                  Retry connection
                 </button>
               </div>
             </div>
@@ -359,13 +301,77 @@ export function SuppliersClient() {
         </div>
       )}
 
-      {/* Navigation */}
-      <div className="pt-4 flex justify-between text-sm">
-        <Link href="/products" className="font-medium text-teal-700 hover:text-teal-800">
-          ← Back to Product Catalog
+      {/* Evaluator Demo Scenarios & Member 2 Technical Disclosure (Collapsed) */}
+      <details className="group rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <summary className="flex cursor-pointer items-center justify-between p-5 text-sm font-bold text-slate-900 hover:bg-slate-50 rounded-2xl select-none">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-teal-800 bg-teal-100 rounded-md px-1.5 py-0.5">M2</span>
+            <span>Evaluator Demo Scenarios &amp; HTTP Architecture (Member 2)</span>
+          </div>
+          <span className="text-xs font-medium text-slate-500 group-open:rotate-180 transition-transform">
+            ▼
+          </span>
+        </summary>
+        <div className="border-t border-slate-100 p-5 space-y-4 text-xs text-slate-600">
+          <p>
+            The central warehouse server executes outbound Java <code className="font-mono text-teal-800">java.net.HttpURLConnection</code> requests to the configured mock supplier service. This demonstrates SSRF allowlisting, configurable connect/read timeouts, and error classification.
+          </p>
+
+          <div>
+            <span className="font-bold text-slate-800 block mb-2">Preset Simulator Test Cases:</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSku("ITEM-008");
+                  void executeInquiry("ITEM-008");
+                }}
+                className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 font-mono text-teal-800 hover:bg-teal-100"
+              >
+                ITEM-008 (Available Units)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSku("ITEM-ZERO");
+                  void executeInquiry("ITEM-ZERO");
+                }}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 font-mono text-amber-800 hover:bg-amber-100"
+              >
+                ITEM-ZERO (Confirmed Zero)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSku("ITEM-UNKNOWN");
+                  void executeInquiry("ITEM-UNKNOWN");
+                }}
+                className="rounded-lg border border-slate-300 bg-slate-100 px-3 py-1.5 font-mono text-slate-700 hover:bg-slate-200"
+              >
+                ITEM-UNKNOWN (404 Catalog)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSku("ITEM-OUTAGE");
+                  void executeInquiry("ITEM-OUTAGE");
+                }}
+                className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 font-mono text-rose-700 hover:bg-rose-100"
+              >
+                ITEM-OUTAGE (503 Service Outage)
+              </button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      {/* Navigation Footer */}
+      <div className="pt-2 flex justify-between text-xs text-slate-500">
+        <Link href="/products" className="font-semibold text-teal-700 hover:text-teal-900">
+          ← Back to Inventory Catalog
         </Link>
-        <Link href="/activity" className="font-medium text-slate-600 hover:text-slate-900">
-          View Network Status →
+        <Link href="/activity" className="font-semibold text-slate-600 hover:text-slate-900">
+          View System Status →
         </Link>
       </div>
     </div>
