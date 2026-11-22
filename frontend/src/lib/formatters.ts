@@ -57,3 +57,13 @@ export function formatFreshness(
   const time = formatOperationalTime(dateInput);
   return time !== "—" ? `as of ${time}` : fallback;
 }
+
+/**
+ * Formats a unit count with proper English pluralization (e.g. "1 unit", "3 units").
+ */
+export function formatUnits(count: number | string | null | undefined): string {
+  const num = typeof count === "number" ? count : parseInt(String(count ?? 0), 10);
+  const safeNum = isNaN(num) ? 0 : num;
+  return `${safeNum} ${safeNum === 1 ? "unit" : "units"}`;
+}
+

@@ -2,22 +2,86 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { fetchProducts, ApiError } from "@/lib/api/inventory";
 import type { Product } from "@/lib/types/inventory";
 import { useStockEvents } from "@/lib/events/useStockEvents";
-import { formatOperationalTime, formatFreshness } from "@/lib/formatters";
+import { formatOperationalTime, formatFreshness, formatUnits } from "@/lib/formatters";
+
+type StockFilterType = "ALL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+
+const STOCK_FILTERS: Array<{ label: string; value: StockFilterType }> = [
+  { label: "All items", value: "ALL" },
+  { label: "Healthy (4+ available)", value: "IN_STOCK" },
+  { label: "Low stock (1–3 available)", value: "LOW_STOCK" },
+  { label: "Out of stock (0 available)", value: "OUT_OF_STOCK" },
+];
 
 export function ProductsClient() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Parse initial query params (F09: store search and stock filter in URL)
+  const initialQuery = searchParams.get("q") || "";
+  const filterParam = searchParams.get("filter")?.toUpperCase();
+  const initialFilter: StockFilterType =
+    filterParam === "IN_STOCK" || filterParam === "LOW_STOCK" || filterParam === "OUT_OF_STOCK"
+      ? (filterParam as StockFilterType)
+      : "ALL";
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState("");
-  const [stockFilter, setStockFilter] = useState<"ALL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK">("ALL");
+  const [search, setSearch] = useState(initialQuery);
+  const [stockFilter, setStockFilter] = useState<StockFilterType>(initialFilter);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
   const { subscribeInvalidation, isLive, warningMessage } = useStockEvents();
+
+  // Sync state to URL without full reload (F09)
+  const updateUrlParams = useCallback(
+    (newSearch: string, newFilter: StockFilterType) => {
+      const params = new URLSearchParams();
+      if (newSearch.trim()) {
+        params.set("q", newSearch.trim());
+      }
+      if (newFilter !== "ALL") {
+        params.set("filter", newFilter.toLowerCase());
+      }
+      const queryStr = params.toString();
+      const targetUrl = queryStr ? `${pathname}?${queryStr}` : pathname;
+      router.replace(targetUrl, { scroll: false });
+    },
+    [pathname, router]
+  );
+
+  const handleSearchChange = (newVal: string) => {
+    setSearch(newVal);
+    updateUrlParams(newVal, stockFilter);
+  };
+
+  const handleFilterChange = (newFilter: StockFilterType) => {
+    setStockFilter(newFilter);
+    updateUrlParams(search, newFilter);
+  };
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setStockFilter("ALL");
+    updateUrlParams("", "ALL");
+  };
+
+  // Compute return URL for deep linking back to this exact filtered view (F09)
+  const currentReturnUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("q", search.trim());
+    if (stockFilter !== "ALL") params.set("filter", stockFilter.toLowerCase());
+    const queryStr = params.toString();
+    return queryStr ? `${pathname}?${queryStr}` : pathname;
+  }, [pathname, search, stockFilter]);
 
   const loadAuthoritativeProducts = useCallback(async (isManual = false) => {
     if (isManual) {
@@ -106,6 +170,9 @@ export function ProductsClient() {
     );
   }, [products, search, stockFilter]);
 
+  const activeFilterLabel =
+    STOCK_FILTERS.find((f) => f.value === stockFilter)?.label ?? "All items";
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -148,7 +215,7 @@ export function ProductsClient() {
             {refreshing ? "Refreshing..." : "Refresh Inventory"}
           </button>
           <Link
-            href="/requests/new"
+            href={`/requests/new?returnTo=${encodeURIComponent(currentReturnUrl)}`}
             className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition-colors"
           >
             + New Request
@@ -156,7 +223,7 @@ export function ProductsClient() {
         </div>
       </div>
 
-      {/* Network Warning Banner (QA-05: Live updates disconnected) */}
+      {/* Network Warning Banner */}
       {warningMessage && (
         <div
           role="alert"
@@ -187,21 +254,23 @@ export function ProductsClient() {
         </div>
       )}
 
-      {/* Error Banner */}
-      {error && (
+      {/* Refresh Failure Notice when cached data exists */}
+      {error && products.length > 0 && (
         <div
           role="alert"
           aria-live="assertive"
-          className="flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900"
+          className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
         >
           <div>
-            <h2 className="font-semibold">Failed to Load Products</h2>
-            <p className="mt-1 text-sm text-rose-800">{error}</p>
+            <h2 className="font-semibold text-sm">Refresh Notice</h2>
+            <p className="mt-0.5 text-xs text-amber-800">
+              Could not reach warehouse to refresh stock: {error}. Retaining previously verified inventory balances.
+            </p>
           </div>
           <button
             type="button"
             onClick={() => void loadAuthoritativeProducts(true)}
-            className="rounded-lg bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-900 hover:bg-rose-200"
+            className="rounded-lg bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-200 shrink-0"
           >
             Retry
           </button>
@@ -219,12 +288,12 @@ export function ProductsClient() {
               id="search-input"
               type="search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by SKU (e.g. ITEM-007) or name..."
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search by SKU (e.g. ITEM-007) or product name..."
               className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-teal-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-teal-600"
             />
           </div>
-          {/* QA-05: Accurate path-specific connection status */}
+
           <div className="flex items-center gap-4 text-xs text-slate-500">
             <span>
               Status:{" "}
@@ -243,22 +312,17 @@ export function ProductsClient() {
           </div>
         </div>
 
-        {/* Stock Health Filter Pills with aria-pressed (QA-09) */}
+        {/* Stock Health Filter Pills with explicit threshold labels (F11) */}
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs">
           <span className="font-semibold text-slate-500">Filter Stock:</span>
-          {[
-            { label: "All items", value: "ALL" as const },
-            { label: "In stock (4+)", value: "IN_STOCK" as const },
-            { label: "Low stock (1–3)", value: "LOW_STOCK" as const },
-            { label: "Out of stock (0)", value: "OUT_OF_STOCK" as const },
-          ].map((tab) => {
+          {STOCK_FILTERS.map((tab) => {
             const isSelected = stockFilter === tab.value;
             return (
               <button
                 key={tab.value}
                 type="button"
                 aria-pressed={isSelected}
-                onClick={() => setStockFilter(tab.value)}
+                onClick={() => handleFilterChange(tab.value)}
                 className={`rounded-full px-3 py-1 font-medium transition-colors ${
                   isSelected
                     ? "bg-teal-700 text-white shadow-xs"
@@ -272,7 +336,7 @@ export function ProductsClient() {
         </div>
       </div>
 
-      {/* Product Table */}
+      {/* Main Content Area */}
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -282,56 +346,54 @@ export function ProductsClient() {
             />
           ))}
         </div>
+      ) : error && products.length === 0 ? (
+        /* F37: Isolated initial failure state - NEVER describe as empty stock! */
+        <div className="rounded-2xl border border-dashed border-rose-300 bg-rose-50/60 p-12 text-center">
+          <h2 className="text-base font-bold text-rose-900">Inventory Unavailable</h2>
+          <p className="mt-1 text-xs text-rose-700 max-w-md mx-auto">
+            Unable to connect to the central warehouse server to retrieve inventory catalog: {error}
+          </p>
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => void loadAuthoritativeProducts(true)}
+              className="inline-flex min-h-[40px] items-center rounded-xl bg-rose-700 px-5 py-2 text-xs font-semibold text-white hover:bg-rose-800 focus:outline-hidden focus:ring-2 focus:ring-rose-600"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center">
-          <p className="text-base font-medium text-slate-900">No products found</p>
-          <p className="mt-1 text-sm text-slate-500">
+        /* Empty / No Matches State (F12) */
+        <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center bg-white">
+          <h2 className="text-base font-semibold text-slate-900">
+            {products.length === 0 ? "Inventory Catalog Empty" : "No matching products found"}
+          </h2>
+          <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
             {products.length === 0
               ? "Warehouse inventory is empty or not yet seeded."
               : search && stockFilter !== "ALL"
-              ? "No products match both your search query and selected stock filter."
+              ? `No products match "${search}" with stock level filter "${activeFilterLabel}".`
               : search
-              ? "No product matches your search term."
-              : "No products match the selected stock filter."}
+              ? `No products match search query "${search}".`
+              : `No products currently match "${activeFilterLabel}".`}
           </p>
 
-          {/* QA-10: Context-appropriate filter recovery actions */}
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {search && stockFilter !== "ALL" && (
+          {products.length > 0 && (
+            <div className="mt-4 flex justify-center">
               <button
                 type="button"
-                onClick={() => {
-                  setSearch("");
-                  setStockFilter("ALL");
-                }}
-                className="rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-800"
+                onClick={handleResetFilters}
+                className="inline-flex min-h-[40px] items-center rounded-xl bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800 transition-colors"
               >
-                Clear all filters
+                Reset filters &amp; show all
               </button>
-            )}
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Clear search query
-              </button>
-            )}
-            {stockFilter !== "ALL" && (
-              <button
-                type="button"
-                onClick={() => setStockFilter("ALL")}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Show all stock levels
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       ) : (
         <>
-          {/* Mobile Product Card Stack (< 768px) - Zero Horizontal Scrolling */}
+          {/* Mobile Product Cards (< 768px, F10: Product name & available units lead) */}
           <div className="space-y-3 md:hidden">
             {filteredProducts.map((p) => {
               const isOutOfStock = p.available === 0;
@@ -357,10 +419,10 @@ export function ProductsClient() {
                       }`}
                     >
                       {isOutOfStock
-                        ? "Out of Stock"
+                        ? "Out of stock (0)"
                         : isLowStock
-                        ? "Low Stock (1–3)"
-                        : "In Stock (4+)"}
+                        ? "Low stock (1–3)"
+                        : "In stock (4+)"}
                     </span>
                   </div>
 
@@ -368,25 +430,25 @@ export function ProductsClient() {
                     <div>
                       <span className="text-xs text-slate-500">Available: </span>
                       <strong className="font-mono text-lg font-bold text-slate-900">
-                        {p.available} units
+                        {formatUnits(p.available)}
                       </strong>
                     </div>
-                    <div className="text-xs text-slate-500 font-mono">
-                      On Hand: {p.onHand} · Res: {p.reserved}
+                    <div className="text-xs text-slate-400 font-mono">
+                      On Hand: {p.onHand} · Reserved: {p.reserved}
                     </div>
                   </div>
 
                   <div className="pt-1">
                     {isOutOfStock ? (
                       <Link
-                        href={`/suppliers?sku=${encodeURIComponent(p.sku)}`}
-                        className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition-colors"
+                        href={`/suppliers?sku=${encodeURIComponent(p.sku)}&returnTo=${encodeURIComponent(currentReturnUrl)}`}
+                        className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-amber-800 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-amber-900 transition-colors"
                       >
                         Check Supplier Stock
                       </Link>
                     ) : (
                       <Link
-                        href={`/requests/new?sku=${encodeURIComponent(p.sku)}`}
+                        href={`/requests/new?sku=${encodeURIComponent(p.sku)}&returnTo=${encodeURIComponent(currentReturnUrl)}`}
                         className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-800 transition-colors"
                       >
                         Request Stock
@@ -398,23 +460,23 @@ export function ProductsClient() {
             })}
           </div>
 
-          {/* Desktop Table (>= 768px) */}
+          {/* Desktop Table (>= 768px, F10: Product name & units lead) */}
           <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
                   <tr>
                     <th scope="col" className="px-6 py-3">
-                      Product / SKU
+                      Product Name / SKU
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right">
+                      Available
                     </th>
                     <th scope="col" className="px-6 py-3 text-right">
                       On Hand
                     </th>
                     <th scope="col" className="px-6 py-3 text-right">
                       Reserved
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right">
-                      Available
                     </th>
                     <th scope="col" className="px-6 py-3 text-center">
                       Stock Health
@@ -435,14 +497,14 @@ export function ProductsClient() {
                           <div className="font-semibold text-slate-900">{p.name}</div>
                           <div className="font-mono text-xs text-slate-500">{p.sku}</div>
                         </td>
-                        <td className="px-6 py-4 text-right font-mono text-slate-700">
+                        <td className="px-6 py-4 text-right font-mono text-base font-bold text-slate-900">
+                          {formatUnits(p.available)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-xs text-slate-600">
                           {p.onHand}
                         </td>
-                        <td className="px-6 py-4 text-right font-mono text-slate-500">
+                        <td className="px-6 py-4 text-right font-mono text-xs text-slate-500">
                           {p.reserved}
-                        </td>
-                        <td className="px-6 py-4 text-right font-mono text-base font-bold text-slate-900">
-                          {p.available}
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span
@@ -455,25 +517,25 @@ export function ProductsClient() {
                             }`}
                           >
                             {isOutOfStock
-                              ? "Out of Stock (0)"
+                              ? "Out of stock (0)"
                               : isLowStock
-                              ? "Low Stock (1–3)"
-                              : "In Stock (4+)"}
+                              ? "Low stock (1–3)"
+                              : "In stock (4+)"}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {isOutOfStock ? (
                               <Link
-                                href={`/suppliers?sku=${encodeURIComponent(p.sku)}`}
-                                className="inline-flex items-center rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+                                href={`/suppliers?sku=${encodeURIComponent(p.sku)}&returnTo=${encodeURIComponent(currentReturnUrl)}`}
+                                className="inline-flex min-h-[32px] items-center rounded-lg bg-amber-800 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-amber-900 transition-colors"
                               >
                                 Check Supplier
                               </Link>
                             ) : (
                               <Link
-                                href={`/requests/new?sku=${encodeURIComponent(p.sku)}`}
-                                className="inline-flex items-center rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100"
+                                href={`/requests/new?sku=${encodeURIComponent(p.sku)}&returnTo=${encodeURIComponent(currentReturnUrl)}`}
+                                className="inline-flex min-h-[32px] items-center rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-teal-800 transition-colors"
                               >
                                 Request stock
                               </Link>

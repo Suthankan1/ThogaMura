@@ -18,7 +18,7 @@ export function ActivityStatusClient() {
     networkDetails,
   } = useStockEvents();
 
-  const [refreshAnnouncement, setRefreshAnnouncement] = useState<string | null>(null);
+  const [refreshAnnouncement, setRefreshAnnouncement] = useState<{ text: string; isError: boolean } | null>(null);
 
   const nioFeed = networkDetails?.nioFeed;
   const sseInfo = networkDetails?.sse;
@@ -28,11 +28,28 @@ export function ActivityStatusClient() {
   const isTlsOperational = tlsStatus === "OPERATIONAL";
   const isTlsDisabled = tlsStatus === "DISABLED";
   const isTlsMisconfigured = tlsStatus === "MISCONFIGURED";
+  const isTlsUnreachable = tlsStatus === "UNREACHABLE";
 
+  // F32: Truthful operational evaluation (requires BOTH feed AND command transport health)
+  const isFullyOperational = isLive && isTlsOperational;
+  const isDevOperational = isLive && isTlsDisabled;
+  const hasCommandOutage = isLive && (isTlsUnreachable || isTlsMisconfigured);
+
+  // F33: Await reconciliation and report actual outcome
   async function handleRefreshClick() {
     setRefreshAnnouncement(null);
-    await triggerRefresh("MANUAL");
-    setRefreshAnnouncement(`Authoritative state reconciled ${formatFreshness(new Date())}.`);
+    try {
+      await triggerRefresh("MANUAL");
+      setRefreshAnnouncement({
+        text: `Authoritative state reconciled ${formatFreshness(new Date())}.`,
+        isError: false,
+      });
+    } catch {
+      setRefreshAnnouncement({
+        text: "Reconciliation failed. Central server unreachable.",
+        isError: true,
+      });
+    }
   }
 
   return (
@@ -54,7 +71,7 @@ export function ActivityStatusClient() {
         </p>
       </div>
 
-      {/* Top Operational Verdict Banner */}
+      {/* Top Operational Verdict Banner (F32: Truthful and decoupled status claims) */}
       {warningMessage ? (
         <div
           role="alert"
@@ -71,16 +88,45 @@ export function ActivityStatusClient() {
             </p>
           </div>
         </div>
-      ) : isLive ? (
+      ) : hasCommandOutage ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-rose-200 bg-rose-50/90 p-5 text-rose-950 flex items-start gap-3.5 shadow-xs"
+        >
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white font-bold text-xs mt-0.5">
+            ⚠
+          </span>
+          <div className="text-xs sm:text-sm">
+            <h2 className="font-bold text-rose-900">Stock requests unavailable · Live updates connected</h2>
+            <p className="text-rose-800 mt-1 leading-normal">
+              Warehouse Java NIO feed is broadcasting version updates, but the Java TCP/TLS command socket on port 7443 is unreachable or misconfigured ({tlsStatus}).
+            </p>
+          </div>
+        </div>
+      ) : isFullyOperational ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 text-emerald-950 flex items-center gap-3.5 shadow-xs">
           <span className="flex h-3 w-3 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
           <p className="text-xs sm:text-sm font-semibold text-emerald-900">
-            All systems operational. Warehouse Java NIO selector and browser SSE stream are synchronized.
+            All systems operational. Warehouse Java NIO selector, browser SSE stream, and validated TLS command transport are healthy.
           </p>
         </div>
-      ) : null}
+      ) : isDevOperational ? (
+        <div className="rounded-2xl border border-teal-200 bg-teal-50/80 p-5 text-teal-950 flex items-center gap-3.5 shadow-xs">
+          <span className="flex h-3 w-3 shrink-0 rounded-full bg-teal-600 animate-pulse" />
+          <p className="text-xs sm:text-sm font-semibold text-teal-900">
+            Live updates active · Plaintext TCP command mode (Local Development).
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-slate-800 flex items-center gap-3.5 shadow-xs">
+          <span className="flex h-3 w-3 shrink-0 rounded-full bg-slate-400" />
+          <p className="text-xs sm:text-sm font-semibold text-slate-700">
+            System status: Initializing diagnostics connection...
+          </p>
+        </div>
+      )}
 
-      {/* 3-Hop Architecture Status Grid */}
+      {/* 3-Hop Architecture Status Grid (F34: explicit 'Not reported' vs measured zero) */}
       <div className="grid gap-4 md:grid-cols-3">
         {/* Hop 1: Gateway SSE Stream */}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex flex-col justify-between">
@@ -105,11 +151,15 @@ export function ActivityStatusClient() {
             <dl className="mt-4 space-y-2 text-xs border-t border-slate-100 pt-3">
               <div className="flex justify-between">
                 <dt className="text-slate-500">Active Emitters:</dt>
-                <dd className="font-semibold text-slate-800">{sseInfo?.activeClients ?? 1}</dd>
+                <dd className="font-semibold text-slate-800">
+                  {sseInfo?.activeClients !== undefined ? sseInfo.activeClients : "Not reported"}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-slate-500">Last SSE Version:</dt>
-                <dd className="font-semibold text-slate-800 font-mono">{lastVersion ? `v${lastVersion}` : "None"}</dd>
+                <dd className="font-semibold text-slate-800 font-mono">
+                  {lastVersion ? `v${lastVersion}` : "No events in session"}
+                </dd>
               </div>
             </dl>
           </div>
@@ -139,17 +189,21 @@ export function ActivityStatusClient() {
             </div>
             <h2 className="mt-2 text-base font-bold text-slate-900">Java NIO SocketChannel</h2>
             <p className="mt-0.5 text-xs text-slate-500 font-mono">
-              Port {networkDetails?.nioPort || 7444} (Selector Loop)
+              Port {networkDetails?.nioPort ? networkDetails.nioPort : "7444"} (Selector Loop)
             </p>
 
             <dl className="mt-4 space-y-2 text-xs border-t border-slate-100 pt-3">
               <div className="flex justify-between">
                 <dt className="text-slate-500">Reconnect Count:</dt>
-                <dd className="font-semibold text-slate-800">{nioFeed?.reconnectCount ?? 0}</dd>
+                <dd className="font-semibold text-slate-800">
+                  {nioFeed?.reconnectCount !== undefined ? nioFeed.reconnectCount : "Not reported"}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-slate-500">Inbound Signals:</dt>
-                <dd className="font-semibold text-slate-800">{nioFeed?.notificationCount ?? 0}</dd>
+                <dd className="font-semibold text-slate-800">
+                  {nioFeed?.notificationCount !== undefined ? nioFeed.notificationCount : "Not reported"}
+                </dd>
               </div>
             </dl>
           </div>
@@ -209,7 +263,7 @@ export function ActivityStatusClient() {
         </div>
       </div>
 
-      {/* Authoritative State Reconciliation */}
+      {/* Authoritative State Reconciliation (F33: verified execution) */}
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -248,9 +302,14 @@ export function ActivityStatusClient() {
           <div
             role="status"
             aria-live="polite"
-            className="rounded-xl bg-teal-50 border border-teal-200 p-3 text-xs font-semibold text-teal-900"
+            className={`rounded-xl p-3 text-xs font-semibold ${
+              refreshAnnouncement.isError
+                ? "bg-rose-50 border border-rose-200 text-rose-900"
+                : "bg-teal-50 border border-teal-200 text-teal-900"
+            }`}
           >
-            ✓ {refreshAnnouncement}
+            {refreshAnnouncement.isError ? "⚠ " : "✓ "}
+            {refreshAnnouncement.text}
           </div>
         )}
       </div>

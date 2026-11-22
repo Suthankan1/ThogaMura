@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { fetchStockRequests, ApiError } from "@/lib/api/inventory";
-import type { StockRequest, StockRequestStatus } from "@/lib/types/inventory";
+import { fetchStockRequests, fetchProducts, ApiError } from "@/lib/api/inventory";
+import type { StockRequest, StockRequestStatus, Product } from "@/lib/types/inventory";
 import { useStockEvents } from "@/lib/events/useStockEvents";
-import { formatOperationalTime, formatFullDateTime, formatFreshness } from "@/lib/formatters";
+import { formatOperationalTime, formatFullDateTime, formatFreshness, formatUnits } from "@/lib/formatters";
 
 const STATUS_FILTERS: Array<{ label: string; value: string }> = [
   { label: "All Requests", value: "ALL" },
@@ -17,6 +17,7 @@ const STATUS_FILTERS: Array<{ label: string; value: string }> = [
 
 export function RequestsClient() {
   const [requests, setRequests] = useState<StockRequest[]>([]);
+  const [catalog, setCatalog] = useState<Product[]>([]);
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -27,6 +28,15 @@ export function RequestsClient() {
 
   const { subscribeInvalidation, isLive, warningMessage } = useStockEvents();
 
+  // Map of SKU -> Product Name (F21: recognize product name rather than raw SKU alone)
+  const productNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of catalog) {
+      map.set(p.sku.toLowerCase(), p.name);
+    }
+    return map;
+  }, [catalog]);
+
   const loadRequests = useCallback(async (isManual = false) => {
     if (isManual) {
       setRefreshing(true);
@@ -35,8 +45,14 @@ export function RequestsClient() {
     setRefreshNotice(null);
 
     try {
-      const data = await fetchStockRequests(activeFilter);
-      setRequests(data);
+      const [requestsData, productsData] = await Promise.all([
+        fetchStockRequests(activeFilter),
+        fetchProducts().catch(() => []),
+      ]);
+      setRequests(requestsData);
+      if (productsData.length > 0) {
+        setCatalog(productsData);
+      }
       setError(null);
       const now = new Date();
       setLastRefreshed(now);
@@ -62,9 +78,15 @@ export function RequestsClient() {
     let ignore = false;
     async function init() {
       try {
-        const data = await fetchStockRequests(activeFilter);
+        const [requestsData, productsData] = await Promise.all([
+          fetchStockRequests(activeFilter),
+          fetchProducts().catch(() => []),
+        ]);
         if (!ignore) {
-          setRequests(data);
+          setRequests(requestsData);
+          if (productsData.length > 0) {
+            setCatalog(productsData);
+          }
           setError(null);
           setLastRefreshed(new Date());
         }
@@ -98,11 +120,17 @@ export function RequestsClient() {
   const activeFilterLabel =
     STATUS_FILTERS.find((f) => f.value === activeFilter)?.label ?? activeFilter;
 
-  function copyToClipboard(id: string) {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      void navigator.clipboard.writeText(id);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
+  // F23: Await clipboard write before announcing success, handle failure gracefully
+  async function copyToClipboard(id: string) {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(id);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      } catch {
+        // Fallback for permission denial
+        setCopiedId(null);
+      }
     }
   }
 
@@ -155,7 +183,7 @@ export function RequestsClient() {
             {refreshing ? "Refreshing..." : "Refresh Requests"}
           </button>
           <Link
-            href="/requests/new"
+            href="/requests/new?returnTo=/requests"
             className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 transition-colors"
           >
             + New Request
@@ -287,7 +315,7 @@ export function RequestsClient() {
               </button>
             ) : (
               <Link
-                href="/requests/new"
+                href="/requests/new?returnTo=/requests"
                 className="inline-flex min-h-[40px] items-center rounded-xl bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800"
               >
                 Create first request
@@ -297,9 +325,10 @@ export function RequestsClient() {
         </div>
       ) : (
         <>
-          {/* Mobile Request Cards (< 768px) - Zero Horizontal Scrolling */}
+          {/* Mobile Request Cards (< 768px, F21: Product names, F22: consistent status) */}
           <div className="space-y-3 md:hidden">
             {requests.map((r) => {
+              const productName = productNames.get(r.sku.toLowerCase()) || r.sku;
               const statusInfo = statusColors[r.status] || {
                 badge: "bg-slate-100 text-slate-800 border-slate-200",
                 text: r.status,
@@ -312,12 +341,14 @@ export function RequestsClient() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <span className="font-mono font-bold text-base text-slate-900">{r.sku}</span>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500">
+                      <h2 className="font-bold text-base text-slate-900">{productName}</h2>
+                      <p className="font-mono text-xs text-slate-500">{r.sku}</p>
+                      <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500">
                         <span className="font-mono">Ref: {r.requestId.slice(0, 8)}...</span>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(r.requestId)}
+                          aria-label={`Copy reference ID for ${productName}`}
                           className="text-teal-700 hover:text-teal-900 text-[11px] underline"
                           title="Copy Full UUID"
                         >
@@ -336,18 +367,19 @@ export function RequestsClient() {
                     <div>
                       <span className="text-slate-500">Quantity: </span>
                       <strong className="font-mono text-base font-bold text-slate-900">
-                        {r.quantity} units
+                        {formatUnits(r.quantity)}
                       </strong>
                     </div>
-                    <span className="text-slate-500" title={r.createdAt || ""}>
-                      {r.createdAt ? formatFreshness(r.createdAt) : "Recent"}
+                    <span className="text-slate-500 font-mono text-[11px]" title={r.createdAt || ""}>
+                      {r.createdAt ? formatFullDateTime(r.createdAt) : "Recent"}
                     </span>
                   </div>
 
+                  {/* F20: Target exact request and stage in warehouse queue */}
                   <div className="pt-1">
                     {r.status === "ACCEPTED" || r.status === "PICKED" ? (
                       <Link
-                        href="/warehouse"
+                        href={`/warehouse?requestId=${encodeURIComponent(r.requestId)}&stage=${r.status === "PICKED" ? "DISPATCH" : "PICK"}`}
                         className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-800 transition-colors"
                       >
                         Open in Warehouse Queue →
@@ -357,8 +389,9 @@ export function RequestsClient() {
                         ✓ Dispatched &amp; Completed
                       </div>
                     ) : (
+                      /* F22: Do not invent 'Insufficient Stock' on mobile when unsupplied */
                       <div className="text-center py-2 text-xs font-semibold text-rose-700 bg-rose-50 rounded-lg">
-                        ✕ Closed (Insufficient Stock)
+                        ✕ Closed ({r.status})
                       </div>
                     )}
                   </div>
@@ -367,14 +400,14 @@ export function RequestsClient() {
             })}
           </div>
 
-          {/* Desktop Requests Table (>= 768px) */}
+          {/* Desktop Requests Table (>= 768px, F21: Product names, F20: deep links) */}
           <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
                   <tr>
                     <th scope="col" className="px-5 py-3">
-                      Product SKU
+                      Product / SKU
                     </th>
                     <th scope="col" className="px-5 py-3 text-right">
                       Units
@@ -395,6 +428,7 @@ export function RequestsClient() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {requests.map((r) => {
+                    const productName = productNames.get(r.sku.toLowerCase()) || r.sku;
                     const statusInfo = statusColors[r.status] || {
                       badge: "bg-slate-100 text-slate-800 border-slate-200",
                       text: r.status,
@@ -402,11 +436,12 @@ export function RequestsClient() {
 
                     return (
                       <tr key={r.requestId} className="hover:bg-slate-50">
-                        <td className="px-5 py-4 font-mono font-bold text-slate-900">
-                          {r.sku}
+                        <td className="px-5 py-4">
+                          <div className="font-semibold text-slate-900">{productName}</div>
+                          <div className="font-mono text-xs text-slate-500">{r.sku}</div>
                         </td>
-                        <td className="px-5 py-4 text-right font-mono font-bold text-slate-800">
-                          {r.quantity}
+                        <td className="px-5 py-4 text-right font-mono font-bold text-slate-900">
+                          {formatUnits(r.quantity)}
                         </td>
                         <td className="px-5 py-4 text-center">
                           <span
@@ -419,9 +454,10 @@ export function RequestsClient() {
                           {r.createdAt ? formatFullDateTime(r.createdAt) : "Recent"}
                         </td>
                         <td className="px-5 py-4 text-right text-xs">
+                          {/* F20: Deep link directly to request and stage in warehouse */}
                           {r.status === "ACCEPTED" || r.status === "PICKED" ? (
                             <Link
-                              href="/warehouse"
+                              href={`/warehouse?requestId=${encodeURIComponent(r.requestId)}&stage=${r.status === "PICKED" ? "DISPATCH" : "PICK"}`}
                               className="font-bold text-teal-700 hover:text-teal-900"
                             >
                               Open in Queue →
@@ -438,6 +474,7 @@ export function RequestsClient() {
                             <button
                               type="button"
                               onClick={() => copyToClipboard(r.requestId)}
+                              aria-label={`Copy reference ID for ${productName}`}
                               className="text-teal-700 hover:text-teal-900 text-[11px] underline"
                               title="Copy Full UUID"
                             >
