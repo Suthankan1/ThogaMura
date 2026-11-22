@@ -93,6 +93,36 @@ Command traffic over port 7443 requires server-authenticated TLS (ADR-004). Gene
 
 All credentials are saved to `.certs/` and excluded from Git. See [TLS Certificate and Truststore Workflow](TLS_CERTIFICATES.md) for full details.
 
+The orchestration script supports explicit TLS mode configuration:
+
+```bash
+# Loopback development only
+THOGAMURA_TLS_ENABLED=false
+THOGAMURA_TLS_SERVER_ENABLED=false
+THOGAMURA_TLS_CLIENT_ENABLED=false
+
+# Validated LAN/TLS demo
+THOGAMURA_TLS_ENABLED=true
+THOGAMURA_TLS_SERVER_ENABLED=true
+THOGAMURA_TLS_CLIENT_ENABLED=true
+THOGAMURA_TLS_HOSTNAME_VERIFICATION=true
+THOGAMURA_WAREHOUSE_HOST=192.168.8.100
+THOGAMURA_TLS_KEYSTORE_PATH=.certs/server-keystore.p12
+THOGAMURA_TLS_KEYSTORE_PASSWORD=<keystore password>
+THOGAMURA_TLS_TRUSTSTORE_PATH=.certs/gateway-truststore.p12
+THOGAMURA_TLS_TRUSTSTORE_PASSWORD=<truststore password>
+```
+
+The startup and status commands fail closed when TLS is enabled without the required
+certificate material or password. A non-loopback warehouse host cannot use plaintext
+command transport. Do not print or commit the passwords.
+
+Verify the runtime TLS configuration without starting Docker or Java processes:
+
+```bash
+./scripts/verify-tls-runtime.sh
+```
+
 ## Two-machine LAN demo
 
 Run server + PostgreSQL on the warehouse laptop; run gateway + browser on the shop laptop. Bind socket listeners to a suitable LAN interface, configure firewall rules for the small required ports, verify TLS server name/SAN and truststore, and configure `THOGAMURA_SERVER_HOST` to the central machine's trusted hostname/IP; there is no UDP discovery in v2. Restrict NIO port 7444 to the private demo LAN and do **not** expose it publicly. Run the independent supplier HTTP stub on port 8090 only if testing M2. Use fictitious demo items; never expose PostgreSQL publicly.

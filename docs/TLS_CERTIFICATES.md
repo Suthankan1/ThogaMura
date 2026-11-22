@@ -307,6 +307,8 @@ Configured on the machine hosting the Java socket server:
 | Variable Name | Default Value | Description |
 | :--- | :--- | :--- |
 | `THOGAMURA_COMMAND_PORT` | `7443` | Port for the TLS-encrypted TCP command listener. |
+| `THOGAMURA_TLS_ENABLED` | `false` | Shared TLS mode switch used when process-specific server/client switches are unset. |
+| `THOGAMURA_TLS_SERVER_ENABLED` | `false` | Enable the warehouse `SSLServerSocket` command listener. |
 | `THOGAMURA_TLS_KEYSTORE_PATH` | `.certs/server-keystore.p12` | Absolute or relative filesystem path to the server keystore. |
 | `THOGAMURA_TLS_KEYSTORE_PASSWORD` | *(required)* | Password protecting the server keystore. |
 | `THOGAMURA_TLS_KEYSTORE_TYPE` | `PKCS12` | Keystore format (`PKCS12` or `JKS`). |
@@ -317,7 +319,9 @@ Configured on the machine hosting the Spring Boot API gateway:
 | Variable Name | Default Value | Description |
 | :--- | :--- | :--- |
 | `THOGAMURA_SERVER_HOST` | `localhost` | Configured IP address or hostname of the warehouse server. |
+| `THOGAMURA_WAREHOUSE_HOST` | `127.0.0.1` | Canonical runtime warehouse host used by the orchestration script and gateway. |
 | `THOGAMURA_COMMAND_PORT` | `7443` | Port of the central warehouse server. |
+| `THOGAMURA_TLS_CLIENT_ENABLED` | `false` | Enable the gateway `SSLSocket` validated TLS transport. |
 | `THOGAMURA_TLS_TRUSTSTORE_PATH` | `.certs/gateway-truststore.p12` | Absolute or relative filesystem path to the gateway truststore. |
 | `THOGAMURA_TLS_TRUSTSTORE_PASSWORD` | *(required)* | Password protecting the gateway truststore. |
 | `THOGAMURA_TLS_TRUSTSTORE_TYPE` | `PKCS12` | Truststore format (`PKCS12` or `JKS`). |
