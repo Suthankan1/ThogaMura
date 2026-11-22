@@ -23,6 +23,8 @@ certs/
 
 # Node / Next.js
 **/node_modules/
+node_modules/
+node_modules
 **/.next/
 **/out/
 **/.turbo/

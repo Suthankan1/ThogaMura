@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useStockEvents } from "@/lib/events/useStockEvents";
+import { formatOperationalTime, formatFullDateTime, formatFreshness } from "@/lib/formatters";
 
 export function ActivityStatusClient() {
   const {
@@ -17,8 +18,22 @@ export function ActivityStatusClient() {
     networkDetails,
   } = useStockEvents();
 
+  const [refreshAnnouncement, setRefreshAnnouncement] = useState<string | null>(null);
+
   const nioFeed = networkDetails?.nioFeed;
   const sseInfo = networkDetails?.sse;
+  const tlsCommand = networkDetails?.tlsCommand;
+  const tlsStatus = tlsCommand?.status || "DISABLED";
+
+  const isTlsOperational = tlsStatus === "OPERATIONAL";
+  const isTlsDisabled = tlsStatus === "DISABLED";
+  const isTlsMisconfigured = tlsStatus === "MISCONFIGURED";
+
+  async function handleRefreshClick() {
+    setRefreshAnnouncement(null);
+    await triggerRefresh("MANUAL");
+    setRefreshAnnouncement(`Authoritative state reconciled ${formatFreshness(new Date())}.`);
+  }
 
   return (
     <div className="space-y-8">
@@ -35,7 +50,7 @@ export function ActivityStatusClient() {
         </p>
       </div>
 
-      {/* Network Alert / Warning Banner */}
+      {/* Network Alert / Warning Banner (QA-05) */}
       {warningMessage ? (
         <div
           role="alert"
@@ -49,7 +64,7 @@ export function ActivityStatusClient() {
             />
           </svg>
           <div>
-            <h2 className="font-semibold text-amber-900">Network Disruption Detected</h2>
+            <h2 className="font-semibold text-amber-900">Live updates disconnected</h2>
             <p className="mt-1 text-sm text-amber-800">{warningMessage}</p>
             <p className="mt-1 text-xs text-amber-700">
               Displayed stock quantities may be outdated. The browser will automatically reconcile authoritative state upon reconnection.
@@ -80,7 +95,7 @@ export function ActivityStatusClient() {
                   : "bg-rose-100 text-rose-800"
               }`}
             >
-              {sseStatus}
+              {sseStatus === "CONNECTED" ? "Connected" : "Disconnected"}
             </span>
           </div>
           <h2 className="mt-2 text-lg font-bold text-slate-900">HTTP Server-Sent Events</h2>
@@ -133,7 +148,7 @@ export function ActivityStatusClient() {
           </dl>
         </div>
 
-        {/* Hop 3: TLS Command Transport */}
+        {/* Hop 3: Command Transport (QA-06: Separating Mode from Health) */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -141,49 +156,67 @@ export function ActivityStatusClient() {
             </span>
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                networkDetails?.tlsCommand?.status === "OPERATIONAL"
+                isTlsOperational
                   ? "bg-emerald-100 text-emerald-800"
-                  : networkDetails?.tlsCommand?.status === "DISABLED"
-                  ? "bg-slate-100 text-slate-700"
-                  : networkDetails?.tlsCommand?.status === "MISCONFIGURED"
+                  : isTlsDisabled
+                  ? "bg-blue-100 text-blue-800"
+                  : isTlsMisconfigured
                   ? "bg-rose-100 text-rose-800"
                   : "bg-amber-100 text-amber-800"
               }`}
             >
-              {networkDetails?.tlsCommand?.status || "DISABLED"}
+              {isTlsOperational
+                ? "TLS 1.3 Active"
+                : isTlsDisabled
+                ? "Plaintext TCP (Dev)"
+                : tlsStatus}
             </span>
           </div>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">JSSE TLS Socket</h2>
+          <h2 className="mt-2 text-lg font-bold text-slate-900">
+            {isTlsOperational ? "JSSE TLS Socket" : "Java TCP Command Socket"}
+          </h2>
           <p className="mt-1 text-xs text-slate-500">Port 7443 (Authoritative Stock Commands)</p>
 
           <dl className="mt-4 space-y-2 text-xs">
             <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="text-slate-500">Owner:</dt>
-              <dd className="font-semibold text-slate-800">Member 5 (@vibhathkalsara99)</dd>
+              <dt className="text-slate-500">Configured Mode:</dt>
+              <dd className="font-semibold text-slate-800">
+                {isTlsOperational
+                  ? "TLS 1.3 (Production)"
+                  : "Plaintext (Local Loopback)"}
+              </dd>
             </div>
             <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="text-slate-500">Security:</dt>
-              <dd className="font-semibold text-slate-800">TLS 1.3 / X.509 TrustStore</dd>
+              <dt className="text-slate-500">TLS Encryption:</dt>
+              <dd className="font-semibold text-slate-800">
+                {isTlsOperational
+                  ? "Enforced (X.509 TrustStore)"
+                  : "Disabled by config"}
+              </dd>
+            </div>
+            <div className="flex justify-between border-t border-slate-100 pt-2">
+              <dt className="text-slate-500">Owners:</dt>
+              <dd className="font-semibold text-slate-800">M1 (TCP) &amp; M5 (TLS)</dd>
             </div>
           </dl>
         </div>
       </div>
 
-      {/* Authoritative Refresh Panel */}
+      {/* Authoritative Refresh Panel (QA-12) */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Authoritative State Reconciliation</h2>
             <p className="mt-1 text-xs text-slate-500">
               Last reconciled:{" "}
-              <span className="font-medium text-slate-700">
-                {lastInvalidatedAt ? lastInvalidatedAt.toLocaleTimeString() : "Pending initial load"}
+              <span className="font-mono font-medium text-slate-700">
+                {lastInvalidatedAt ? formatOperationalTime(lastInvalidatedAt) : "Pending initial load"}
               </span>
             </p>
           </div>
           <button
             type="button"
-            onClick={() => void triggerRefresh("MANUAL")}
+            onClick={() => void handleRefreshClick()}
             disabled={isRefreshing}
             className="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 disabled:opacity-50"
           >
@@ -204,6 +237,16 @@ export function ActivityStatusClient() {
           </button>
         </div>
 
+        {refreshAnnouncement && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-4 rounded-lg bg-teal-50 border border-teal-200 p-3 text-xs font-semibold text-teal-900"
+          >
+            ✓ {refreshAnnouncement}
+          </div>
+        )}
+
         <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 border border-slate-100">
           <strong>Architectural Disclosure:</strong> Invalidation signals (`stock-changed`) carry strictly version numbers.
           Product stock quantities, reservation status, and movements are never derived from SSE payloads.
@@ -211,7 +254,7 @@ export function ActivityStatusClient() {
         </div>
       </div>
 
-      {/* Live Invalidation Log */}
+      {/* Live Invalidation Log (QA-14) */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
         <h2 className="text-lg font-bold text-slate-900">Recent Invalidation Events Log</h2>
         <p className="mt-1 text-xs text-slate-500">
@@ -236,7 +279,9 @@ export function ActivityStatusClient() {
               <tbody className="divide-y divide-slate-100 text-slate-600">
                 {eventsLog.map((ev, idx) => (
                   <tr key={`${ev.version}-${idx}`}>
-                    <td className="px-4 py-2 text-slate-800">{ev.receivedAt.toLocaleTimeString()}</td>
+                    <td className="px-4 py-2 font-mono text-slate-800" title={formatFullDateTime(ev.receivedAt)}>
+                      {formatOperationalTime(ev.receivedAt)}
+                    </td>
                     <td className="px-4 py-2 font-mono text-teal-700">{ev.source}</td>
                     <td className="px-4 py-2 font-semibold text-slate-900">v{ev.version}</td>
                     <td className="px-4 py-2 text-slate-600">Authoritative REST refetch dispatched</td>

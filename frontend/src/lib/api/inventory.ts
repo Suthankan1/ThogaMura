@@ -3,6 +3,7 @@ import type {
   StockRequest,
   StockMovement,
   SupplierAvailability,
+  SupplierStatus,
   ApiErrorResponse,
 } from "../types/inventory";
 
@@ -240,13 +241,27 @@ export async function fetchSupplierAvailability(sku: string): Promise<SupplierAv
 
     if (!res.ok) {
       const errorData = (await res.json().catch(() => ({}))) as ApiErrorResponse;
+      let status: SupplierStatus = "SUPPLIER_UNAVAILABLE";
+      let message = errorData.message;
+
+      if (res.status === 404 || errorData.code === "NOT_FOUND" || errorData.code === "SKU_NOT_FOUND") {
+        status = "UNKNOWN";
+        message = message || "SKU not found in supplier catalog";
+      } else if (errorData.code === "WAREHOUSE_UNAVAILABLE" || (res.status === 503 && message?.toLowerCase().includes("warehouse"))) {
+        status = "WAREHOUSE_UNAVAILABLE";
+        message = message || "The central warehouse command server is unreachable over Java TCP.";
+      } else if (res.status === 504 || errorData.code === "SUPPLIER_TIMEOUT" || errorData.code === "WAREHOUSE_TIMEOUT") {
+        status = "SUPPLIER_UNAVAILABLE";
+        message = "Supplier inquiry timed out. Try again.";
+      } else {
+        status = "SUPPLIER_UNAVAILABLE";
+        message = message || "Supplier service unavailable. Try again.";
+      }
+
       return {
         sku,
-        status:
-          res.status === 504
-            ? "SUPPLIER_UNAVAILABLE"
-            : (errorData.code as SupplierAvailability["status"]) || "SUPPLIER_UNAVAILABLE",
-        message: errorData.message || `Supplier inquiry failed with HTTP ${res.status}`,
+        status,
+        message,
       };
     }
 
@@ -255,7 +270,7 @@ export async function fetchSupplierAvailability(sku: string): Promise<SupplierAv
     return {
       sku,
       status: "SUPPLIER_UNAVAILABLE",
-      message: "Gateway or supplier simulator is unreachable.",
+      message: "Supplier service unavailable. Try again.",
     };
   } finally {
     clearTimeout(timeoutId);

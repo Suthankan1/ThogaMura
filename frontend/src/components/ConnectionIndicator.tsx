@@ -21,19 +21,19 @@ export function ConnectionIndicator() {
   let dotStyle = "bg-slate-400";
 
   if (isRefreshing) {
-    statusText = "Refreshing...";
+    statusText = "Refreshing feeds...";
     statusBadgeStyle = "bg-teal-50 text-teal-800 border-teal-200";
     dotStyle = "bg-teal-600 animate-pulse";
   } else if (isLive) {
-    statusText = lastVersion ? `Live (v${lastVersion})` : "Live Updates";
+    statusText = lastVersion ? `Live (v${lastVersion})` : "Live updates active";
     statusBadgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200";
     dotStyle = "bg-emerald-500";
   } else if (sseStatus === "CONNECTED" && upstreamNioStatus !== "CONNECTED") {
-    statusText = "Warehouse Paused";
+    statusText = "Warehouse feed interrupted";
     statusBadgeStyle = "bg-amber-50 text-amber-800 border-amber-200";
     dotStyle = "bg-amber-500 animate-pulse";
   } else if (sseStatus === "DISCONNECTED" || sseStatus === "ERROR") {
-    statusText = "Disconnected";
+    statusText = "Live updates disconnected";
     statusBadgeStyle = "bg-rose-50 text-rose-800 border-rose-200";
     dotStyle = "bg-rose-500 animate-ping";
   }
@@ -60,7 +60,7 @@ export function ConnectionIndicator() {
         type="button"
         onClick={() => void triggerRefresh("MANUAL")}
         disabled={isRefreshing}
-        aria-label="Refresh authoritative inventory data"
+        aria-label="Reconcile authoritative data and check real-time connection"
         className="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
       >
         <svg
@@ -77,7 +77,7 @@ export function ConnectionIndicator() {
             d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
           />
         </svg>
-        Refresh
+        Reconcile
       </button>
 
       {/* Stale data warning banner when disconnected */}

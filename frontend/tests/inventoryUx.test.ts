@@ -110,4 +110,73 @@ describe("Frontend Inventory & Fulfillment Model (Issues #13, #22, #30, #26)", (
     assert.equal(actionable.length, 2);
     assert.equal(terminal.length, 2);
   });
+
+  it("QA-01: distinguishes positive stock, confirmed zero stock, and unavailable supplier states", () => {
+    function deriveSupplierLabel(item: SupplierAvailability): string {
+      if (item.status === "AVAILABLE" && (item.reportedQuantity ?? 0) > 0) {
+        return "AVAILABLE AT SUPPLIER";
+      }
+      if (
+        (item.status === "AVAILABLE" && item.reportedQuantity === 0) ||
+        item.status === "UNAVAILABLE"
+      ) {
+        return "OUT OF STOCK AT SUPPLIER";
+      }
+      if (item.status === "UNKNOWN") {
+        return "SKU NOT FOUND IN SUPPLIER CATALOG";
+      }
+      return "SUPPLIER SERVICE UNAVAILABLE";
+    }
+
+    const positiveStock: SupplierAvailability = {
+      sku: "ITEM-008",
+      status: "AVAILABLE",
+      reportedQuantity: 20,
+    };
+    const zeroStock: SupplierAvailability = {
+      sku: "ITEM-ZERO",
+      status: "AVAILABLE",
+      reportedQuantity: 0,
+    };
+    const unknownSku: SupplierAvailability = {
+      sku: "ITEM-UNKNOWN",
+      status: "UNKNOWN",
+    };
+    const outage: SupplierAvailability = {
+      sku: "ITEM-OUTAGE",
+      status: "SUPPLIER_UNAVAILABLE",
+    };
+
+    assert.equal(deriveSupplierLabel(positiveStock), "AVAILABLE AT SUPPLIER");
+    assert.equal(deriveSupplierLabel(zeroStock), "OUT OF STOCK AT SUPPLIER");
+    assert.equal(deriveSupplierLabel(unknownSku), "SKU NOT FOUND IN SUPPLIER CATALOG");
+    assert.equal(deriveSupplierLabel(outage), "SUPPLIER SERVICE UNAVAILABLE");
+  });
+
+  it("QA-09: correctly categorizes stock boundaries with exclusive ranges (4+, 1-3, 0)", () => {
+    const products: Product[] = [
+      { sku: "ITEM-007", name: "Carrots", onHand: 15, reserved: 3, available: 12 }, // In stock (4+)
+      { sku: "ITEM-010", name: "Leeks", onHand: 4, reserved: 0, available: 4 },     // In stock boundary (4)
+      { sku: "ITEM-012", name: "Ginger", onHand: 3, reserved: 0, available: 3 },    // Low stock boundary (3)
+      { sku: "ITEM-009", name: "Potatoes", onHand: 5, reserved: 3, available: 2 },  // Low stock (2)
+      { sku: "ITEM-011", name: "Garlic", onHand: 1, reserved: 0, available: 1 },    // Low stock boundary (1)
+      { sku: "ITEM-008", name: "Onions", onHand: 0, reserved: 0, available: 0 },    // Out of stock (0)
+    ];
+
+    const inStock = products.filter((p) => p.available >= 4);
+    const lowStock = products.filter((p) => p.available >= 1 && p.available <= 3);
+    const outOfStock = products.filter((p) => p.available === 0);
+
+    assert.equal(inStock.length, 2);
+    assert.deepEqual(inStock.map((p) => p.sku), ["ITEM-007", "ITEM-010"]);
+
+    assert.equal(lowStock.length, 3);
+    assert.deepEqual(lowStock.map((p) => p.sku), ["ITEM-012", "ITEM-009", "ITEM-011"]);
+
+    assert.equal(outOfStock.length, 1);
+    assert.deepEqual(outOfStock.map((p) => p.sku), ["ITEM-008"]);
+
+    // Total must equal all products (no overlap between exclusive categories)
+    assert.equal(inStock.length + lowStock.length + outOfStock.length, products.length);
+  });
 });

@@ -11,39 +11,65 @@ import {
 } from "@/lib/api/inventory";
 import type { StockRequest, StockMovement } from "@/lib/types/inventory";
 import { useStockEvents } from "@/lib/events/useStockEvents";
+import {
+  formatOperationalTime,
+  formatFullDateTime,
+  formatFreshness,
+} from "@/lib/formatters";
 
 export function WarehouseQueueClient() {
   const [queue, setQueue] = useState<StockRequest[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
   const { subscribeInvalidation, isLive, warningMessage } = useStockEvents();
 
-  const loadWarehouseData = useCallback(async () => {
+  const loadWarehouseData = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setRefreshing(true);
+    }
+    setError(null);
+    setRefreshNotice(null);
+
     try {
       const [allRequests, movementRecords] = await Promise.all([
         fetchStockRequests(),
         fetchStockMovements(),
       ]);
 
-      // Only show requests that require picker action: ACCEPTED or PICKED
       const actionable = allRequests.filter(
         (r) => r.status === "ACCEPTED" || r.status === "PICKED"
       );
       setQueue(actionable);
       setMovements(movementRecords);
+      const now = new Date();
+      setLastFetchedAt(now);
+      setHasLoadedOnce(true);
       setError(null);
+
+      if (isManualRefresh) {
+        setRefreshNotice(`Queue updated ${formatFreshness(now)}.`);
+      }
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(`${err.code}: ${err.message}`);
-      } else {
-        setError("Failed to load warehouse fulfillment queue.");
+      const msg =
+        err instanceof ApiError
+          ? `${err.code}: ${err.message}`
+          : "Failed to load warehouse fulfillment queue.";
+      setError(msg);
+
+      if (isManualRefresh) {
+        setRefreshNotice("Refresh failed. Retaining last known queue state.");
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -61,15 +87,17 @@ export function WarehouseQueueClient() {
           );
           setQueue(actionable);
           setMovements(movementRecords);
+          setLastFetchedAt(new Date());
+          setHasLoadedOnce(true);
           setError(null);
         }
       } catch (err) {
         if (!ignore) {
-          if (err instanceof ApiError) {
-            setError(`${err.code}: ${err.message}`);
-          } else {
-            setError("Failed to load warehouse fulfillment queue.");
-          }
+          setError(
+            err instanceof ApiError
+              ? `${err.code}: ${err.message}`
+              : "Failed to load warehouse fulfillment queue."
+          );
         }
       } finally {
         if (!ignore) {
@@ -86,7 +114,7 @@ export function WarehouseQueueClient() {
   // Real-time invalidation
   useEffect(() => {
     return subscribeInvalidation(() => {
-      void loadWarehouseData();
+      void loadWarehouseData(false);
     });
   }, [subscribeInvalidation, loadWarehouseData]);
 
@@ -98,7 +126,7 @@ export function WarehouseQueueClient() {
     try {
       await pickStockRequest(requestId);
       setSuccessMessage(`Request ${requestId.slice(0, 8)}... successfully marked as PICKED.`);
-      await loadWarehouseData();
+      await loadWarehouseData(false);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(`Failed to pick request: ${err.message}`);
@@ -120,7 +148,7 @@ export function WarehouseQueueClient() {
       setSuccessMessage(
         `Request ${requestId.slice(0, 8)}... successfully marked as DISPATCHED. PostgreSQL balances decremented.`
       );
-      await loadWarehouseData();
+      await loadWarehouseData(false);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(`Failed to dispatch request: ${err.message}`);
@@ -142,7 +170,7 @@ export function WarehouseQueueClient() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-            Operations & Fulfillment
+            Operations &amp; Fulfillment
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Warehouse Queue
@@ -151,46 +179,60 @@ export function WarehouseQueueClient() {
             Pickers review accepted reservations and execute strict ACCEPTED → PICKED → DISPATCHED transitions.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void loadWarehouseData()}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
-        >
-          <svg
-            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="2"
-            stroke="currentColor"
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void loadWarehouseData(true)}
+            disabled={loading || refreshing}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-            />
-          </svg>
-          Refresh Queue
-        </button>
+            <svg
+              className={`h-4 w-4 ${refreshing || loading ? "animate-spin text-teal-600" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+              />
+            </svg>
+            {refreshing ? "Refreshing..." : "Refresh Queue"}
+          </button>
+        </div>
       </div>
 
-      {/* Metrics Summary */}
+      {/* Metrics Summary (QA-04: Show Queue unavailable if no successful fetch exists) */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
           <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Pending Pick</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-blue-900">{pendingPicks}</p>
+          {hasLoadedOnce ? (
+            <p className="mt-1 font-mono text-2xl font-bold text-blue-900">{pendingPicks}</p>
+          ) : (
+            <p className="mt-1 text-sm font-semibold text-slate-500">Queue unavailable</p>
+          )}
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
           <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">Pending Dispatch</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-amber-900">{pendingDispatches}</p>
+          {hasLoadedOnce ? (
+            <p className="mt-1 font-mono text-2xl font-bold text-amber-900">{pendingDispatches}</p>
+          ) : (
+            <p className="mt-1 text-sm font-semibold text-slate-500">Queue unavailable</p>
+          )}
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
           <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Audit Movements</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-emerald-900">{totalMovements}</p>
+          {hasLoadedOnce ? (
+            <p className="mt-1 font-mono text-2xl font-bold text-emerald-900">{totalMovements}</p>
+          ) : (
+            <p className="mt-1 text-sm font-semibold text-slate-500">Queue unavailable</p>
+          )}
         </div>
       </div>
 
-      {/* Network Warning */}
+      {/* Real-time Invalidation Disruption Warning (QA-05) */}
       {warningMessage && (
         <div
           role="alert"
@@ -204,16 +246,27 @@ export function WarehouseQueueClient() {
             />
           </svg>
           <div>
-            <h2 className="font-semibold text-amber-900">Real-Time Invalidation Interrupted</h2>
+            <h2 className="font-semibold text-amber-900">Live updates disconnected</h2>
             <p className="mt-1 text-sm text-amber-800">{warningMessage}</p>
           </div>
         </div>
       )}
 
-      {/* Action Success / Error Notifications */}
+      {/* Action / Refresh Notice */}
+      {refreshNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-teal-200 bg-teal-50 p-4 text-xs font-semibold text-teal-900"
+        >
+          ✓ {refreshNotice}
+        </div>
+      )}
+
       {successMessage && (
         <div
           role="status"
+          aria-live="polite"
           className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900"
         >
           ✓ {successMessage}
@@ -223,6 +276,7 @@ export function WarehouseQueueClient() {
       {error && (
         <div
           role="alert"
+          aria-live="assertive"
           className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-900"
         >
           ⚠ {error}
@@ -231,16 +285,26 @@ export function WarehouseQueueClient() {
 
       {/* Actionable Queue */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-bold text-slate-900">
-            Pending Fulfillment ({queue.length})
+            Pending Fulfillment ({hasLoadedOnce ? queue.length : "—"})
           </h2>
-          <span className="text-xs text-slate-500">
-            Feed status:{" "}
-            <strong className={isLive ? "text-emerald-700" : "text-amber-700"}>
-              {isLive ? "Synchronized" : "Stale"}
-            </strong>
-          </span>
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span>
+              Feed status:{" "}
+              <strong className={isLive ? "text-emerald-700" : "text-amber-700"}>
+                {isLive ? "Live NIO/SSE Synced" : "Live updates disconnected"}
+              </strong>
+            </span>
+            {lastFetchedAt && (
+              <span>
+                Last successful fetch:{" "}
+                <strong className="font-mono text-slate-700">
+                  {formatOperationalTime(lastFetchedAt)}
+                </strong>
+              </span>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -252,11 +316,27 @@ export function WarehouseQueueClient() {
               />
             ))}
           </div>
+        ) : !hasLoadedOnce && error ? (
+          <div className="rounded-xl border border-dashed border-rose-300 bg-rose-50/50 p-10 text-center">
+            <h3 className="font-semibold text-rose-900">Queue unavailable</h3>
+            <p className="mt-1 text-xs text-rose-700">
+              Could not retrieve the fulfillment queue from the warehouse server.
+            </p>
+            <button
+              type="button"
+              onClick={() => void loadWarehouseData(true)}
+              className="mt-4 inline-flex items-center rounded-lg bg-rose-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-800"
+            >
+              Retry Connection
+            </button>
+          </div>
         ) : queue.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center">
-            <p className="font-medium text-slate-900">Fulfillment queue is clear</p>
+            <h3 className="font-semibold text-slate-900">
+              No pending work {formatFreshness(lastFetchedAt)}
+            </h3>
             <p className="mt-1 text-xs text-slate-500">
-              No accepted or picked requests are currently pending picker action.
+              All accepted stock reservations have been picked and dispatched. No pending work in queue.
             </p>
             <Link
               href="/requests/new"
@@ -388,7 +468,7 @@ export function WarehouseQueueClient() {
                   {movements.map((m) => (
                     <tr key={m.id} className="hover:bg-slate-50">
                       <td className="px-4 py-2.5 font-bold text-slate-900">#{m.id}</td>
-                      <td className="px-4 py-2.5 text-slate-600 select-all">
+                      <td className="px-4 py-2.5 text-slate-600 select-all" title={m.stockRequestId}>
                         {m.stockRequestId.slice(0, 18)}...
                       </td>
                       <td className="px-4 py-2.5 font-semibold text-slate-900">{m.sku}</td>
@@ -398,8 +478,11 @@ export function WarehouseQueueClient() {
                       <td className="px-4 py-2.5 font-sans font-semibold text-slate-600">
                         {m.reason}
                       </td>
-                      <td className="px-4 py-2.5 font-sans text-slate-500">
-                        {new Date(m.occurredAt).toLocaleString()}
+                      <td
+                        className="px-4 py-2.5 font-sans text-slate-500"
+                        title={m.occurredAt}
+                      >
+                        {formatFullDateTime(m.occurredAt)}
                       </td>
                     </tr>
                   ))}

@@ -306,6 +306,16 @@ do_start() {
         echo -e "\n${GREEN}✓ Next.js Frontend started on http://localhost:${PORT_FRONTEND}${NC}"
     fi
 
+    # 7. Ensure demo data is seeded if database is empty (QA-06)
+    if docker compose ps -q db 2>/dev/null | grep -q .; then
+        local count
+        count=$(docker compose exec -T db psql -U "${POSTGRES_USER:-thogamura}" -d "${POSTGRES_DB:-thogamura}" -t -c "SELECT COUNT(*) FROM product_stock;" 2>/dev/null | tr -d '[:space:]' || echo "0")
+        if [ "$count" = "0" ] || [ -z "$count" ]; then
+            echo -e "${CYAN}[SEED] Product stock is empty. Seeding demo inventory and workflow requests...${NC}"
+            "$SCRIPT_DIR/scripts/seed-demo-data.sh" || true
+        fi
+    fi
+
     echo -e "\n${BOLD}${GREEN}==================================================================${NC}"
     echo -e "${BOLD}${GREEN}  All ThogaMura Components Running Successfully!                  ${NC}"
     echo -e "${BOLD}${GREEN}==================================================================${NC}"
@@ -493,6 +503,9 @@ case "$ACTION" in
     start)
         do_start
         ;;
+    seed)
+        "$SCRIPT_DIR/scripts/seed-demo-data.sh"
+        ;;
     status)
         do_status
         ;;
@@ -513,6 +526,7 @@ case "$ACTION" in
         echo ""
         echo "Usage:"
         echo "  ./start.sh          Start all services (DB, server, simulator, gateway, UI)"
+        echo "  ./start.sh seed     Seed demo products and workflow states (QA-06)"
         echo "  ./start.sh status   Show live health and process status"
         echo "  ./start.sh stop     Stop all services cleanly"
         echo "  ./start.sh restart  Restart all services"

@@ -62,6 +62,7 @@ public class SupplierHttpSimulator implements AutoCloseable {
     public static final String SKU_ZERO_ITEM_008 = "ITEM-008-ZERO";
     public static final String SKU_ZERO_GENERIC = "ITEM-ZERO";
     public static final String SKU_SIMULATE_503 = "ITEM-503";
+    public static final String SKU_SIMULATE_OUTAGE = "ITEM-OUTAGE";
     public static final String SKU_SIMULATE_TIMEOUT = "ITEM-DELAY";
     public static final String SKU_SIMULATE_MALFORMED = "ITEM-MALFORMED";
     public static final String SKU_SIMULATE_WRONG_SKU = "ITEM-WRONG-SKU";
@@ -442,6 +443,7 @@ public class SupplierHttpSimulator implements AutoCloseable {
                 || "503".equalsIgnoreCase(mode)
                 || "unavailable".equalsIgnoreCase(mode)
                 || SKU_SIMULATE_503.equalsIgnoreCase(sku)
+                || SKU_SIMULATE_OUTAGE.equalsIgnoreCase(sku)
                 || "ITEM-UNAVAILABLE".equalsIgnoreCase(sku);
     }
 

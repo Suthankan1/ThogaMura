@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchSupplierAvailability } from "@/lib/api/inventory";
 import type { SupplierAvailability } from "@/lib/types/inventory";
+import { formatFullDateTime } from "@/lib/formatters";
 
 export function SuppliersClient() {
   const searchParams = useSearchParams();
@@ -18,9 +19,12 @@ export function SuppliersClient() {
     if (!initialSku) return;
     let ignore = false;
     async function init() {
+      setLoading(true);
+      setResult(null);
       const res = await fetchSupplierAvailability(initialSku.trim());
       if (!ignore) {
         setResult(res);
+        setLoading(false);
       }
     }
     void init();
@@ -43,6 +47,15 @@ export function SuppliersClient() {
     e.preventDefault();
     void executeInquiry(sku);
   }
+
+  const isConfirmedZero =
+    result &&
+    ((result.status === "AVAILABLE" && result.reportedQuantity === 0) ||
+      (result.status === "UNAVAILABLE" && result.reportedQuantity === 0) ||
+      result.status === "UNAVAILABLE");
+
+  const isConfirmedPositive =
+    result && result.status === "AVAILABLE" && (result.reportedQuantity ?? 0) > 0;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -154,8 +167,13 @@ export function SuppliersClient() {
       {/* Results View */}
       {result && (
         <div className="space-y-4">
-          {result.status === "AVAILABLE" && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-xs text-emerald-950 space-y-4">
+          {/* Positive Available Units (QA-01) */}
+          {isConfirmedPositive && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-xs text-emerald-950 space-y-4"
+            >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
                   AVAILABLE AT SUPPLIER
@@ -181,64 +199,161 @@ export function SuppliersClient() {
                   <span className="font-semibold text-slate-800">{result.supplier || "Demo Supplier"}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Checked At (UTC):</span>
-                  <span className="font-mono text-slate-700">
-                    {result.checkedAt ? new Date(result.checkedAt).toLocaleString() : "Recent"}
+                  <span className="text-slate-500 block">Checked At:</span>
+                  <span className="font-mono text-slate-700" title={result.checkedAt || ""}>
+                    {formatFullDateTime(result.checkedAt)}
                   </span>
                 </div>
               </div>
             </div>
           )}
 
-          {result.status === "UNAVAILABLE" && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-xs text-amber-950 space-y-3">
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
-                CONFIRMED ZERO UNITS
-              </span>
-              <p className="text-sm text-amber-900">
-                Supplier confirmed this SKU is recognized but currently has 0 available units in stock.
-              </p>
-              {result.checkedAt && (
-                <p className="text-xs text-amber-700">
-                  Verified at: {new Date(result.checkedAt).toLocaleString()}
+          {/* Confirmed Zero Stock (QA-01: Out of stock at supplier) */}
+          {isConfirmedZero && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-xs text-amber-950 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                  OUT OF STOCK AT SUPPLIER
+                </span>
+                <span className="text-xs font-mono text-amber-800">
+                  Source: {result.source || "MOCK_SUPPLIER"}
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-base font-bold text-amber-900">
+                  Out of stock at supplier (0 units)
+                </h2>
+                <p className="mt-1 text-sm text-amber-800">
+                  The supplier confirmed that SKU <code className="font-mono font-semibold">{result.sku}</code> is cataloged, but currently has 0 available units in stock.
                 </p>
-              )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 rounded-lg bg-white/70 p-4 text-xs">
+                <div>
+                  <span className="text-slate-500 block">Product SKU:</span>
+                  <span className="font-mono font-bold text-base text-slate-900">{result.sku}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Reported Quantity:</span>
+                  <span className="font-mono font-bold text-base text-amber-700">
+                    0 units
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Supplier Name:</span>
+                  <span className="font-semibold text-slate-800">{result.supplier || "Demo Supplier"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Checked At:</span>
+                  <span className="font-mono text-slate-700" title={result.checkedAt || ""}>
+                    {formatFullDateTime(result.checkedAt)}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 
+          {/* Unknown SKU 404 (QA-02) */}
           {result.status === "UNKNOWN" && (
-            <div className="rounded-xl border border-slate-300 bg-slate-50 p-6 shadow-xs text-slate-900 space-y-3">
-              <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-800">
-                UNKNOWN TO SUPPLIER
-              </span>
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-slate-300 bg-slate-50 p-6 shadow-xs text-slate-900 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-800">
+                  SKU NOT FOUND IN SUPPLIER CATALOG
+                </span>
+                <span className="text-xs font-mono text-slate-500">HTTP 404</span>
+              </div>
+              <h2 className="text-base font-bold text-slate-900">
+                SKU not found in supplier catalog
+              </h2>
               <p className="text-sm text-slate-700">
-                Supplier returned HTTP 404: SKU <code className="font-mono font-semibold">{result.sku}</code> is not carried in the supplier product catalog.
+                The supplier returned HTTP 404: SKU <code className="font-mono font-semibold">{result.sku}</code> is not carried in the supplier product catalog.
+              </p>
+              <p className="text-xs text-slate-500">
+                You can edit the SKU above and try another catalog lookup.
               </p>
             </div>
           )}
 
+          {/* Supplier Outage / Unavailable 503 / Timeout (QA-03) */}
           {result.status === "SUPPLIER_UNAVAILABLE" && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 shadow-xs text-rose-950 space-y-3">
-              <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
-                SUPPLIER SERVICE OUTAGE
-              </span>
-              <p className="text-sm text-rose-800">
-                {result.message || "Supplier HTTP service is offline, timed out, or returned an invalid response. Stock cannot be confirmed."}
-              </p>
-              <p className="text-xs text-rose-700">
-                Note: A supplier timeout is not evidence that stock is zero.
-              </p>
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="rounded-xl border border-rose-200 bg-rose-50 p-6 shadow-xs text-rose-950 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
+                  SUPPLIER SERVICE UNAVAILABLE
+                </span>
+                <span className="text-xs font-mono text-rose-700">HTTP 503 / Timeout</span>
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-rose-900">
+                  Supplier service unavailable. Try again.
+                </h2>
+                <p className="mt-1 text-sm text-rose-800">
+                  {result.message || "Supplier HTTP service is offline, timed out, or returned an error. Stock cannot be confirmed."}
+                </p>
+                <p className="mt-1 text-xs text-rose-700">
+                  Note: A supplier timeout or outage is not evidence that stock is zero.
+                </p>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => void executeInquiry(sku)}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-800 focus:outline-hidden focus:ring-2 focus:ring-rose-600 disabled:opacity-50"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  Retry inquiry
+                </button>
+              </div>
             </div>
           )}
 
+          {/* Warehouse Gateway Outage */}
           {result.status === "WAREHOUSE_UNAVAILABLE" && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 shadow-xs text-rose-950 space-y-3">
-              <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
-                WAREHOUSE GATEWAY OUTAGE
-              </span>
-              <p className="text-sm text-rose-800">
-                {result.message || "The central warehouse command server is unreachable over Java TCP."}
-              </p>
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="rounded-xl border border-rose-200 bg-rose-50 p-6 shadow-xs text-rose-950 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
+                  WAREHOUSE GATEWAY OUTAGE
+                </span>
+                <span className="text-xs font-mono text-rose-700">TCP Socket Outage</span>
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-rose-900">
+                  Warehouse gateway unavailable
+                </h2>
+                <p className="mt-1 text-sm text-rose-800">
+                  {result.message || "The central warehouse command server is unreachable over Java TCP."}
+                </p>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => void executeInquiry(sku)}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-800 focus:outline-hidden focus:ring-2 focus:ring-rose-600 disabled:opacity-50"
+                >
+                  Retry warehouse connection
+                </button>
+              </div>
             </div>
           )}
         </div>

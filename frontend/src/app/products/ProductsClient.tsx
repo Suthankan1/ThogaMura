@@ -5,31 +5,48 @@ import Link from "next/link";
 import { fetchProducts, ApiError } from "@/lib/api/inventory";
 import type { Product } from "@/lib/types/inventory";
 import { useStockEvents } from "@/lib/events/useStockEvents";
+import { formatOperationalTime, formatFreshness } from "@/lib/formatters";
 
 export function ProductsClient() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [stockFilter, setStockFilter] = useState<"ALL" | "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK">("ALL");
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
   const { subscribeInvalidation, isLive, warningMessage } = useStockEvents();
 
-  const loadAuthoritativeProducts = useCallback(async () => {
+  const loadAuthoritativeProducts = useCallback(async (isManual = false) => {
+    if (isManual) {
+      setRefreshing(true);
+    }
+    setError(null);
+    setRefreshNotice(null);
+
     try {
       const data = await fetchProducts();
       setProducts(data);
       setError(null);
-      setLastRefreshed(new Date());
+      const now = new Date();
+      setLastRefreshed(now);
+      if (isManual) {
+        setRefreshNotice(`Inventory updated ${formatFreshness(now)}.`);
+      }
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(`${err.code}: ${err.message}`);
-      } else {
-        setError("Failed to load products from warehouse.");
+      const msg =
+        err instanceof ApiError
+          ? `${err.code}: ${err.message}`
+          : "Failed to load products from warehouse.";
+      setError(msg);
+      if (isManual) {
+        setRefreshNotice("Refresh failed. Displaying cached inventory.");
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -46,11 +63,11 @@ export function ProductsClient() {
         }
       } catch (err) {
         if (!ignore) {
-          if (err instanceof ApiError) {
-            setError(`${err.code}: ${err.message}`);
-          } else {
-            setError("Failed to load products from warehouse.");
-          }
+          setError(
+            err instanceof ApiError
+              ? `${err.code}: ${err.message}`
+              : "Failed to load products from warehouse."
+          );
         }
       } finally {
         if (!ignore) {
@@ -67,18 +84,19 @@ export function ProductsClient() {
   // Register real-time cache invalidation listener (SSE invalidation -> REST refetch)
   useEffect(() => {
     return subscribeInvalidation(() => {
-      void loadAuthoritativeProducts();
+      void loadAuthoritativeProducts(false);
     });
   }, [subscribeInvalidation, loadAuthoritativeProducts]);
 
+  // Exclusive stock filtering (QA-09)
   const filteredProducts = useMemo(() => {
     let result = products;
     if (stockFilter === "IN_STOCK") {
-      result = result.filter((p) => p.available > 0);
+      result = result.filter((p) => p.available >= 4);
     } else if (stockFilter === "LOW_STOCK") {
-      result = result.filter((p) => p.available > 0 && p.available <= 3);
+      result = result.filter((p) => p.available >= 1 && p.available <= 3);
     } else if (stockFilter === "OUT_OF_STOCK") {
-      result = result.filter((p) => p.available <= 0);
+      result = result.filter((p) => p.available === 0);
     }
 
     if (!search.trim()) return result;
@@ -106,12 +124,12 @@ export function ProductsClient() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => void loadAuthoritativeProducts()}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
+            onClick={() => void loadAuthoritativeProducts(true)}
+            disabled={loading || refreshing}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
           >
             <svg
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              className={`h-4 w-4 ${loading || refreshing ? "animate-spin text-teal-600" : ""}`}
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth="2"
@@ -123,7 +141,7 @@ export function ProductsClient() {
                 d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
               />
             </svg>
-            Refresh
+            {refreshing ? "Refreshing..." : "Refresh Inventory"}
           </button>
           <Link
             href="/requests/new"
@@ -134,7 +152,7 @@ export function ProductsClient() {
         </div>
       </div>
 
-      {/* Network Warning Banner */}
+      {/* Network Warning Banner (QA-05: Live updates disconnected) */}
       {warningMessage && (
         <div
           role="alert"
@@ -148,9 +166,20 @@ export function ProductsClient() {
             />
           </svg>
           <div>
-            <h2 className="font-semibold text-amber-900">Real-Time Invalidation Interrupted</h2>
+            <h2 className="font-semibold text-amber-900">Live updates disconnected</h2>
             <p className="mt-1 text-sm text-amber-800">{warningMessage}</p>
           </div>
+        </div>
+      )}
+
+      {/* Refresh announcement */}
+      {refreshNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-teal-200 bg-teal-50 p-3.5 text-xs font-semibold text-teal-900"
+        >
+          ✓ {refreshNotice}
         </div>
       )}
 
@@ -158,6 +187,7 @@ export function ProductsClient() {
       {error && (
         <div
           role="alert"
+          aria-live="assertive"
           className="flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900"
         >
           <div>
@@ -166,7 +196,7 @@ export function ProductsClient() {
           </div>
           <button
             type="button"
-            onClick={() => void loadAuthoritativeProducts()}
+            onClick={() => void loadAuthoritativeProducts(true)}
             className="rounded-lg bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-900 hover:bg-rose-200"
           >
             Retry
@@ -190,43 +220,51 @@ export function ProductsClient() {
               className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-teal-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-teal-600"
             />
           </div>
+          {/* QA-05: Accurate path-specific connection status */}
           <div className="flex items-center gap-4 text-xs text-slate-500">
             <span>
               Status:{" "}
               <strong className={isLive ? "text-emerald-700" : "text-amber-700"}>
-                {isLive ? "Live NIO/SSE Synced" : "Polling / Stale"}
+                {isLive ? "Live NIO/SSE Synced" : "Live updates disconnected"}
               </strong>
             </span>
             {lastRefreshed && (
               <span>
-                Updated: <strong>{lastRefreshed.toLocaleTimeString()}</strong>
+                Last successful fetch:{" "}
+                <strong className="font-mono text-slate-700">
+                  {formatOperationalTime(lastRefreshed)}
+                </strong>
               </span>
             )}
           </div>
         </div>
 
-        {/* Stock Health Filter Pills */}
+        {/* Stock Health Filter Pills with aria-pressed (QA-09) */}
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs">
           <span className="font-semibold text-slate-500">Filter Stock:</span>
           {[
-            { label: "All Items", value: "ALL" as const },
-            { label: "In Stock", value: "IN_STOCK" as const },
-            { label: "Low Stock (≤ 3)", value: "LOW_STOCK" as const },
-            { label: "Out of Stock (0)", value: "OUT_OF_STOCK" as const },
-          ].map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setStockFilter(tab.value)}
-              className={`rounded-full px-3 py-1 font-medium transition-colors ${
-                stockFilter === tab.value
-                  ? "bg-teal-700 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+            { label: "All items", value: "ALL" as const },
+            { label: "In stock (4+)", value: "IN_STOCK" as const },
+            { label: "Low stock (1–3)", value: "LOW_STOCK" as const },
+            { label: "Out of stock (0)", value: "OUT_OF_STOCK" as const },
+          ].map((tab) => {
+            const isSelected = stockFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => setStockFilter(tab.value)}
+                className={`rounded-full px-3 py-1 font-medium transition-colors ${
+                  isSelected
+                    ? "bg-teal-700 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -244,19 +282,48 @@ export function ProductsClient() {
         <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center">
           <p className="text-base font-medium text-slate-900">No products found</p>
           <p className="mt-1 text-sm text-slate-500">
-            {search
+            {products.length === 0
+              ? "Warehouse inventory is empty or not yet seeded."
+              : search && stockFilter !== "ALL"
+              ? "No products match both your search query and selected stock filter."
+              : search
               ? "No product matches your search term."
-              : "Warehouse inventory is empty or not yet seeded."}
+              : "No products match the selected stock filter."}
           </p>
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="mt-3 text-sm font-semibold text-teal-700 hover:text-teal-800"
-            >
-              Clear search filter
-            </button>
-          )}
+
+          {/* QA-10: Context-appropriate filter recovery actions */}
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {search && stockFilter !== "ALL" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setStockFilter("ALL");
+                }}
+                className="rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-800"
+              >
+                Clear all filters
+              </button>
+            )}
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Clear search query
+              </button>
+            )}
+            {stockFilter !== "ALL" && (
+              <button
+                type="button"
+                onClick={() => setStockFilter("ALL")}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Show all stock levels
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
@@ -286,8 +353,8 @@ export function ProductsClient() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.map((p) => {
-                  const isOutOfStock = p.available <= 0;
-                  const isLowStock = p.available > 0 && p.available <= 3;
+                  const isOutOfStock = p.available === 0;
+                  const isLowStock = p.available >= 1 && p.available <= 3;
 
                   return (
                     <tr key={p.sku} className="hover:bg-slate-50">
@@ -315,19 +382,20 @@ export function ProductsClient() {
                           }`}
                         >
                           {isOutOfStock
-                            ? "Out of Stock"
+                            ? "Out of Stock (0)"
                             : isLowStock
-                            ? "Low Stock"
-                            : "Available"}
+                            ? "Low Stock (1–3)"
+                            : "In Stock (4+)"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {/* QA-07: Explicit 'Request stock' label with prefilled SKU */}
                           <Link
                             href={`/requests/new?sku=${encodeURIComponent(p.sku)}`}
                             className="inline-flex items-center rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100"
                           >
-                            Request
+                            Request stock
                           </Link>
                           {isOutOfStock && (
                             <Link
