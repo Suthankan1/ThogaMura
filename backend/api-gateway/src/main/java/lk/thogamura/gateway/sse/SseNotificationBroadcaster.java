@@ -11,12 +11,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -51,10 +54,12 @@ public class SseNotificationBroadcaster implements NotificationListener, Disposa
     private static final Logger logger = LoggerFactory.getLogger(SseNotificationBroadcaster.class);
 
     public static final String EVENT_NAME = "stock-changed";
+    public static final String CONNECTED_EVENT_NAME = "connected";
 
     private final int maxEmitters;
     private final long emitterTimeoutMs;
     private final ExecutorService executor;
+    private final ScheduledExecutorService heartbeatScheduler;
     private final boolean customExecutor;
 
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
@@ -91,6 +96,14 @@ public class SseNotificationBroadcaster implements NotificationListener, Disposa
                 threadFactory,
                 new ThreadPoolExecutor.DiscardOldestPolicy()
         );
+
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "sse-heartbeat");
+            t.setDaemon(true);
+            return t;
+        });
+        scheduler.scheduleAtFixedRate(this::sendHeartbeat, 15, 15, TimeUnit.SECONDS);
+        this.heartbeatScheduler = scheduler;
     }
 
     /**
@@ -101,6 +114,7 @@ public class SseNotificationBroadcaster implements NotificationListener, Disposa
         this.emitterTimeoutMs = emitterTimeoutMs;
         this.executor = Objects.requireNonNull(executor, "executor cannot be null");
         this.customExecutor = true;
+        this.heartbeatScheduler = null;
     }
 
     /**
@@ -149,6 +163,23 @@ public class SseNotificationBroadcaster implements NotificationListener, Disposa
             } catch (Exception ignored) {
             }
         });
+
+        // Crucial fix: Immediately dispatch initial connection handshake.
+        // In Spring MVC, SseEmitter only commits HTTP response headers (HTTP 200 OK, Content-Type: text/event-stream)
+        // when the first event/byte is written. Without this, client connections hang indefinitely with 0 bytes,
+        // causing proxies and browser EventSource to timeout and report "Disconnected".
+        try {
+            emitter.send(SseEmitter.event()
+                    .name(CONNECTED_EVENT_NAME)
+                    .data("connected"));
+        } catch (Exception ex) {
+            logger.debug("Failed to deliver initial SSE connection handshake: {}", ex.getMessage());
+            removeEmitter(emitter);
+            try {
+                emitter.completeWithError(ex);
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     /**
@@ -225,12 +256,45 @@ public class SseNotificationBroadcaster implements NotificationListener, Disposa
     }
 
     /**
+     * Sends a periodic SSE comment keep-alive (:ping) to all connected clients.
+     * Keeps proxy and browser connections alive and purges stale broken connections.
+     */
+    void sendHeartbeat() {
+        if (emitters.isEmpty() || isShutdown.get()) {
+            return;
+        }
+
+        List<SseEmitter> deadEmitters = new ArrayList<>();
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().comment("ping"));
+            } catch (Exception ex) {
+                logger.debug("Stale SSE client failed during heartbeat (marking for removal): {}", ex.getMessage());
+                deadEmitters.add(emitter);
+                try {
+                    emitter.completeWithError(ex);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        if (!deadEmitters.isEmpty()) {
+            emitters.removeAll(deadEmitters);
+            logger.debug("Cleaned up {} dead SSE emitters during heartbeat. Active clients: {}",
+                    deadEmitters.size(), emitters.size());
+        }
+    }
+
+    /**
      * Completes all active emitters and shuts down the broadcast executor.
      */
     @Override
     public void destroy() {
         if (isShutdown.compareAndSet(false, true)) {
             logger.info("Shutting down SseNotificationBroadcaster...");
+            if (heartbeatScheduler != null) {
+                heartbeatScheduler.shutdownNow();
+            }
             closeAll();
             if (!customExecutor) {
                 executor.shutdown();

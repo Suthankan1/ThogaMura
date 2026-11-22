@@ -18,6 +18,7 @@ import { fetchNetworkStatus } from "../api/network";
 
 const GATEWAY_URL =
   process.env.NEXT_PUBLIC_GATEWAY_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
   (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
 
 type InvalidationCallback = (version: number, source: InvalidationEvent["source"]) => void | Promise<void>;
@@ -156,10 +157,24 @@ export function StockEventsProvider({ children }: { children: React.ReactNode })
 
     es.onerror = () => {
       if (!isMounted) return;
-      setSseStatus("DISCONNECTED");
-      setWarningMessage("Real-time event stream disconnected. Reconnecting to gateway...");
+      if (es.readyState === EventSource.CLOSED) {
+        setSseStatus("DISCONNECTED");
+        setWarningMessage("Real-time event stream disconnected. Reconnecting to gateway...");
+      } else if (es.readyState === EventSource.CONNECTING) {
+        setSseStatus("CONNECTING");
+      }
       // Browser EventSource automatically retries natively
     };
+
+    // Explicit listener for initial connected handshake from Spring Boot gateway
+    es.addEventListener("connected", () => {
+      if (!isMounted) return;
+      setSseStatus("CONNECTED");
+      void checkUpstreamStatus();
+      if (hasEverConnectedRef.current) {
+        setWarningMessage(null);
+      }
+    });
 
     // Listen specifically for the version-only invalidation signal
     es.addEventListener("stock-changed", (e: MessageEvent<string>) => {
