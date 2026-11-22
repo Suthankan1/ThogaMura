@@ -55,7 +55,7 @@ class SupplierNetworkFlowIntegrationTest {
                 3000,
                 5000,
                 16384,
-                false
+                java.util.Set.of()
         );
         DefaultSupplierHttpClient supplierHttpClient = new DefaultSupplierHttpClient(supplierConfig);
         SupplierCommandHandler supplierCommandHandler = new SupplierCommandHandler(supplierHttpClient);

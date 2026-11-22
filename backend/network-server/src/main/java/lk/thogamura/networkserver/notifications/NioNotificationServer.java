@@ -21,11 +21,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Queue;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -53,7 +52,10 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
     private final NotificationServerConfig config;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
-    private final AtomicLong lastPublishedVersion = new AtomicLong(0);
+    private static final int MAX_PENDING_HINTS = 512;
+    private static final int SELECTOR_BATCH_SIZE = 64;
+    private final AtomicLong lastPublishedVersion = new AtomicLong(-1);
+    private final AtomicLong coalescedHints = new AtomicLong();
     private final AtomicLong rejectedConnections = new AtomicLong(0);
 
     private ServerSocketChannel serverChannel;
@@ -61,7 +63,7 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
     private Thread eventLoopThread;
 
     private final Map<SocketChannel, ClientSession> connectedClients = new ConcurrentHashMap<>();
-    private final Queue<Runnable> pendingTasks = new ConcurrentLinkedQueue<>();
+    private final ArrayBlockingQueue<ChangeNotification> pendingHints = new ArrayBlockingQueue<>(MAX_PENDING_HINTS);
 
     public NioNotificationServer(NotificationServerConfig config) {
         this.config = Objects.requireNonNull(config, "config cannot be null");
@@ -121,15 +123,21 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
     @Override
     public void publish(ChangeNotification notification) {
         Objects.requireNonNull(notification, "notification cannot be null");
-        if (!running.get()) {
-            throw new IllegalStateException("Cannot publish notification: NIO notification server is not running");
+        synchronized (pendingHints) {
+            if (!running.get()) {
+                throw new IllegalStateException("Cannot publish notification: NIO notification server is not running");
+            }
+            if (notification.version() <= lastPublishedVersion.get()) {
+                coalescedHints.incrementAndGet();
+                return;
+            }
+            lastPublishedVersion.set(notification.version());
+            if (!pendingHints.offer(notification)) {
+                pendingHints.poll();
+                pendingHints.add(notification);
+                coalescedHints.incrementAndGet();
+            }
         }
-
-        lastPublishedVersion.set(notification.version());
-        byte[] bytes = notification.toWireBytes();
-
-        // Enqueue task for selector thread to preserve strict single-thread NIO channel ownership
-        pendingTasks.offer(() -> broadcastOnSelectorThread(bytes));
 
         // Wake up selector in case it is currently blocked in select()
         if (selector != null && selector.isOpen()) {
@@ -146,6 +154,9 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
             return;
         }
         closed.set(true);
+        synchronized (pendingHints) {
+            pendingHints.clear();
+        }
         logger.info("Stopping Java NIO notification server...");
 
         // Wake up selector so the event loop thread exits
@@ -212,7 +223,7 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
     }
 
     public long getLastPublishedVersion() {
-        return lastPublishedVersion.get();
+        return Math.max(0, lastPublishedVersion.get());
     }
 
     public long getRejectedConnectionCount() {
@@ -284,7 +295,7 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
                 }
 
                 // Process pending publish actions submitted by outside threads
-                drainPendingTasks();
+                drainPendingHints();
 
                 Set<SelectionKey> selectedKeys = selector.selectedKeys();
                 if (selectedKeys.isEmpty()) {
@@ -330,18 +341,18 @@ public class NioNotificationServer implements NotificationPublisher, AutoCloseab
         logger.info("Java NIO selector event loop terminated");
     }
 
-    /**
-     * Drains tasks submitted to {@link #pendingTasks} by publishing threads.
-     */
-    private void drainPendingTasks() {
-        Runnable task;
-        while ((task = pendingTasks.poll()) != null) {
-            try {
-                task.run();
-            } catch (Exception e) {
-                logger.error("Error executing pending task on NIO selector thread", e);
-            }
+    private void drainPendingHints() {
+        for (int processed = 0; processed < SELECTOR_BATCH_SIZE; processed++) {
+            ChangeNotification notification = pendingHints.poll();
+            if (notification == null) return;
+            broadcastOnSelectorThread(notification.toWireBytes());
         }
+        // Return to the selected I/O keys before draining another batch.
+        if (!pendingHints.isEmpty()) selector.wakeup();
+    }
+
+    public long getCoalescedHintCount() {
+        return coalescedHints.get();
     }
 
     /**

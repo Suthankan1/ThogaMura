@@ -2,6 +2,7 @@ package lk.thogamura.networkserver.transport.tcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lk.thogamura.protocol.ProtocolInfo;
+import lk.thogamura.networkserver.concurrent.InventoryWorkerPool;
 import lk.thogamura.protocol.tcp.FrameTooLargeException;
 import lk.thogamura.protocol.tcp.MalformedFrameException;
 import lk.thogamura.protocol.tcp.ProtocolVersionException;
@@ -27,10 +28,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * High-performance, bounded Java TCP command listener for the central warehouse.
@@ -85,17 +83,16 @@ public class TcpCommandServer {
         config.validate();
 
         serverSocket = serverSocketFactory.createServerSocket();
+        if (config.isTlsEnabled() && !(serverSocket instanceof javax.net.ssl.SSLServerSocket)) {
+            serverSocket.close();
+            throw new IllegalStateException("TLS command listener requires an SSLServerSocket");
+        }
         serverSocket.setReuseAddress(true);
         serverSocket.bind(new InetSocketAddress(config.getHost(), config.getPort()), config.getBacklog());
         running = true;
 
-        AtomicInteger workerIndex = new AtomicInteger(1);
-        ThreadFactory threadFactory = r -> {
-            Thread t = new Thread(r, "tcp-cmd-worker-" + workerIndex.getAndIncrement());
-            t.setDaemon(true);
-            return t;
-        };
-        workerPool = Executors.newFixedThreadPool(config.getMaxClients(), threadFactory);
+        int maxClients = config.getMaxClients();
+        workerPool = new InventoryWorkerPool(maxClients, maxClients, maxClients);
 
         acceptorThread = new Thread(this::acceptLoop, "tcp-cmd-server-acceptor");
         acceptorThread.setDaemon(true);
@@ -114,8 +111,8 @@ public class TcpCommandServer {
                 Socket clientSocket = serverSocket.accept();
 
                 // Security check for plaintext binding: verify remote client if restricted
-                boolean isTls = (serverSocket instanceof javax.net.ssl.SSLServerSocket) || config.isTlsEnabled();
-                if (!isTls && !config.isAllowNonLoopbackPlaintext() && !clientSocket.getInetAddress().isLoopbackAddress()) {
+                boolean isTls = serverSocket instanceof javax.net.ssl.SSLServerSocket;
+                if (!isTls && !clientSocket.getInetAddress().isLoopbackAddress()) {
                     logger.warn("Rejecting non-loopback plaintext connection attempt from {}",
                             clientSocket.getRemoteSocketAddress());
                     closeQuietly(clientSocket);
@@ -216,11 +213,13 @@ public class TcpCommandServer {
                         break;
                     }
 
-                    // Parse JSON envelope and validate Protocol v1 compliance
+                    // Detect the supported profile and validate its JSON envelope.
                     JsonNode requestNode;
+                    int responseVersion = ProtocolInfo.WIRE_VERSION;
                     try {
                         requestNode = TcpMessageCodec.parseJsonObject(frame);
-                        TcpMessageCodec.validateEnvelope(requestNode);
+                        responseVersion = dispatcher.expectedVersion(requestNode.path("v").asInt());
+                        TcpMessageCodec.validateEnvelope(requestNode, responseVersion);
                     } catch (ProtocolVersionException e) {
                         logger.warn("Client {} sent unsupported protocol version: {}", clientAddress, e.getMessage());
                         writer.writeFrame(TcpMessageCodec.formatErrorResponse(
@@ -232,7 +231,7 @@ public class TcpCommandServer {
                     } catch (MalformedFrameException e) {
                         logger.warn("Client {} envelope validation failed: {}", clientAddress, e.getMessage());
                         writer.writeFrame(TcpMessageCodec.formatErrorResponse(
-                                e.getRequestId(),
+                                responseVersion, e.getRequestId(),
                                 e.getErrorCode(),
                                 e.getMessage()
                         ));
@@ -249,7 +248,7 @@ public class TcpCommandServer {
                                 requestNode.path("type").asText(), requestNode.path("requestId").asText(),
                                 ProtocolInfo.MAX_FRAME_BYTES, payloadBytes.length + 1);
                         String safeError = TcpMessageCodec.formatErrorResponse(
-                                requestNode.path("requestId").asText(),
+                                responseVersion, requestNode.path("requestId").asText(),
                                 ProtocolInfo.ERROR_INTERNAL,
                                 "Response size exceeds maximum TCP frame limit of " + ProtocolInfo.MAX_FRAME_BYTES + " bytes"
                         );

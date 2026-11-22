@@ -31,7 +31,8 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
                 rs.getString("status"),
                 rs.getString("decision_reason"),
                 createdTs != null ? createdTs.toInstant() : Instant.now(),
-                updatedTs != null ? updatedTs.toInstant() : Instant.now()
+                updatedTs != null ? updatedTs.toInstant() : Instant.now(),
+                rs.getString("branch_id")
         );
     };
 
@@ -46,8 +47,8 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
         Objects.requireNonNull(request, "request must not be null");
         String sql = """
             INSERT INTO stock_requests (
-                request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at, branch_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
         Timestamp created = request.createdAt() != null ? Timestamp.from(request.createdAt()) : Timestamp.from(Instant.now());
         Timestamp updated = request.updatedAt() != null ? Timestamp.from(request.updatedAt()) : created;
@@ -61,7 +62,8 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
                 request.status(),
                 request.decisionReason(),
                 created,
-                updated
+                updated,
+                request.branchId()
         );
     }
 
@@ -69,7 +71,7 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
     public Optional<StockRequestRecord> findById(UUID requestId) {
         Objects.requireNonNull(requestId, "requestId must not be null");
         String sql = """
-            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at, branch_id
             FROM stock_requests
             WHERE request_id = ?
             """;
@@ -85,7 +87,7 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
     public Optional<StockRequestRecord> findByIdForUpdate(UUID requestId) {
         Objects.requireNonNull(requestId, "requestId must not be null");
         String sql = """
-            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at, branch_id
             FROM stock_requests
             WHERE request_id = ?
             FOR UPDATE
@@ -112,8 +114,9 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
     @Override
     public List<StockRequestRecord> findAll() {
         String sql = """
-            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at, branch_id
             FROM stock_requests
+            WHERE branch_id IS NULL
             ORDER BY created_at ASC, request_id ASC
             LIMIT ?
             """;
@@ -124,9 +127,9 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
     public List<StockRequestRecord> findByStatus(String status) {
         Objects.requireNonNull(status, "status must not be null");
         String sql = """
-            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at, branch_id
             FROM stock_requests
-            WHERE status = ?
+            WHERE status = ? AND branch_id IS NULL
             ORDER BY created_at ASC, request_id ASC
             LIMIT ?
             """;
@@ -137,9 +140,9 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
     public List<StockRequestRecord> findBySku(String sku) {
         Objects.requireNonNull(sku, "sku must not be null");
         String sql = """
-            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at
+            SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at, branch_id
             FROM stock_requests
-            WHERE sku = ?
+            WHERE sku = ? AND branch_id IS NULL
             ORDER BY created_at DESC, request_id DESC
             LIMIT ?
             """;

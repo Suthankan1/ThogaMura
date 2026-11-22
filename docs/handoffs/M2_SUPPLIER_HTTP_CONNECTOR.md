@@ -315,3 +315,7 @@ mvn -f backend/api-gateway/pom.xml spring-boot:run
 - `backend/api-gateway/src/main/java/lk/thogamura/gateway/web/SupplierController.java`
 - `backend/api-gateway/src/test/java/lk/thogamura/gateway/web/SupplierControllerTest.java`
 - `docs/handoffs/M2_SUPPLIER_HTTP_CONNECTOR.md` (This handoff document)
+
+## Stabilization handoff
+
+The supplier form distinguishes warehouse and supplier deadlines, confirmed zero and malformed results. External supplier origins require an explicit HTTPS allowlist. Demonstrate the separate synthetic provider and preserve its read-only scope.

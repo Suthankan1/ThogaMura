@@ -33,7 +33,7 @@
 | **#1** | [START HERE] Five-member ownership and issue roadmap | META | ACTIVE | | |
 | **#2** | [SHARED][W1] Confirm lecturer scope and five distinct member concepts | EXTERNAL | BLOCKED | | Pending human lecturer confirmation session |
 | **#27** | [SHARED][W5] Full two-machine LAN acceptance rehearsal and evidence | DEMO | BLOCKED | | Requires two physical machines on LAN |
-| **#28** | [SHARED][W5] Produce final PDF report and single Moodle submission ZIP | SUBMISSION| PENDING | | Coursework packaging |
+| **#28** | [SHARED][W5] Produce final PDF report and single Moodle submission ZIP | SUBMISSION| GROUP REVIEW | | PDF and source ZIP assembled. Physical evidence, verified IDs and Moodle upload pending. |
 
 ---
 

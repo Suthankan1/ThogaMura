@@ -8,19 +8,25 @@ import { usePathname } from "next/navigation";
 import { ConnectionIndicator } from "./ConnectionIndicator";
 import { useStockEvents } from "@/lib/events/useStockEvents";
 
-const navLinks = [
+const workspaceEnabled = process.env.NEXT_PUBLIC_WORKSPACE_ENABLED === "true";
+const demoLinks = [
   { href: "/", label: "Overview" },
   { href: "/products", label: "Inventory" },
   { href: "/requests", label: "Requests" },
   { href: "/warehouse", label: "Warehouse" },
   { href: "/suppliers", label: "Suppliers" },
-  { href: "/activity", label: "System Status" },
+  { href: "/activity", label: "Diagnostics" },
 ];
 
+const workspaceLink = { href: "/workspace", label: "Branch Workspace" };
+const navLinks = workspaceEnabled
+  ? [workspaceLink, { href: "/activity", label: "Diagnostics" }]
+  : [...demoLinks, workspaceLink];
+
 export function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const menuOpen = openPath !== null && openPath === pathname;
 
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const drawerRef = useRef<HTMLDivElement | null>(null);
@@ -29,20 +35,12 @@ export function Header() {
 
   const { isLive, sseStatus, upstreamNioStatus, lastVersion } = useStockEvents();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Close drawer on route change
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
   // Manage modal focus trapping and escape handling (F01, F02)
   useEffect(() => {
     if (!menuOpen) return;
 
     previousActiveElementRef.current = document.activeElement as HTMLElement;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     // Focus close button initially
@@ -52,7 +50,7 @@ export function Header() {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setMenuOpen(false);
+        setOpenPath(null);
         return;
       }
 
@@ -82,7 +80,7 @@ export function Header() {
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       clearTimeout(timer);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
       // Restore focus to trigger button
       if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === "function") {
@@ -92,7 +90,7 @@ export function Header() {
   }, [menuOpen]);
 
   // Drawer modal portal (F01: outside sticky/backdrop-filtered header to avoid painting over page)
-  const mobileDrawer = mounted && menuOpen ? (
+  const mobileDrawer = menuOpen ? (
     createPortal(
       <div
         id="mobile-navigation-drawer"
@@ -105,7 +103,7 @@ export function Header() {
         {/* Full Backdrop */}
         <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-200"
-          onClick={() => setMenuOpen(false)}
+          onClick={() => setOpenPath(null)}
           aria-hidden="true"
         />
 
@@ -128,7 +126,7 @@ export function Header() {
               <button
                 ref={closeBtnRef}
                 type="button"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => setOpenPath(null)}
                 aria-label="Close navigation menu"
                 className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
               >
@@ -148,7 +146,7 @@ export function Header() {
                     <li key={link.href}>
                       <Link
                         href={link.href}
-                        onClick={() => setMenuOpen(false)}
+                        onClick={() => setOpenPath(null)}
                         aria-current={isActive ? "page" : undefined}
                         className={`flex min-h-[44px] items-center rounded-xl px-3.5 text-sm font-semibold transition-colors ${
                           isActive
@@ -188,7 +186,7 @@ export function Header() {
               </div>
               <Link
                 href="/activity"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => setOpenPath(null)}
                 className="mt-2 text-xs font-bold text-teal-700 hover:text-teal-900 block"
               >
                 View System Diagnostics →
@@ -213,7 +211,7 @@ export function Header() {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
           {/* Brand - Keep intrinsic width without colliding (F03) */}
           <Link
-            href="/"
+            href={workspaceEnabled ? "/workspace" : "/"}
             className="flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900 group"
           >
             <Image
@@ -229,8 +227,8 @@ export function Header() {
             </span>
           </Link>
 
-          {/* Desktop Navigation (>= 1024px to prevent horizontal overflow on 768/820px, F03) */}
-          <div className="hidden lg:flex items-center gap-5">
+          {/* Show desktop links only when the full navigation fits */}
+          <div className="hidden xl:flex items-center gap-5">
             <nav aria-label="Primary navigation">
               <ul className="flex items-center gap-1 text-sm font-semibold text-slate-600">
                 {navLinks.map((link) => {
@@ -258,13 +256,13 @@ export function Header() {
             <ConnectionIndicator compact={false} />
           </div>
 
-          {/* Tablet & Mobile Controls (< 1024px) */}
-          <div className="flex items-center gap-2.5 lg:hidden">
+          {/* Compact navigation controls */}
+          <div className="flex items-center gap-2.5 xl:hidden">
             <ConnectionIndicator compact={true} />
             <button
               ref={triggerRef}
               type="button"
-              onClick={() => setMenuOpen((prev) => !prev)}
+              onClick={() => setOpenPath(menuOpen ? null : pathname)}
               aria-expanded={menuOpen}
               aria-controls="mobile-navigation-drawer"
               aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}

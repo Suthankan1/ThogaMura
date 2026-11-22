@@ -13,7 +13,7 @@
 | Port | Protocol / Transport | Owner | Encryption & Authentication Policy |
 | :--- | :--- | :--- | :--- |
 | **7443** | Custom TCP / JSSE TLS | Member 1 & Member 5 | **Mandatory Server-Authenticated TLS (ADR-004):** `SSLServerSocket` / `SSLSocket` validating X.509 certificate trust chain and Subject Alternative Name (SAN). Plaintext fallback is strictly prohibited. Keystores (`.p12`/`.jks`) stay outside Git. |
-| **7444** | Java NIO Channel | Member 3 | **Unencrypted Private-LAN Feed:** Bound to loopback (`127.0.0.1`) by default. Binding to non-loopback requires explicit operator approval (`thogamura.notifications.allow-non-loopback=true`) and CIDR allowlisting. **Strictly prohibited on public WAN/Internet**. Carries only version-only invalidation hints (`{"v":1,"type":"CHANGED","version":<n>}`). |
+| **7444** | Java NIO Channel | Member 3 | **Unencrypted Private-LAN Feed:** Bound to loopback (`127.0.0.1`) by default. Binding to non-loopback requires explicit operator approval (`thogamura.notifications.allow-non-loopback=true`) and exact private peer IP allowlisting. Configure the host firewall separately. **Strictly prohibited on public WAN/Internet**. Carries only version-only invalidation hints (`{"v":1,"type":"CHANGED","version":<n>}`). |
 | **8080** | HTTP / SSE | Member 2 & Member 3 | **Local Demonstration HTTP:** Browser-to-gateway interface. Localhost development only. Production deployment would require public HTTPS and human authentication/RBAC. |
 | **8090** | External Mock HTTP | Member 2 | **Supplier Simulator:** Read-only outbound `HttpURLConnection` with strict connect (3s) and read (5s) timeouts, 16 KB payload bounds, and configured allowlisted base URL. |
 
@@ -30,7 +30,7 @@
    - Untrusted, self-signed (without custom CA in truststore), expired, or name-mismatched certificates immediately fail closed.
 3. **Mutual TLS (mTLS) Position:**
    - Server-authenticated TLS is the frozen MVP standard.
-   - Mutual TLS (verifying gateway client certificates on the warehouse server) is supported as an optional advanced demonstration extension, but is not required for MVP baseline grading.
+   - Mutual TLS (verifying gateway client certificates on the warehouse server) is an optional extension. The coursework implementation authenticates the warehouse server.
 
 ---
 

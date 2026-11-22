@@ -1,11 +1,14 @@
 package lk.thogamura.gateway.network.notifications;
 
+import jdk.net.ExtendedSocketOptions;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketOption;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
@@ -170,8 +173,13 @@ public class GatewayNioSubscriber implements AutoCloseable {
                 SocketChannel channel = SocketChannel.open();
                 this.currentChannel = channel;
                 channel.setOption(StandardSocketOptions.TCP_NODELAY, true);
+                channel.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
+                setIfSupported(channel, ExtendedSocketOptions.TCP_KEEPIDLE, 10);
+                setIfSupported(channel, ExtendedSocketOptions.TCP_KEEPINTERVAL, 2);
+                setIfSupported(channel, ExtendedSocketOptions.TCP_KEEPCOUNT, 3);
 
-                channel.connect(new InetSocketAddress(config.host(), config.port()));
+                channel.socket().connect(new InetSocketAddress(config.host(), config.port()),
+                        Math.toIntExact(config.connectTimeout().toMillis()));
 
                 updateStatus(SubscriberStatus.CONNECTED);
                 logger.info("Connected to warehouse NIO notification feed at {}:{}",
@@ -216,6 +224,11 @@ public class GatewayNioSubscriber implements AutoCloseable {
         }
         updateStatus(SubscriberStatus.STOPPED);
         logger.info("Gateway NIO subscriber loop terminated");
+    }
+
+    private static void setIfSupported(SocketChannel channel, SocketOption<Integer> option, int value)
+            throws IOException {
+        if (channel.supportedOptions().contains(option)) channel.setOption(option, value);
     }
 
     private void handleRawFrame(String line) {

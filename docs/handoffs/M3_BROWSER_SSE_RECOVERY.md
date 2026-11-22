@@ -179,3 +179,11 @@ Follow these steps to demonstrate real-time SSE recovery to an examiner:
   - You do **not** need to create another `EventSource` or parse JSON notifications.
 - **Member 4 (TLS Commands & Transactions — Issue #10):**
   - When inventory reservation transactions commit on the warehouse server, publish a version increment to the `NioNotificationServer`. The notification will ripple through the gateway's NIO subscriber, Spring Boot's SSE broadcaster, and update the browser within milliseconds.
+
+## Stabilization handoff
+
+The provider owns one EventSource per tab and queues a follow-up authoritative fetch when a hint arrives during a read. The warehouse handoff is bounded and coalesces stale hint versions. Capture the physical multi-peer reconnect evidence during #27.
+
+## Extended closeout verification
+
+Each SSE client has a bounded writer and one pending hint. A blocked emitter cannot delay an active peer. The branch subscriber now sets socket connect and TCP keepalive bounds. On an isolated private bridge, the gateway detected quiet link loss after 16 seconds and reconnected after network reattachment. Bring the physical firewall and two-device evidence to the live rehearsal. [Recorded checks](../../reports/evidence/segmented_lan_closeout.txt)

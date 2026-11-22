@@ -10,27 +10,19 @@ const GATEWAY_URL =
  * Returns null if the gateway is unreachable.
  */
 export async function fetchNetworkStatus(): Promise<NetworkStatusResponse | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7000);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-
     const res = await fetch(`${GATEWAY_URL}/api/v1/network-status`, {
       signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-      },
+      headers: { Accept: "application/json" },
       cache: "no-store",
     });
-
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      return null;
-    }
-
-    const data = (await res.json()) as NetworkStatusResponse;
-    return data;
+    if (!res.ok) return null;
+    return await res.json() as NetworkStatusResponse;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

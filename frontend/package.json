@@ -7,8 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",
+    "test:browser": "node tests/browser-smoke.mjs",
     "test": "node --experimental-strip-types --test 'tests/**/*.test.ts'"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.4.6",
+    "playwright": "1.65.0",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.0"
   }

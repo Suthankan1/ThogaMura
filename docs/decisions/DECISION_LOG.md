@@ -91,3 +91,21 @@ Use a new dated ADR section when changing a frozen contract, not an undocumented
    - Strict SSRF protection and 16 KB response payload bounding.
 
 **Consequences:** All five member tracks have unambiguous, frozen API contracts. Member 1 can implement TCP framing (Issue #6) and command listener (Issue #7); Member 4 can implement reservation transactions (Issue #10); Member 5 can construct TLS socket factories (Issue #23) with confidence that wire envelopes and status codes will not drift.
+
+## Workspace decisions accepted by the group
+
+All five members agreed to proceed on 23 November 2026, as confirmed in the implementation handoff.
+
+### ADR-008 Bounded warehouse reads and request lookup
+
+**Accepted.** M1 and M4 use bounded keyset pages in the opt-in authenticated v2 workspace. Products sort by SKU, requests by creation time and UUID, and movements by ledger ID. Request detail resolves an exact UUID from the warehouse database under the current branch scope. The v1 demonstration contract remains available in the demonstration profile.
+
+### ADR-009 Reservation cancellation and receiving
+
+**Accepted.** M4 permits cancellation before picking. The transaction releases the reservation, sets the terminal `CANCELLED` state, and persists the reply under the command UUID. Supervisor receiving adds on-hand units to an existing SKU, preserves reserved stock, and records the actor and inbound note in a positive immutable movement. The migration preserves legacy requests and the one-dispatch constraint.
+
+### ADR-010 Branch identity and access
+
+**Accepted.** M5 and the shared integration use locally provisioned operator, picker and supervisor accounts. The gateway issues an HttpOnly session and signs short-lived, command-bound identity assertions over validated TLS. The warehouse enforces role and branch rules. An enabled workspace rejects v1 business commands. An unassigned legacy request stays in the v1 demonstration dataset. NIO signals retain the version-only shape.
+
+[Workspace wire and HTTP contract](../contracts/WORKSPACE_V2.md)

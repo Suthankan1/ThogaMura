@@ -7,20 +7,6 @@ on:
 jobs:
   java:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: thogamura
-          POSTGRES_USER: thogamura
-          POSTGRES_PASSWORD: password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -31,10 +17,6 @@ jobs:
           cache-dependency-path: backend/pom.xml
       - name: Maven verify
         run: mvn -B -ntp -f backend/pom.xml clean verify
-        env:
-          THOGAMURA_DB_URL: jdbc:postgresql://127.0.0.1:5432/thogamura
-          THOGAMURA_DB_USER: thogamura
-          THOGAMURA_DB_PASSWORD: password
   web:
     runs-on: ubuntu-latest
     steps:
@@ -59,3 +41,47 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: frontend
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install browser dependencies
+        run: |
+          npm --prefix frontend ci
+          npm --prefix frontend exec -- playwright install --with-deps chromium
+      - name: Build operator UI
+        run: npm --prefix frontend run build
+      - name: Configure disposable TLS stack
+        run: |
+          cp .env.example .env
+          cat >> .env <<'ENV'
+          THOGAMURA_TLS_ENABLED=true
+          THOGAMURA_FRONTEND_MODE=start
+          ENV
+          ./scripts/generate-dev-certs.sh
+        env:
+          THOGAMURA_TLS_KEYSTORE_PASSWORD: change-this-keystore-password
+          THOGAMURA_TLS_TRUSTSTORE_PASSWORD: change-this-truststore-password
+      - name: Verify browser and Java workflow
+        run: |
+          ./start.sh
+          ./start.sh seed
+          npm --prefix frontend run test:browser
+          ./scripts/verify-full-stock-workflow.sh
+        env:
+          THOGAMURA_VERIFY_DISPOSABLE: '1'
+      - name: Stop disposable services
+        if: always()
+        run: ./stop.sh

@@ -1,98 +1,68 @@
-# Local setup and developer workflow
+# ThogaMura setup and verification
 
-## Prerequisites
+Use Java 21, Maven 3.9+, Node.js 22+, Docker Compose, Python 3, curl and nc. Run commands from the repository root. Docker must be running for PostgreSQL integration tests.
 
-- JDK **21** (`java -version`).
-- Maven **3.9+** (`mvn -version`). Maven Wrapper is not bundled; do not assume `./mvnw` exists.
-- Node.js **22+** and npm (`node -v`, `npm -v`).
-- Docker + Docker Compose.
-- IDE of choice: IntelliJ, VS Code, Cursor, Antigravity; tools do not change the contracts.
-
-## Initial environment
-
-1. Copy `.env.example` to `.env` at the root and choose a **new local-only** password.
-2. Docker Compose automatically reads root `.env` and configures PostgreSQL.
-3. For each Java process, export `THOGAMURA_DB_URL`, `THOGAMURA_DB_USER` and `THOGAMURA_DB_PASSWORD` **only for the network-server**; gateway must not receive DB credentials.
-4. For Next.js, copy `frontend/.env.example` to `frontend/.env.local`.
-
-## Unified One-Command Orchestration
-
-To start and coordinate all services (PostgreSQL, Central Network Server, Supplier Simulator, API Gateway, and Next.js Web UI) with automatic dependency ordering and health checking:
+## Local operator demo
 
 ```bash
-# Start all components:
+cp .env.example .env
+# Set local PostgreSQL credentials in .env before the first start.
 ./start.sh
-
-# Check live health and process status:
-./start.sh status   # or ./status.sh
-
-# Stop all background processes and containers cleanly:
-./start.sh stop     # or ./stop.sh
-
-# Tail component logs:
-./start.sh logs [server|gateway|frontend|supplier]
+./start.sh seed
+./status.sh
+./stop.sh
 ```
 
-## Manual developer workflow
+Open http://127.0.0.1:3000. The runner starts loopback listeners and checks the actual warehouse command path through the gateway. The seeder writes synthetic data only when all inventory tables are empty. Repeating it preserves current balances and history. The runner stops its own services and the database container it started. Use `./start.sh logs server` or substitute `gateway`, `frontend` or `supplier` for other logs.
 
-```bash
-docker compose up -d db
-docker compose ps
-```
+Set `POSTGRES_PORT` and its matching `THOGAMURA_DB_URL` in `.env` if port 5432 is occupied. The other runner ports can be set with `THOGAMURA_COMMAND_PORT`, `THOGAMURA_NOTIFICATIONS_PORT`, `THOGAMURA_SUPPLIER_SIMULATOR_PORT`, `THOGAMURA_GATEWAY_PORT` and `THOGAMURA_FRONTEND_PORT`. Set the supplier base URL to the matching simulator port when changing it. Use `THOGAMURA_FRONTEND_WEBPACK=1` if the local environment cannot start Turbopack workers.
 
-PostgreSQL runs in Docker Compose (mapped to host port `5432` by default) and persists in the named volume `thogamura_postgres_data`. If your workstation already has a local PostgreSQL service running on port 5432, specify `POSTGRES_PORT=5433` (or another free port) in your root `.env` and update `THOGAMURA_DB_URL=jdbc:postgresql://localhost:5433/thogamura`.
+To run a production build locally, build with the matching gateway rewrite and set `THOGAMURA_FRONTEND_MODE=start` before running the stack. For example, `GATEWAY_URL=http://127.0.0.1:8080 npm --prefix frontend run build`.
 
-`docker compose down` stops containers without deleting the volume; **never run `down -v` on a database containing data worth keeping**.
+The web app defaults to its same-origin Next.js rewrite. Set `GATEWAY_URL` when running the frontend separately on a branch with a custom gateway port. Keep credentials outside `NEXT_PUBLIC_*` variables.
 
-## Java builds
+## Automated checks
 
 ```bash
 mvn -f backend/pom.xml clean verify
-```
-
-Once the Java apps are actually implemented, package the reactor and start the two **separate JVMs** in different terminals:
-
-```bash
-mvn -f backend/pom.xml package
-java -jar backend/network-server/target/network-server-0.1.0-SNAPSHOT.jar
-# In a second terminal:
-java -jar backend/api-gateway/target/api-gateway-0.1.0-SNAPSHOT.jar
-```
-
-The repository currently contains only startup skeletons, not working socket listeners. The network-server may exit after initialization until member-owned background listeners are implemented.
-
-## Frontend
-
-```bash
 npm --prefix frontend ci
-npm --prefix frontend run dev
-```
-
-Open http://localhost:3000. The current page is an honest scaffold, not populated from the backend. Start the gateway independently when it is ready.
-
-## Useful checks
-
-```bash
-mvn -f backend/pom.xml test
+npm --prefix frontend test
 npm --prefix frontend run typecheck
+npm --prefix frontend run lint
 npm --prefix frontend run build
-git diff --check
 ```
 
-## TLS certificate setup (Member 5)
+The backend tests create a private disposable PostgreSQL container. They ignore application database environment variables and project dotenv. The frontend typecheck generates route types before running TypeScript.
 
-Command traffic over port 7443 requires server-authenticated TLS (ADR-004). Generate synthetic local development certificates using standard Java `keytool`:
+On a fresh disposable demo stack, exercise the real HTTP-to-Java workflow and browser UI.
 
 ```bash
-# Generate dev CA, warehouse server keystore, and gateway truststore:
-./scripts/generate-dev-certs.sh
-
-# For a two-laptop demo, include the warehouse laptop's LAN IP in the certificate SAN:
-./scripts/generate-dev-certs.sh --lan-ip 192.168.8.100
+THOGAMURA_VERIFY_DISPOSABLE=1 ./scripts/verify-full-stock-workflow.sh
+npm --prefix frontend exec -- playwright install chromium
+THOGAMURA_VERIFY_DISPOSABLE=1 npm --prefix frontend run test:browser
 ```
 
-All credentials are saved to `.certs/` and excluded from Git. See [TLS Certificate and Truststore Workflow](TLS_CERTIFICATES.md) for full details.
+The browser test drives the app at `THOGAMURA_BROWSER_ORIGIN` when set and defaults to localhost port 3000. It consumes one synthetic unit. The HTTP verifier uses `THOGAMURA_GATEWAY_URL` when set.
 
-## Two-machine LAN demo
+## Two-machine TLS demo
 
-Run server + PostgreSQL on the warehouse laptop; run gateway + browser on the shop laptop. Bind socket listeners to a suitable LAN interface, configure firewall rules for the small required ports, verify TLS server name/SAN and truststore, and configure `THOGAMURA_SERVER_HOST` to the central machine's trusted hostname/IP; there is no UDP discovery in v2. Restrict NIO port 7444 to the private demo LAN and do **not** expose it publicly. Run the independent supplier HTTP stub on port 8090 only if testing M2. Use fictitious demo items; never expose PostgreSQL publicly.
+Package the two JVMs using the Maven reactor and run them separately. Generate the warehouse keystore and branch truststore with the actual warehouse IP or DNS name in the certificate SAN. [Certificate setup](TLS_CERTIFICATES.md)
+
+- On the warehouse, run PostgreSQL on loopback and forward DB credentials to the network-server JVM only. Set `THOGAMURA_COMMAND_SERVER_ENABLED=true`, `THOGAMURA_COMMAND_SERVER_HOST=<private warehouse IP>` and `THOGAMURA_TLS_SERVER_ENABLED=true`. Configure the warehouse keystore path and password.
+- Enable NIO using `THOGAMURA_NOTIFICATIONS_ENABLED=true`, `THOGAMURA_NOTIFICATIONS_HOST=<private warehouse IP>`, `THOGAMURA_NOTIFICATIONS_ALLOW_NON_LOOPBACK=true` and `THOGAMURA_NOTIFICATIONS_ALLOWED_CLIENTS=<exact private branch IPs>`. Allow the command and NIO ports only from the demo branch peers through the warehouse firewall.
+- On the branch, set `THOGAMURA_WAREHOUSE_HOST` to the SAN identity and `THOGAMURA_NOTIFICATIONS_HOST` to the warehouse private address. Set `THOGAMURA_TLS_CLIENT_ENABLED=true` and `THOGAMURA_NOTIFICATIONS_SUBSCRIBER_ENABLED=true`. Configure the branch truststore path and password before running the gateway. Start Next.js and open it from the branch.
+- Query `/api/v1/network-status` through the branch gateway and verify operational server-authenticated TLS and the connected NIO feed. Include wrong identity rejection and authorized and unauthorized NIO peer checks in the rehearsal. [Demo script](DEMO_SCRIPT.md)
+
+## Authenticated branch workspace
+
+Use the workspace profile on a fresh or explicitly assigned environment. Keep the gateway and Next.js on the same browser origin via the Next.js rewrite. Use browser-facing HTTPS and secure cookies when opening the application beyond loopback. Keep both Java listeners within the documented private network. Existing v1 demo scripts use the default profile.
+
+1. Configure validated command TLS using the stores and certificate SAN from the TLS instructions above.
+2. Set `THOGAMURA_ACCESS_ENABLED=true` on both JVMs. Generate one random Base64 signing value with `openssl rand -base64 32` and configure it as `THOGAMURA_ACCESS_SIGNING_KEY` on both JVMs. Keep the signing value in local secret configuration.
+3. Generate each gateway login with `python3 scripts/workspace-account.py north OPERATOR north`. Create another operator for a different branch and add warehouse accounts using `PICKER` and `SUPERVISOR`. Join the generated records with semicolons in the gateway-only `THOGAMURA_ACCESS_USERS` setting. Single-quote the value when using the runner’s `.env`.
+4. For a loopback demo, start the app and load the synthetic fixtures into a fresh PostgreSQL database. Browse to `http://127.0.0.1:3000/workspace`. Both JVMs must restart when switching profiles. Set `THOGAMURA_ACCESS_ENABLED=true` in the frontend build environment to make the workspace the default entry point. The local runner supplies this setting to Next.js. Flyway applies V3 on warehouse startup.
+5. Sign in as a branch operator, reserve stock, and open the exact request URL. Try the URL as another branch operator, then sign in as a picker or supervisor to exercise warehouse permissions and inspect the supervisor ledger.
+
+To run `scripts/verify-workspace.py`, use a fresh disposable protected gateway with the seeded inventory and synthetic accounts `north`, `south`, `picker` and `supervisor`, configured as in the script. Set `THOGAMURA_VERIFY_DISPOSABLE=1`, `THOGAMURA_VERIFY_WORKSPACE_PASSWORD` and the loopback `THOGAMURA_GATEWAY_URL`. The test writes inventory and assumes its own isolated fixture. The browser test `node frontend/tests/workspace-browser.mjs` uses the same inputs plus `THOGAMURA_WORKSPACE_WEB` pointing to the Next.js origin.
+
+For the extended v1 checks, reset to a new disposable TLS-enabled demo stack with NIO and the standard synthetic seed. Run `THOGAMURA_VERIFY_DISPOSABLE=1 python3 scripts/verify-network-load.py`, with `THOGAMURA_GATEWAY_URL` set to the loopback branch gateway. The script captures 48 command timings, checks 12 SSE listeners, and exercises competing reservation and concurrent dispatch. See the recorded topology and separate physical-device procedure. [Network evidence](../reports/evidence/segmented_lan_closeout.txt) · [Workspace contract](contracts/WORKSPACE_V2.md)

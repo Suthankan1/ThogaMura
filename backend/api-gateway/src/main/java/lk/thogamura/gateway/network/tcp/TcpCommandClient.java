@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.SocketFactory;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -24,6 +25,7 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Blocking Java TCP command client for the Spring Boot API Gateway.
@@ -40,6 +42,12 @@ import java.util.UUID;
 public class TcpCommandClient {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpCommandClient.class);
+    private static final int COMMAND_BUDGET_MS = 12_000;
+    private static final int SUPPLIER_RESPONSE_TIMEOUT_MS = 9_000;
+
+    private static int configuredTimeout(int limit) {
+        return limit == 0 ? COMMAND_BUDGET_MS : limit;
+    }
 
     private final TcpCommandClientConfig config;
     private final SocketFactory socketFactory;
@@ -87,6 +95,10 @@ public class TcpCommandClient {
      * @throws CommandTransportException on network, framing, or correlation failures
      */
     public JsonNode sendCommand(String type, String requestId, Object data) throws CommandTransportException {
+        return sendCommand(ProtocolInfo.WIRE_VERSION, type, requestId, data);
+    }
+
+    public JsonNode sendCommand(int version, String type, String requestId, Object data) throws CommandTransportException {
         Objects.requireNonNull(type, "type must not be null");
         String effectiveRequestId = (requestId != null && !requestId.isBlank())
                 ? requestId
@@ -94,9 +106,12 @@ public class TcpCommandClient {
 
         config.validate();
 
-        String requestPayload = TcpMessageCodec.formatRequest(type, effectiveRequestId, data);
+        String requestPayload = TcpMessageCodec.formatRequest(version, type, effectiveRequestId, data);
 
-        int maxRetries = config.getMaxRetries();
+        boolean supplier = ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK.equals(type);
+        int maxRetries = supplier ? 0 : config.getMaxRetries();
+        int responseTimeout = supplier ? SUPPLIER_RESPONSE_TIMEOUT_MS : configuredTimeout(config.getReadTimeoutMs());
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(COMMAND_BUDGET_MS);
         long currentBackoffMs = config.getRetryBackoffMs();
         CommandTransportException lastException = null;
 
@@ -105,6 +120,9 @@ public class TcpCommandClient {
                 logger.info("Retrying TCP command '{}' (attempt {} of {}, requestId: '{}') after backoff {}ms",
                         type, attempt, maxRetries, effectiveRequestId, currentBackoffMs);
                 try {
+                    if (TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()) <= currentBackoffMs) {
+                        throw deadlineExceeded(effectiveRequestId);
+                    }
                     sleeper.sleep(currentBackoffMs);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -121,7 +139,7 @@ public class TcpCommandClient {
             }
 
             try {
-                return executeSingleAttempt(type, effectiveRequestId, requestPayload);
+                return executeSingleAttempt(version, type, effectiveRequestId, requestPayload, responseTimeout, deadline);
             } catch (CommandCorrelationException e) {
                 // Mismatched response requestId is a severe protocol failure; never mistake for success and do not retry
                 logger.error("Response correlation failure for requestId '{}' (received '{}'): not retrying",
@@ -164,7 +182,8 @@ public class TcpCommandClient {
                 : UUID.randomUUID().toString();
         config.validate();
         String requestPayload = TcpMessageCodec.formatRequest(type, effectiveRequestId, data);
-        return executeSingleAttempt(type, effectiveRequestId, requestPayload);
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(COMMAND_BUDGET_MS);
+        return executeSingleAttempt(ProtocolInfo.WIRE_VERSION, type, effectiveRequestId, requestPayload, configuredTimeout(config.getReadTimeoutMs()), deadline);
     }
 
     private boolean isEligibleForRetry(CommandTransportException e) {
@@ -182,16 +201,18 @@ public class TcpCommandClient {
         return true;
     }
 
-    private JsonNode executeSingleAttempt(String type, String effectiveRequestId, String requestPayload)
+    private JsonNode executeSingleAttempt(int version, String type, String effectiveRequestId, String requestPayload,
+                                          int responseTimeoutMs, long commandDeadline)
             throws CommandTransportException {
         logger.debug("Dispatching TCP command attempt for '{}' (requestId: '{}') to {}:{}",
                 type, effectiveRequestId, config.getHost(), config.getPort());
 
-        Socket socket = connectSocket(effectiveRequestId);
+        Socket socket = connectSocket(effectiveRequestId, commandDeadline);
+        long responseDeadline = Math.min(commandDeadline, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(responseTimeoutMs));
 
         try (socket;
              OutputStream out = socket.getOutputStream();
-             InputStream in = socket.getInputStream();
+             InputStream in = withReadDeadline(socket, responseDeadline);
              TcpFrameWriter writer = new TcpFrameWriter(out, config.getMaxFrameBytes());
              TcpFrameReader reader = new TcpFrameReader(in, config.getMaxFrameBytes())) {
 
@@ -203,11 +224,9 @@ public class TcpCommandClient {
             try {
                 responsePayload = reader.readNextFrameString();
             } catch (SocketTimeoutException e) {
-                logger.warn("Read timed out after {}ms awaiting response for requestId '{}'",
-                        config.getReadTimeoutMs(), effectiveRequestId);
+                logger.warn("Response deadline expired for requestId '{}'", effectiveRequestId);
                 throw new CommandTimeoutException(
-                        "Read timed out after " + config.getReadTimeoutMs() + "ms awaiting response for requestId: "
-                                + effectiveRequestId,
+                        "Read timed out waiting for a complete response for requestId: " + effectiveRequestId,
                         effectiveRequestId,
                         e
                 );
@@ -260,7 +279,11 @@ public class TcpCommandClient {
             JsonNode responseNode;
             try {
                 responseNode = TcpMessageCodec.parseJsonObject(responsePayload);
-                TcpMessageCodec.validateEnvelope(responseNode);
+                TcpMessageCodec.validateEnvelope(responseNode, version);
+                if (!ProtocolInfo.TYPE_RESULT.equals(responseNode.path("type").asText()) ||
+                        !responseNode.path("status").isTextual() || responseNode.path("status").textValue().isBlank()) {
+                    throw new MalformedFrameException("Expected a RESULT envelope with a status", ProtocolInfo.ERROR_VALIDATION);
+                }
             } catch (MalformedFrameException e) {
                 logger.error("Malformed response envelope from server for requestId '{}': {}",
                         effectiveRequestId, e.getMessage());
@@ -299,15 +322,41 @@ public class TcpCommandClient {
         }
     }
 
-    private Socket connectSocket(String requestId) throws CommandTransportException {
+    private InputStream withReadDeadline(Socket socket, long deadline) throws IOException {
+        return new FilterInputStream(socket.getInputStream()) {
+            @Override
+            public int read() throws IOException {
+                socket.setSoTimeout(remainingMillis(deadline, Integer.MAX_VALUE));
+                return in.read();
+            }
+
+            @Override
+            public int read(byte[] bytes, int offset, int length) throws IOException {
+                socket.setSoTimeout(remainingMillis(deadline, Integer.MAX_VALUE));
+                return in.read(bytes, offset, length);
+            }
+        };
+    }
+
+    private static int remainingMillis(long deadline, int ceiling) throws SocketTimeoutException {
+        long nanos = deadline - System.nanoTime();
+        if (nanos <= 0) throw new SocketTimeoutException("Warehouse command deadline exceeded");
+        return (int) Math.min(ceiling, Math.max(1, TimeUnit.NANOSECONDS.toMillis(nanos)));
+    }
+
+    private static CommandTimeoutException deadlineExceeded(String requestId) {
+        return new CommandTimeoutException("Warehouse command deadline exceeded", requestId, null);
+    }
+
+    private Socket connectSocket(String requestId, long deadline) throws CommandTransportException {
         Socket socket = null;
         try {
             socket = socketFactory.createSocket();
-            socket.setSoTimeout(config.getReadTimeoutMs());
             socket.connect(
                     new InetSocketAddress(config.getHost(), config.getPort()),
-                    config.getConnectTimeoutMs()
+                    remainingMillis(deadline, configuredTimeout(config.getConnectTimeoutMs()))
             );
+            socket.setSoTimeout(remainingMillis(deadline, configuredTimeout(config.getReadTimeoutMs())));
             if (socket instanceof javax.net.ssl.SSLSocket sslSocket) {
                 sslSocket.startHandshake();
             }
@@ -324,11 +373,9 @@ public class TcpCommandClient {
             );
         } catch (SocketTimeoutException e) {
             closeQuietly(socket);
-            logger.warn("Connection timed out after {}ms connecting to {}:{} for requestId '{}'",
-                    config.getConnectTimeoutMs(), config.getHost(), config.getPort(), requestId);
+            logger.warn("Warehouse connection or TLS handshake timed out for requestId '{}'", requestId);
             throw new CommandTimeoutException(
-                    "Connection timed out after " + config.getConnectTimeoutMs() + "ms connecting to "
-                            + config.getHost() + ":" + config.getPort(),
+                    "Warehouse connection or TLS handshake timed out",
                     requestId,
                     e
             );
@@ -363,7 +410,14 @@ public class TcpCommandClient {
      * @throws CommandTransportException on network, correlation, or server failure
      */
     public JsonNode ping() throws CommandTransportException {
-        JsonNode response = sendCommand(ProtocolInfo.COMMAND_PING, null);
+        return requirePong(sendCommand(ProtocolInfo.COMMAND_PING, null));
+    }
+
+    public JsonNode pingOnce() throws CommandTransportException {
+        return requirePong(sendCommandOnce(ProtocolInfo.COMMAND_PING, null, null));
+    }
+
+    private static JsonNode requirePong(JsonNode response) throws CommandTransportException {
         String status = response.hasNonNull("status") ? response.get("status").asText() : "";
         if (!ProtocolInfo.STATUS_PONG.equals(status)) {
             String requestId = response.hasNonNull("requestId") ? response.get("requestId").asText() : "";

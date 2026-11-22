@@ -89,10 +89,16 @@ public class DefaultStockFulfillmentService implements StockFulfillmentService {
 
     @Override
     public FulfillmentResult pickStock(UUID commandRequestId, UUID stockRequestId) {
+        return pickStock(commandRequestId, stockRequestId, false);
+    }
+
+    public FulfillmentResult pickStock(UUID commandRequestId, UUID stockRequestId, boolean scoped) {
         Objects.requireNonNull(commandRequestId, "commandRequestId must not be null");
         Objects.requireNonNull(stockRequestId, "stockRequestId must not be null");
 
-        String canonicalFingerprint = PayloadFingerprintCalculator.calculateStockRequestIdFingerprint(stockRequestId);
+        String canonicalFingerprint = scoped
+                ? PayloadFingerprintCalculator.computeSha256Hex("workspace:" + stockRequestId)
+                : PayloadFingerprintCalculator.calculateStockRequestIdFingerprint(stockRequestId);
 
         // 1. Check existing receipt for deterministic replay
         Optional<CommandReceipt> existingReceipt = commandReceiptRepository.findByCommandRequestId(commandRequestId);
@@ -110,7 +116,13 @@ public class DefaultStockFulfillmentService implements StockFulfillmentService {
 
                 // Row-level lock on stock request
                 Optional<StockRequestRecord> requestOpt = stockRequestRepository.findByIdForUpdate(stockRequestId);
-                if (requestOpt.isEmpty()) {
+                // A duplicate may have committed while this transaction waited for the row lock.
+                Optional<CommandReceipt> receiptAfterLock = commandReceiptRepository.findByCommandRequestId(commandRequestId);
+                if (receiptAfterLock.isPresent()) {
+                    return handleExistingReceipt(receiptAfterLock.get(), commandRequestId,
+                            ProtocolInfo.COMMAND_MARK_PICKED, canonicalFingerprint, stockRequestId);
+                }
+                if (requestOpt.isEmpty() || (requestOpt.get().branchId() != null) != scoped) {
                     String msg = "Stock request '" + stockRequestId + "' not found";
                     String errJson = TcpMessageCodec.formatErrorResponse(commandRequestId.toString(), ProtocolInfo.ERROR_NOT_FOUND, msg);
                     log.warn("Fulfillment pick failed: {}", msg);
@@ -156,10 +168,16 @@ public class DefaultStockFulfillmentService implements StockFulfillmentService {
 
     @Override
     public FulfillmentResult dispatchStock(UUID commandRequestId, UUID stockRequestId) {
+        return dispatchStock(commandRequestId, stockRequestId, false);
+    }
+
+    public FulfillmentResult dispatchStock(UUID commandRequestId, UUID stockRequestId, boolean scoped) {
         Objects.requireNonNull(commandRequestId, "commandRequestId must not be null");
         Objects.requireNonNull(stockRequestId, "stockRequestId must not be null");
 
-        String canonicalFingerprint = PayloadFingerprintCalculator.calculateStockRequestIdFingerprint(stockRequestId);
+        String canonicalFingerprint = scoped
+                ? PayloadFingerprintCalculator.computeSha256Hex("workspace:" + stockRequestId)
+                : PayloadFingerprintCalculator.calculateStockRequestIdFingerprint(stockRequestId);
 
         // 1. Check existing receipt for deterministic replay
         Optional<CommandReceipt> existingReceipt = commandReceiptRepository.findByCommandRequestId(commandRequestId);
@@ -177,7 +195,13 @@ public class DefaultStockFulfillmentService implements StockFulfillmentService {
 
                 // Row-level lock on stock request
                 Optional<StockRequestRecord> requestOpt = stockRequestRepository.findByIdForUpdate(stockRequestId);
-                if (requestOpt.isEmpty()) {
+                // A duplicate may have committed while this transaction waited for the row lock.
+                Optional<CommandReceipt> receiptAfterLock = commandReceiptRepository.findByCommandRequestId(commandRequestId);
+                if (receiptAfterLock.isPresent()) {
+                    return handleExistingReceipt(receiptAfterLock.get(), commandRequestId,
+                            ProtocolInfo.COMMAND_MARK_DISPATCHED, canonicalFingerprint, stockRequestId);
+                }
+                if (requestOpt.isEmpty() || (requestOpt.get().branchId() != null) != scoped) {
                     String msg = "Stock request '" + stockRequestId + "' not found";
                     String errJson = TcpMessageCodec.formatErrorResponse(commandRequestId.toString(), ProtocolInfo.ERROR_NOT_FOUND, msg);
                     log.warn("Fulfillment dispatch failed: {}", msg);

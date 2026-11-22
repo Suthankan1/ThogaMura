@@ -25,7 +25,7 @@ export function formatOperationalTime(
 
 /**
  * Formats a Date or ISO timestamp as a complete date and time representation (YYYY-MM-DD HH:MM:SS)
- * with explicit UTC representation option for audit transparency.
+ * using the operator’s local timezone and an explicit timezone label.
  */
 export function formatFullDateTime(
   dateInput: Date | string | null | undefined,
@@ -43,6 +43,7 @@ export function formatFullDateTime(
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    timeZoneName: "short",
   });
 }
 

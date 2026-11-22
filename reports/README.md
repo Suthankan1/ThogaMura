@@ -1,7 +1,7 @@
 # Reports and evidence
 
 - `evidence/`: record sanitized test output, screenshots, LAN demo notes and member attribution as implementation progresses.
-- `final/`: place the **final** coursework report PDF here when complete.
+- `final/`: contains the group-review PDF and the verified source ZIP. The report records the remaining physical rehearsal, student identification, and Moodle steps.
 - `../docs/proposal/ThogaMura_Group_Proposal.pdf`: group **idea proposal**, **not** the assignment's final implementation report.
 - `../docs/REPORT_OUTLINE.md`: final report sections.
 

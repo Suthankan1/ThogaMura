@@ -55,16 +55,20 @@ public class ProductController {
 
             JsonNode productsNode = response.path("data").path("products");
             List<Map<String, Object>> products = new ArrayList<>();
-            if (productsNode.isArray()) {
-                for (JsonNode item : productsNode) {
-                    Map<String, Object> p = new LinkedHashMap<>();
-                    p.put("sku", item.path("sku").asText());
-                    p.put("name", item.path("name").asText());
-                    p.put("onHand", item.path("onHand").asInt());
-                    p.put("reserved", item.path("reserved").asInt());
-                    p.put("available", item.path("available").asInt());
-                    products.add(p);
+            if (!productsNode.isArray()) return WarehouseHttpErrors.invalidData();
+            for (JsonNode item : productsNode) {
+                JsonNode onHand = item.path("onHand");
+                JsonNode reserved = item.path("reserved");
+                JsonNode available = item.path("available");
+                if (!WarehouseHttpErrors.hasText(item, "sku") || !WarehouseHttpErrors.hasText(item, "name") ||
+                        !onHand.isInt() || !reserved.isInt() || !available.isInt() || reserved.intValue() < 0 ||
+                        available.intValue() < 0 || (long) reserved.intValue() + available.intValue() != onHand.intValue()) {
+                    return WarehouseHttpErrors.invalidData();
                 }
+                products.add(Map.of(
+                        "sku", item.path("sku").textValue(), "name", item.path("name").textValue(),
+                        "onHand", onHand.intValue(), "reserved", reserved.intValue(), "available", available.intValue()
+                ));
             }
             return ResponseEntity.ok(products);
         } catch (ServerUnavailableException e) {

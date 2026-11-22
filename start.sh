@@ -31,6 +31,7 @@ PID_SERVER="$RUN_DIR/network-server.pid"
 PID_GATEWAY="$RUN_DIR/api-gateway.pid"
 PID_SIMULATOR="$RUN_DIR/supplier-simulator.pid"
 PID_FRONTEND="$RUN_DIR/frontend.pid"
+DB_OWNER="$RUN_DIR/database.container"
 
 LOG_SERVER="$RUN_DIR/network-server.log"
 LOG_GATEWAY="$RUN_DIR/api-gateway.log"
@@ -38,7 +39,6 @@ LOG_SIMULATOR="$RUN_DIR/supplier-simulator.log"
 LOG_FRONTEND="$RUN_DIR/frontend.log"
 
 # Default Ports
-PORT_PG_DEFAULT=5432
 PORT_COMMAND=7443
 PORT_NIO=7444
 PORT_SIMULATOR=8090
@@ -49,16 +49,32 @@ PORT_FRONTEND=3000
 # Helper Functions
 # ------------------------------------------------------------------------------
 
+record_pid() {
+    local pid_file="$1"
+    local pid="$2"
+    local started
+    started=$(ps -p "$pid" -o lstart=)
+    printf '%s\n%s\n' "$pid" "$started" > "$pid_file"
+}
+
 is_pid_running() {
     local pid_file="$1"
-    if [ -f "$pid_file" ]; then
-        local pid
-        pid=$(cat "$pid_file" 2>/dev/null || true)
-        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            return 0
-        fi
+    local pid started
+    [ -f "$pid_file" ] || return 1
+    pid=$(sed -n '1p' "$pid_file")
+    started=$(sed -n '2p' "$pid_file")
+    case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+    [ -n "$started" ] && [ "$(ps -p "$pid" -o lstart= 2>/dev/null)" = "$started" ] || return 1
+    case "$(ps -p "$pid" -o stat= 2>/dev/null)" in ''|Z*) return 1 ;; esac
+}
+
+check_port_owner() {
+    local pid_file="$1"
+    local port="$2"
+    if ! is_pid_running "$pid_file" && is_port_listening 127.0.0.1 "$port"; then
+        echo "Port $port already has an unowned listener. Choose a free port or stop that service first." >&2
+        return 1
     fi
-    return 1
 }
 
 is_port_listening() {
@@ -91,7 +107,7 @@ wait_for_http() {
     local name="$3"
 
     local elapsed=0
-    while ! curl -s -f -o /dev/null "$url"; do
+    while ! curl --max-time 3 -fsS -o /dev/null "$url" 2>/dev/null; do
         sleep 1
         elapsed=$((elapsed + 1))
         if [ "$elapsed" -ge "$timeout" ]; then
@@ -103,13 +119,6 @@ wait_for_http() {
 }
 
 load_environment() {
-    if [ ! -f .env ]; then
-        if [ -f .env.example ]; then
-            echo -e "${YELLOW}[INFO] .env not found. Initializing from .env.example...${NC}"
-            cp .env.example .env
-        fi
-    fi
-
     # Read .env if present using portable parser compatible with macOS bash 3.2
     if [ -f .env ]; then
         while IFS= read -r line || [ -n "$line" ]; do
@@ -130,31 +139,13 @@ load_environment() {
         done < .env
     fi
 
-    # Smart PostgreSQL port detection:
-    # If 5432 is already bound by an external host process, route Docker to 5433
-    local container_id
-    container_id=$(docker compose ps -q db 2>/dev/null || true)
-    local is_our_container_running=0
-    if [ -n "$container_id" ]; then
-        local state
-        state=$(docker inspect -f '{{.State.Running}}' "$container_id" 2>/dev/null || echo "false")
-        if [ "$state" = "true" ]; then
-            local mapped_port
-            mapped_port=$(docker port "$container_id" 5432/tcp 2>/dev/null | head -n 1 | sed -E 's/.*:([0-9]+)$/\1/' || echo "")
-            if [ "$mapped_port" = "${POSTGRES_PORT:-5432}" ]; then
-                is_our_container_running=1
-            fi
-        fi
-    fi
-
-    if [ "$is_our_container_running" -eq 0 ] && nc -z 127.0.0.1 5432 >/dev/null 2>&1; then
-        echo -e "${YELLOW}[INFO] Host port 5432 is in use by another service. Using port 5433 for Docker PostgreSQL.${NC}"
-        export POSTGRES_PORT=5433
-        export THOGAMURA_DB_URL="jdbc:postgresql://localhost:5433/thogamura"
-    else
-        export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-        export THOGAMURA_DB_URL="${THOGAMURA_DB_URL:-jdbc:postgresql://localhost:${POSTGRES_PORT}/thogamura}"
-    fi
+    export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+    export THOGAMURA_DB_URL="${THOGAMURA_DB_URL:-jdbc:postgresql://127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB:-thogamura}}"
+    PORT_COMMAND="${THOGAMURA_COMMAND_PORT:-7443}"
+    PORT_NIO="${THOGAMURA_NOTIFICATIONS_PORT:-7444}"
+    PORT_SIMULATOR="${THOGAMURA_SUPPLIER_SIMULATOR_PORT:-8090}"
+    PORT_GATEWAY="${THOGAMURA_GATEWAY_PORT:-8080}"
+    PORT_FRONTEND="${THOGAMURA_FRONTEND_PORT:-3000}"
 }
 
 # ------------------------------------------------------------------------------
@@ -166,7 +157,15 @@ do_start() {
     echo -e "${BOLD}${BLUE}  Starting ThogaMura Systems (Branch-to-Warehouse Stock Flow)      ${NC}"
     echo -e "${BOLD}${BLUE}==================================================================${NC}"
 
+    if [ ! -f .env ]; then
+        cp .env.example .env
+    fi
     load_environment
+    check_port_owner "$PID_SERVER" "$PORT_COMMAND"
+    check_port_owner "$PID_SERVER" "$PORT_NIO"
+    check_port_owner "$PID_SIMULATOR" "$PORT_SIMULATOR"
+    check_port_owner "$PID_GATEWAY" "$PORT_GATEWAY"
+    check_port_owner "$PID_FRONTEND" "$PORT_FRONTEND"
 
     # 1. PostgreSQL Database via Docker Compose
     echo -e "\n${CYAN}[1/5] Checking PostgreSQL Database...${NC}"
@@ -181,13 +180,18 @@ do_start() {
     fi
 
     echo -e "${GREEN}Starting database on port ${POSTGRES_PORT}...${NC}"
-    docker compose up -d db
+    local existing_db
+    existing_db=$(docker compose ps --status running -q db)
+    if [ -z "$existing_db" ]; then
+        docker compose up -d db
+        docker compose ps --status running -q db > "$DB_OWNER"
+    fi
 
     # Wait for PostgreSQL to be ready
     echo -n "Waiting for PostgreSQL to accept connections..."
     local db_ready=0
     for _ in {1..20}; do
-        if docker compose exec -T db pg_isready -U "${POSTGRES_USER:-thogamura}" -d "${POSTGRES_DB:-thogamura}" >/dev/null 2>&1; then
+        if docker compose exec -T db pg_isready -h 127.0.0.1 -U "${POSTGRES_USER:-thogamura}" -d "${POSTGRES_DB:-thogamura}" >/dev/null 2>&1; then
             db_ready=1
             break
         fi
@@ -209,9 +213,7 @@ do_start() {
     local needs_build=0
     if [ ! -f "$server_jar" ] || [ ! -f "$gateway_jar" ]; then
         needs_build=1
-    elif [ -n "$(find backend -name '*.java' -newer "$server_jar" 2>/dev/null | head -n 1)" ]; then
-        needs_build=1
-    elif [ -n "$(find backend -name 'pom.xml' -newer "$server_jar" 2>/dev/null | head -n 1)" ]; then
+    elif [ -n "$(find backend -name target -prune -o -type f \( -name '*.java' -o -name 'pom.xml' -o -name '*.yml' -o -name '*.sql' \) \( -newer "$server_jar" -o -newer "$gateway_jar" \) -print -quit)" ]; then
         needs_build=1
     fi
 
@@ -223,15 +225,20 @@ do_start() {
     # 3. Start Central Java Network Server (Warehouse)
     echo -e "\n${CYAN}[2/5] Starting Central Java Network Server...${NC}"
     if is_pid_running "$PID_SERVER"; then
-        echo -e "${YELLOW}Network Server is already running (PID: $(cat "$PID_SERVER"))${NC}"
+        echo -e "${YELLOW}Network Server is already running (PID: $(head -n 1 "$PID_SERVER"))${NC}"
     else
         THOGAMURA_COMMAND_SERVER_ENABLED=true \
+        THOGAMURA_COMMAND_SERVER_HOST=127.0.0.1 \
+        THOGAMURA_COMMAND_SERVER_PORT="$PORT_COMMAND" \
         THOGAMURA_NOTIFICATIONS_ENABLED=true \
+        THOGAMURA_NOTIFICATIONS_HOST=127.0.0.1 \
+        THOGAMURA_NOTIFICATIONS_PORT="$PORT_NIO" \
+        THOGAMURA_SUPPLIER_BASE_URL="${THOGAMURA_SUPPLIER_BASE_URL:-http://127.0.0.1:$PORT_SIMULATOR}" \
         THOGAMURA_DB_URL="${THOGAMURA_DB_URL:-jdbc:postgresql://localhost:${POSTGRES_PORT}/thogamura}" \
         THOGAMURA_DB_USER="${THOGAMURA_DB_USER:-thogamura}" \
         THOGAMURA_DB_PASSWORD="${THOGAMURA_DB_PASSWORD:-${POSTGRES_PASSWORD:-change-this-local-password}}" \
-        nohup java -jar "$server_jar" > "$LOG_SERVER" 2>&1 &
-        echo $! > "$PID_SERVER"
+        nohup env -u THOGAMURA_TLS_TRUSTSTORE_PASSWORD -u THOGAMURA_ACCESS_USERS java -jar "$server_jar" > "$LOG_SERVER" 2>&1 &
+        record_pid "$PID_SERVER" "$!"
 
         echo -n "Waiting for TCP Command Server (port ${PORT_COMMAND}) and NIO Feed (port ${PORT_NIO})..."
         if ! wait_for_port "127.0.0.1" "$PORT_COMMAND" 15 "TCP Command Server"; then
@@ -248,84 +255,117 @@ do_start() {
             echo -e "${YELLOW}-------------------------------------${NC}"
             exit 1
         fi
-        echo -e "\n${GREEN}✓ Central Network Server started (PID: $(cat "$PID_SERVER"))${NC}"
+        echo -e "\n${GREEN}✓ Central Network Server started (PID: $(head -n 1 "$PID_SERVER"))${NC}"
     fi
 
     # 4. Start Supplier HTTP Simulator
     echo -e "\n${CYAN}[3/5] Starting Independent Supplier HTTP Simulator...${NC}"
     if is_pid_running "$PID_SIMULATOR"; then
-        echo -e "${YELLOW}Supplier Simulator is already running (PID: $(cat "$PID_SIMULATOR"))${NC}"
+        echo -e "${YELLOW}Supplier Simulator is already running (PID: $(head -n 1 "$PID_SIMULATOR"))${NC}"
     else
-        nohup java -cp "$server_jar" \
+        nohup env -u THOGAMURA_DB_URL -u THOGAMURA_DB_USER -u THOGAMURA_DB_PASSWORD -u POSTGRES_PASSWORD \
+            -u THOGAMURA_TLS_KEYSTORE_PASSWORD -u THOGAMURA_TLS_TRUSTSTORE_PASSWORD -u THOGAMURA_ACCESS_SIGNING_KEY \
+            -u THOGAMURA_ACCESS_USERS java -cp "$server_jar" \
             -Dloader.main=lk.thogamura.networkserver.integration.supplier.SupplierHttpSimulator \
             org.springframework.boot.loader.launch.PropertiesLauncher "$PORT_SIMULATOR" </dev/null > "$LOG_SIMULATOR" 2>&1 &
-        echo $! > "$PID_SIMULATOR"
+        record_pid "$PID_SIMULATOR" "$!"
 
         wait_for_port "127.0.0.1" "$PORT_SIMULATOR" 10 "Supplier Simulator"
-        echo -e "${GREEN}✓ Supplier HTTP Simulator started on http://127.0.0.1:${PORT_SIMULATOR} (PID: $(cat "$PID_SIMULATOR"))${NC}"
+        echo -e "${GREEN}✓ Supplier HTTP Simulator started on http://127.0.0.1:${PORT_SIMULATOR} (PID: $(head -n 1 "$PID_SIMULATOR"))${NC}"
     fi
 
     # 5. Start Spring Boot API Gateway (Branch)
     echo -e "\n${CYAN}[4/5] Starting Branch Spring Boot API Gateway...${NC}"
     if is_pid_running "$PID_GATEWAY"; then
-        echo -e "${YELLOW}API Gateway is already running (PID: $(cat "$PID_GATEWAY"))${NC}"
+        echo -e "${YELLOW}API Gateway is already running (PID: $(head -n 1 "$PID_GATEWAY"))${NC}"
     else
         THOGAMURA_NOTIFICATIONS_SUBSCRIBER_ENABLED=true \
-        THOGAMURA_COMMAND_HOST="${THOGAMURA_COMMAND_HOST:-127.0.0.1}" \
+        THOGAMURA_WAREHOUSE_HOST=127.0.0.1 \
         THOGAMURA_COMMAND_PORT="${PORT_COMMAND}" \
-        THOGAMURA_NOTIFICATIONS_HOST="${THOGAMURA_NOTIFICATIONS_HOST:-127.0.0.1}" \
+        THOGAMURA_NOTIFICATIONS_HOST=127.0.0.1 \
         THOGAMURA_NOTIFICATIONS_PORT="${PORT_NIO}" \
-        nohup java -jar "$gateway_jar" > "$LOG_GATEWAY" 2>&1 &
-        echo $! > "$PID_GATEWAY"
+        THOGAMURA_GATEWAY_BIND=127.0.0.1 \
+        THOGAMURA_GATEWAY_PORT="$PORT_GATEWAY" \
+        THOGAMURA_CORS_ALLOWED_ORIGINS="${THOGAMURA_CORS_ALLOWED_ORIGINS:-http://127.0.0.1:$PORT_FRONTEND,http://localhost:$PORT_FRONTEND}" \
+        nohup env -u THOGAMURA_DB_URL -u THOGAMURA_DB_USER -u THOGAMURA_DB_PASSWORD -u POSTGRES_PASSWORD \
+            -u THOGAMURA_TLS_KEYSTORE_PASSWORD java -jar "$gateway_jar" > "$LOG_GATEWAY" 2>&1 &
+        record_pid "$PID_GATEWAY" "$!"
 
         echo -n "Waiting for Gateway REST/SSE endpoints (http://127.0.0.1:${PORT_GATEWAY})..."
-        if ! wait_for_http "http://127.0.0.1:${PORT_GATEWAY}/actuator/health" 20 "API Gateway"; then
+        if ! wait_for_http "http://127.0.0.1:${PORT_GATEWAY}/api/v1/ping" 20 "API Gateway"; then
             echo -e "\n${RED}[ERROR] API Gateway failed to become healthy.${NC}"
             echo -e "${YELLOW}--- Last 25 lines of $LOG_GATEWAY ---${NC}"
             tail -n 25 "$LOG_GATEWAY" 2>/dev/null || true
             echo -e "${YELLOW}-------------------------------------${NC}"
             exit 1
         fi
-        echo -e "\n${GREEN}✓ API Gateway started on http://127.0.0.1:${PORT_GATEWAY} (PID: $(cat "$PID_GATEWAY"))${NC}"
+        echo -e "\n${GREEN}✓ API Gateway started on http://127.0.0.1:${PORT_GATEWAY} (PID: $(head -n 1 "$PID_GATEWAY"))${NC}"
     fi
+
+    wait_for_http "http://127.0.0.1:${PORT_GATEWAY}/api/v1/ping" 15 "warehouse command path"
 
     # 6. Start Next.js Frontend
     echo -e "\n${CYAN}[5/5] Starting Next.js Web Frontend...${NC}"
-    if is_port_listening "127.0.0.1" "$PORT_FRONTEND"; then
+    if is_pid_running "$PID_FRONTEND"; then
         echo -e "${YELLOW}Frontend is already running on port ${PORT_FRONTEND}${NC}"
     else
+        case "${THOGAMURA_FRONTEND_MODE:-dev}" in
+            dev) ;;
+            start)
+                if [ ! -f frontend/.next/BUILD_ID ]; then
+                    echo "Build the frontend before starting it in production mode." >&2
+                    return 1
+                fi
+                ;;
+            *) echo "THOGAMURA_FRONTEND_MODE must be dev or start." >&2; return 1 ;;
+        esac
         if [ ! -d "frontend/node_modules" ]; then
             echo -e "${YELLOW}[NPM] Installing frontend dependencies...${NC}"
-            npm --prefix frontend install
+            npm --prefix frontend ci
         fi
 
-        python3 -c "import subprocess; p = subprocess.Popen(['npx', 'next', 'dev'], cwd='frontend', stdin=subprocess.DEVNULL, stdout=open('$LOG_FRONTEND', 'a'), stderr=subprocess.STDOUT, start_new_session=True); open('$PID_FRONTEND', 'w').write(str(p.pid))"
+        local frontend_pid
+        frontend_pid=$(env -u THOGAMURA_DB_URL -u THOGAMURA_DB_USER -u THOGAMURA_DB_PASSWORD -u POSTGRES_PASSWORD \
+            -u THOGAMURA_TLS_KEYSTORE_PASSWORD -u THOGAMURA_TLS_TRUSTSTORE_PASSWORD \
+            -u THOGAMURA_ACCESS_SIGNING_KEY -u THOGAMURA_ACCESS_USERS \
+            -u NEXT_PUBLIC_GATEWAY_URL -u NEXT_PUBLIC_API_BASE_URL \
+            GATEWAY_URL="http://127.0.0.1:$PORT_GATEWAY" \
+            python3 - "$LOG_FRONTEND" "$PORT_FRONTEND" <<'PYTHON'
+import os
+import subprocess
+import sys
 
-        echo -n "Waiting for Next.js to start on http://localhost:${PORT_FRONTEND}..."
-        wait_for_http "http://localhost:${PORT_FRONTEND}" 25 "Next.js Frontend"
-        echo -e "\n${GREEN}✓ Next.js Frontend started on http://localhost:${PORT_FRONTEND}${NC}"
-    fi
+mode = os.environ.get("THOGAMURA_FRONTEND_MODE", "dev")
+command = ["node", "node_modules/next/dist/bin/next", mode, "--hostname", "127.0.0.1", "--port", sys.argv[2]]
+if mode == "dev" and os.environ.get("THOGAMURA_FRONTEND_WEBPACK") == "1":
+    command.append("--webpack")
 
-    # 7. Ensure demo data is seeded if database is empty (QA-06)
-    if docker compose ps -q db 2>/dev/null | grep -q .; then
-        local count
-        count=$(docker compose exec -T db psql -U "${POSTGRES_USER:-thogamura}" -d "${POSTGRES_DB:-thogamura}" -t -c "SELECT COUNT(*) FROM product_stock;" 2>/dev/null | tr -d '[:space:]' || echo "0")
-        if [ "$count" = "0" ] || [ -z "$count" ]; then
-            echo -e "${CYAN}[SEED] Product stock is empty. Seeding demo inventory and workflow requests...${NC}"
-            "$SCRIPT_DIR/scripts/seed-demo-data.sh" || true
-        fi
+with open(sys.argv[1], "a") as log:
+    process = subprocess.Popen(
+        command, cwd="frontend", stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+print(process.pid)
+PYTHON
+)
+        record_pid "$PID_FRONTEND" "$frontend_pid"
+
+        echo -n "Waiting for Next.js to start on http://127.0.0.1:${PORT_FRONTEND}..."
+        wait_for_http "http://127.0.0.1:${PORT_FRONTEND}" 25 "Next.js Frontend"
+        echo -e "\n${GREEN}✓ Next.js Frontend started on http://127.0.0.1:${PORT_FRONTEND}${NC}"
     fi
 
     echo -e "\n${BOLD}${GREEN}==================================================================${NC}"
     echo -e "${BOLD}${GREEN}  All ThogaMura Components Running Successfully!                  ${NC}"
     echo -e "${BOLD}${GREEN}==================================================================${NC}"
-    echo -e "  • ${BOLD}Web Application:${NC}      http://localhost:${PORT_FRONTEND}"
-    echo -e "  • ${BOLD}API Gateway:${NC}          http://localhost:${PORT_GATEWAY} (Actuator / Health)"
+    echo -e "  • ${BOLD}Web Application:${NC}      http://127.0.0.1:${PORT_FRONTEND}"
+    echo -e "  • ${BOLD}API Gateway:${NC}          http://localhost:${PORT_GATEWAY} (Warehouse command probe)"
     echo -e "  • ${BOLD}Warehouse Command:${NC}    127.0.0.1:${PORT_COMMAND} (Java TCP Socket)"
     echo -e "  • ${BOLD}NIO Notification:${NC}     127.0.0.1:${PORT_NIO} (Java NIO Selector Feed)"
     echo -e "  • ${BOLD}Supplier Simulator:${NC}   http://127.0.0.1:${PORT_SIMULATOR}"
     echo -e "  • ${BOLD}PostgreSQL DB:${NC}        127.0.0.1:${POSTGRES_PORT}"
     echo -e "------------------------------------------------------------------"
+    echo -e "  Install sample stock into an empty demo database: ./start.sh seed"
     echo -e "  Check status anytime:   ${CYAN}./start.sh status${NC}"
     echo -e "  Stop all services:      ${CYAN}./start.sh stop${NC}"
     echo -e "  View logs:              ${CYAN}./start.sh logs [server|gateway|frontend|supplier]${NC}"
@@ -359,7 +399,7 @@ do_status() {
     local srv_status="${RED}STOPPED${NC}"
     local srv_pid="-"
     if is_pid_running "$PID_SERVER"; then
-        srv_pid=$(cat "$PID_SERVER")
+        srv_pid=$(head -n 1 "$PID_SERVER")
         if is_port_listening "127.0.0.1" "$PORT_COMMAND"; then
             srv_status="${GREEN}RUNNING (OK)${NC}"
         else
@@ -372,7 +412,7 @@ do_status() {
     local sim_status="${RED}STOPPED${NC}"
     local sim_pid="-"
     if is_pid_running "$PID_SIMULATOR"; then
-        sim_pid=$(cat "$PID_SIMULATOR")
+        sim_pid=$(head -n 1 "$PID_SIMULATOR")
         if is_port_listening "127.0.0.1" "$PORT_SIMULATOR"; then
             sim_status="${GREEN}RUNNING (OK)${NC}"
         else
@@ -385,8 +425,8 @@ do_status() {
     local gw_status="${RED}STOPPED${NC}"
     local gw_pid="-"
     if is_pid_running "$PID_GATEWAY"; then
-        gw_pid=$(cat "$PID_GATEWAY")
-        if curl -s -f -o /dev/null "http://127.0.0.1:${PORT_GATEWAY}/actuator/health"; then
+        gw_pid=$(head -n 1 "$PID_GATEWAY")
+        if curl -s -f -o /dev/null "http://127.0.0.1:${PORT_GATEWAY}/api/v1/ping"; then
             gw_status="${GREEN}RUNNING (HEALTHY)${NC}"
         else
             gw_status="${YELLOW}UNHEALTHY${NC}"
@@ -397,14 +437,13 @@ do_status() {
     # 5. Next.js Frontend
     local ui_status="${RED}STOPPED${NC}"
     local ui_pid="-"
-    local listening_pid
-    listening_pid=$(lsof -ti :$PORT_FRONTEND 2>/dev/null | head -n 1 || echo "")
-    if [ -n "$listening_pid" ]; then
-        ui_pid="$listening_pid"
-        ui_status="${GREEN}RUNNING (OK)${NC}"
-    elif is_pid_running "$PID_FRONTEND"; then
-        ui_pid=$(cat "$PID_FRONTEND")
-        ui_status="${YELLOW}STARTING${NC}"
+    if is_pid_running "$PID_FRONTEND"; then
+        ui_pid=$(head -n 1 "$PID_FRONTEND")
+        if is_port_listening 127.0.0.1 "$PORT_FRONTEND"; then
+            ui_status="${GREEN}RUNNING (OK)${NC}"
+        else
+            ui_status="${YELLOW}STARTING${NC}"
+        fi
     fi
     printf "%-26s %-10s %-16s %-20b\n" "Next.js Web UI" "$ui_pid" "HTTP:$PORT_FRONTEND" "$ui_status"
 
@@ -421,25 +460,25 @@ stop_process() {
     local pid_file="$1"
     local name="$2"
 
-    if [ -f "$pid_file" ]; then
-        local pid
-        pid=$(cat "$pid_file" 2>/dev/null || true)
-        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            echo -n "Stopping $name (PID: $pid)... "
-            kill "$pid" 2>/dev/null || true
-            for _ in {1..10}; do
-                if ! kill -0 "$pid" 2>/dev/null; then
-                    break
-                fi
-                sleep 0.5
-            done
-            if kill -0 "$pid" 2>/dev/null; then
-                kill -9 "$pid" 2>/dev/null || true
-            fi
-            echo -e "${GREEN}done${NC}"
+    if is_pid_running "$pid_file"; then
+        local pid signal_target
+        pid=$(head -n 1 "$pid_file")
+        signal_target="$pid"
+        if [ "$pid_file" = "$PID_FRONTEND" ]; then
+            signal_target="-$pid"
         fi
-        rm -f "$pid_file"
+        echo "Stopping $name (PID $pid)..."
+        kill -TERM -- "$signal_target"
+        for _ in {1..60}; do
+            if ! is_pid_running "$pid_file"; then break; fi
+            sleep 0.5
+        done
+        if is_pid_running "$pid_file"; then
+            echo "$name is still shutting down. Run ./status.sh to check again." >&2
+            return 1
+        fi
     fi
+    rm -f "$pid_file"
 }
 
 do_stop() {
@@ -447,21 +486,26 @@ do_stop() {
     echo -e "${BOLD}${YELLOW}  Stopping ThogaMura Services                                     ${NC}"
     echo -e "${BOLD}${YELLOW}==================================================================${NC}"
 
-    # Stop processes in reverse dependency order
-    stop_process "$PID_FRONTEND" "Next.js Web UI"
-    local frontend_pids
-    frontend_pids=$(lsof -ti :$PORT_FRONTEND 2>/dev/null || true)
-    if [ -n "$frontend_pids" ]; then
-        echo "$frontend_pids" | xargs kill 2>/dev/null || true
-    fi
-    stop_process "$PID_GATEWAY" "Spring API Gateway"
-    stop_process "$PID_SIMULATOR" "Supplier HTTP Simulator"
-    stop_process "$PID_SERVER" "Central Java Network Server"
+    # Attempt each stop even if one owned process takes longer than expected.
+    local stop_failed=0
+    stop_process "$PID_FRONTEND" "Next.js Web UI" || stop_failed=1
+    stop_process "$PID_GATEWAY" "Spring API Gateway" || stop_failed=1
+    stop_process "$PID_SIMULATOR" "Supplier HTTP Simulator" || stop_failed=1
+    stop_process "$PID_SERVER" "Central Java Network Server" || stop_failed=1
 
-    # Stop Docker DB container cleanly
-    echo -n "Stopping PostgreSQL container... "
-    docker compose stop db >/dev/null 2>&1 || true
-    echo -e "${GREEN}done${NC}"
+    if [ "$stop_failed" -ne 0 ]; then
+        echo "At least one service is still shutting down. Run ./stop.sh again to finish." >&2
+        return 1
+    fi
+
+    if [ -f "$DB_OWNER" ]; then
+        local running_db
+        running_db=$(docker compose ps --status running -q db)
+        if [ -n "$running_db" ] && [ "$running_db" = "$(cat "$DB_OWNER")" ]; then
+            docker compose stop db
+        fi
+        rm -f "$DB_OWNER"
+    fi
 
     echo -e "${GREEN}All services stopped cleanly.${NC}\n"
 }

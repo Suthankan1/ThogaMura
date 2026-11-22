@@ -113,3 +113,11 @@ Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
 1. **Transaction Management:** This issue validates schema constraints and fixture initialization. Atomic multi-row transactional reservations (`SELECT ... FOR UPDATE`, receipt insertion, atomic commit) belong to **Issue #10**.
 2. **Isolation:** Tests use explicit table cleanup between test methods, ensuring deterministic, idempotent local runs without data pollution.
 3. **Zero Secrets:** Local development credentials remain isolated in `.env` and environment variables.
+
+## Stabilization handoff
+
+Integration suites share a disposable PostgreSQL container and cannot reuse the application database. The demo fixture installs only into empty tables. Review stable fulfillment replay and transactional cancellation or receiving proposals before changing the schema.
+
+## Workspace schema handoff
+
+Review V3, the PostgreSQL migration and tied-cursor tests, and the cancel-versus-pick coverage in the protected smoke script. Cancellation holds the request and product locks through release and receipt commit. Receiving links one positive movement to one persisted command receipt, with the supervisor account and reference. [Workspace contract](../contracts/WORKSPACE_V2.md)

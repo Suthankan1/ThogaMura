@@ -16,7 +16,7 @@
 - Configured warehouse host replaces unnecessary UDP auto-discovery.
 - No full ERP/accounting/cloud/AI scope.
 - Tests + manual demo required for each member's contribution.
-- This repository is an **initial scaffold**, not a completed working app.
+- The repository contains the five networking implementations and an integrated operator UI. Check the current validation matrix for executed evidence.
 
 **Confirmed owners (18 November 2026):** M1 @sankharavindu, M2 @sandunikarunarathna, M3 @Suthankan1, M4 @Yasiru-ruwantha, M5 @vibhathkalsara99. M1/M2 GitHub assignees are blocked until collaborator invitations are accepted; use issue #1 for ticket-level ownership. Never assume a planned owner is an actual GitHub assignee.
 

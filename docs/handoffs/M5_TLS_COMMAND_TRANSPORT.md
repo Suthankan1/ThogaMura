@@ -171,3 +171,11 @@ All 176 backend tests passed across the reactor build (`protocol`: 21, `network-
 
 - **Next Issue:** [#24 — [M5][W2] Demonstrate certificate rejection and secure LAN operation](https://github.com/Suthankan1/ThogaMura/issues/24)
 - **Integration with Member 4:** Transactional command execution (`REQUEST_STOCK`, `MARK_PICKED`, `MARK_DISPATCHED`) runs seamlessly over validated JSSE TLS without transport modification.
+
+## Stabilization handoff
+
+The implemented command policy is server-authenticated JSSE TLS with SAN verification. Non-loopback command listeners require TLS. The physical LAN rehearsal must still prove peer firewall isolation and wrong identity rejection.
+
+## Workspace access handoff
+
+Review the gateway's session and assertion path and the warehouse verification boundary. Keep role, branch, clock and key configuration synchronized. The branch still verifies the warehouse SAN in JSSE. The application signs over a trusted gateway perimeter. [Workspace setup](../SETUP.md#authenticated-branch-workspace)

@@ -80,6 +80,7 @@ public class JdbcStockMovementRepository implements StockMovementRepository {
         String sql = """
             SELECT id, stock_request_id, sku, quantity_delta, reason, occurred_at
             FROM stock_movements
+            WHERE reason = 'DISPATCH' AND stock_request_id IN (SELECT request_id FROM stock_requests WHERE branch_id IS NULL)
             ORDER BY id ASC
             LIMIT ?
             """;

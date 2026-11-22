@@ -112,6 +112,11 @@ public class NetworkStatusController {
         return status;
     }
 
+    private final Object probeLock = new Object();
+    private ProbeResult latestProbe;
+
+    private record ProbeResult(Path truststore, String status, long expiresNanos) {}
+
     private String determineTlsStatus() {
         if (tlsProperties.isEmpty() || !tlsProperties.get().isEnabled()) {
             return "DISABLED";
@@ -141,12 +146,20 @@ public class NetworkStatusController {
             return "MISCONFIGURED";
         }
 
-        try {
-            client.ping();
-            return "OPERATIONAL";
-        } catch (Exception e) {
-            logger.debug("TLS diagnostic ping failed: {}", e.getMessage());
-            return "UNREACHABLE";
+        synchronized (probeLock) {
+            if (latestProbe != null && latestProbe.truststore().equals(path) && latestProbe.expiresNanos() - System.nanoTime() > 0) {
+                return latestProbe.status();
+            }
+            String result;
+            try {
+                client.pingOnce();
+                result = "OPERATIONAL";
+            } catch (CommandTransportException e) {
+                logger.debug("TLS diagnostic probe failed for {}", e.getRequestId());
+                result = "UNREACHABLE";
+            }
+            latestProbe = new ProbeResult(path, result, System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5));
+            return result;
         }
     }
 

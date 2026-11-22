@@ -1,126 +1,83 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# ThogaMura Disposable Fixture Verification (QA-06)
-# Verifies the full end-to-end stock workflow across the live network:
-#   Reserve (POST /requests) -> Pick (POST /pick) -> Dispatch (POST /dispatch) -> Audit Movement
-# ==============================================================================
+# Exercise mutable workflows against a fresh, explicitly disposable demo database.
 set -euo pipefail
 
-GATEWAY_URL="${THOGAMURA_GATEWAY_URL:-http://127.0.0.1:8080}"
-SKU="ITEM-007"
-QTY=1
-
-BOLD='\033[1m'
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-echo -e "${BOLD}${CYAN}==================================================================${NC}"
-echo -e "${BOLD}${CYAN}  Verifying Full Stock Workflow: Reserve → Pick → Dispatch → Audit ${NC}"
-echo -e "${BOLD}${CYAN}==================================================================${NC}"
-
-# Check gateway availability
-if ! curl -s -f -o /dev/null "${GATEWAY_URL}/actuator/health" 2>/dev/null; then
-    echo -e "${RED}[ERROR] API Gateway is not reachable at ${GATEWAY_URL}.${NC}"
-    echo "Please ensure ThogaMura is running ('./start.sh') before executing this verification."
-    exit 1
+if [ "${THOGAMURA_VERIFY_DISPOSABLE:-}" != "1" ]; then
+    echo "Set THOGAMURA_VERIFY_DISPOSABLE=1 after selecting a disposable synthetic demo stack." >&2
+    exit 2
 fi
 
-# Generate UUID v4 for the disposable transaction
-if command -v uuidgen >/dev/null 2>&1; then
-    REQ_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-else
-    REQ_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
-fi
+python3 - "${THOGAMURA_GATEWAY_URL:-http://127.0.0.1:8080}" <<'PYTHON'
+import json
+import sys
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+from uuid import uuid4
 
-echo -e "Disposable Request ID: ${YELLOW}${REQ_ID}${NC}"
-echo -e "Target Product SKU:    ${YELLOW}${SKU}${NC}"
-echo -e "Quantity to Reserve:   ${YELLOW}${QTY}${NC}"
-echo "------------------------------------------------------------------"
+base = sys.argv[1].rstrip("/")
+sku = "ITEM-007"
 
-# STEP 1: Reserve Stock
-echo -e "\n${BOLD}[1/4] Submitting Stock Reservation (POST /api/v1/requests)...${NC}"
-RESERVE_RESP=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${GATEWAY_URL}/api/v1/requests" \
-    -H "Content-Type: application/json" \
-    -H "Idempotency-Key: ${REQ_ID}" \
-    -d "{\"sku\":\"${SKU}\",\"quantity\":${QTY}}")
 
-HTTP_STATUS=$(echo "$RESERVE_RESP" | grep "HTTP_STATUS:" | cut -d':' -f2)
-BODY=$(echo "$RESERVE_RESP" | sed '/HTTP_STATUS:/d')
+def call(path, status, body=None, key=None):
+    headers = {"Accept": "application/json"}
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    if key:
+        headers["Idempotency-Key"] = key
+    request = Request(
+        base + "/api/v1" + path,
+        json.dumps(body).encode() if body is not None else None,
+        headers,
+        method="POST" if body is not None or path.endswith(("/pick", "/dispatch")) else "GET",
+    )
+    try:
+        with urlopen(request, timeout=20) as response:
+            actual, data = response.status, json.load(response)
+    except HTTPError as response:
+        with response:
+            actual, data = response.code, json.load(response)
+    if actual != status:
+        raise RuntimeError(f"{path}: expected HTTP {status}, observed {actual} with {data.get('code') if isinstance(data, dict) else 'list'}")
+    return data
 
-if [ "$HTTP_STATUS" != "201" ]; then
-    echo -e "${RED}[FAIL] Reservation failed with HTTP ${HTTP_STATUS}:${NC} $BODY"
-    exit 1
-fi
 
-STATUS=$(echo "$BODY" | python3 -c "import sys, json; print(json.load(sys.stdin).get('status',''))")
-if [ "$STATUS" != "ACCEPTED" ]; then
-    echo -e "${RED}[FAIL] Expected status ACCEPTED, got:${NC} $STATUS"
-    exit 1
-fi
-echo -e "${GREEN}✓ Reservation accepted: Status = ACCEPTED (PostgreSQL balance reserved)${NC}"
+def stock():
+    return next(row for row in call("/products", 200) if row["sku"] == sku)
 
-# STEP 2: Mark Picked
-echo -e "\n${BOLD}[2/4] Picker Action: Marking as Picked (POST /api/v1/requests/${REQ_ID}/pick)...${NC}"
-PICK_RESP=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${GATEWAY_URL}/api/v1/requests/${REQ_ID}/pick")
-HTTP_STATUS=$(echo "$PICK_RESP" | grep "HTTP_STATUS:" | cut -d':' -f2)
-BODY=$(echo "$PICK_RESP" | sed '/HTTP_STATUS:/d')
 
-if [ "$HTTP_STATUS" != "200" ]; then
-    echo -e "${RED}[FAIL] Pick transition failed with HTTP ${HTTP_STATUS}:${NC} $BODY"
-    exit 1
-fi
+if call("/ping", 200).get("status") != "PONG":
+    raise RuntimeError("Warehouse command probe did not return PONG")
 
-STATUS=$(echo "$BODY" | python3 -c "import sys, json; print(json.load(sys.stdin).get('status',''))")
-if [ "$STATUS" != "PICKED" ]; then
-    echo -e "${RED}[FAIL] Expected status PICKED, got:${NC} $STATUS"
-    exit 1
-fi
-echo -e "${GREEN}✓ Order picked: Status = PICKED${NC}"
+before = stock()
+if before["available"] < 1:
+    raise RuntimeError("Demo SKU requires at least one available unit")
 
-# STEP 3: Mark Dispatched
-echo -e "\n${BOLD}[3/4] Dispatcher Action: Marking as Dispatched (POST /api/v1/requests/${REQ_ID}/dispatch)...${NC}"
-DISPATCH_RESP=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${GATEWAY_URL}/api/v1/requests/${REQ_ID}/dispatch")
-HTTP_STATUS=$(echo "$DISPATCH_RESP" | grep "HTTP_STATUS:" | cut -d':' -f2)
-BODY=$(echo "$DISPATCH_RESP" | sed '/HTTP_STATUS:/d')
+invalid = call("/requests", 400, {"sku": sku, "quantity": 1.5}, str(uuid4()))
+missing = call("/requests", 404, {"sku": "ITEM-SMOKE-NOT-FOUND", "quantity": 1}, str(uuid4()))
+assert invalid["code"] == "VALIDATION_ERROR"
+assert missing["code"] == "NOT_FOUND"
+assert stock() == before
 
-if [ "$HTTP_STATUS" != "200" ]; then
-    echo -e "${RED}[FAIL] Dispatch transition failed with HTTP ${HTTP_STATUS}:${NC} $BODY"
-    exit 1
-fi
+key = str(uuid4())
+payload = {"sku": sku, "quantity": 1}
+receipt = call("/requests", 201, payload, key)
+assert receipt["requestId"] == key and receipt["status"] == "ACCEPTED"
+assert call("/requests", 201, payload, key) == receipt
+held = stock()
+assert held["reserved"] == before["reserved"] + 1 and held["onHand"] == before["onHand"]
 
-STATUS=$(echo "$BODY" | python3 -c "import sys, json; print(json.load(sys.stdin).get('status',''))")
-if [ "$STATUS" != "DISPATCHED" ]; then
-    echo -e "${RED}[FAIL] Expected status DISPATCHED, got:${NC} $STATUS"
-    exit 1
-fi
-echo -e "${GREEN}✓ Order dispatched: Status = DISPATCHED (on_hand and reserved decremented)${NC}"
+assert call(f"/requests/{key}/dispatch", 409)["code"] == "INVALID_TRANSITION"
+picked = call(f"/requests/{key}/pick", 200)
+assert picked["status"] == "PICKED"
+assert call(f"/requests/{key}/pick", 200) == picked
+assert stock() == held
+dispatched = call(f"/requests/{key}/dispatch", 200)
+assert dispatched["status"] == "DISPATCHED"
+assert call(f"/requests/{key}/dispatch", 200) == dispatched
 
-# STEP 4: Verify Immutable Stock Movement Audit Record
-echo -e "\n${BOLD}[4/4] Verifying Immutable Movement Audit Trail (GET /api/v1/movements)...${NC}"
-MOVEMENTS_JSON=$(curl -s "${GATEWAY_URL}/api/v1/movements")
-HAS_MOVEMENT=$(echo "$MOVEMENTS_JSON" | python3 -c "
-import sys, json
-movements = json.load(sys.stdin)
-matches = [m for m in movements if m.get('stockRequestId') == '${REQ_ID}']
-if matches:
-    m = matches[0]
-    print(f\"FOUND id={m.get('id')} delta={m.get('quantityDelta')} reason={m.get('reason')}\")
-else:
-    print('NOT_FOUND')
-")
-
-if [[ "$HAS_MOVEMENT" == NOT_FOUND* ]]; then
-    echo -e "${RED}[FAIL] Audit movement record not found for request ${REQ_ID}.${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Audit movement verified: ${HAS_MOVEMENT}${NC}"
-
-echo -e "\n${BOLD}${GREEN}==================================================================${NC}"
-echo -e "${BOLD}${GREEN}  ✓ Complete Workflow Verified Successfully!                      ${NC}"
-echo -e "${BOLD}${GREEN}    Reserve (ACCEPTED) → Pick (PICKED) → Dispatch (DISPATCHED)     ${NC}"
-echo -e "${BOLD}${GREEN}    → Immutable Movement Logged                                    ${NC}"
-echo -e "${BOLD}${GREEN}==================================================================${NC}"
+after = stock()
+assert after["onHand"] == before["onHand"] - 1 and after["reserved"] == before["reserved"]
+ledger = [row for row in call("/movements", 200) if row["stockRequestId"] == key]
+assert len(ledger) == 1 and ledger[0]["quantityDelta"] == -1 and ledger[0]["reason"] == "DISPATCH"
+print(f"Verified request {key}: strict validation, same-result replays, one dispatch movement and consistent stock.")
+PYTHON

@@ -1,6 +1,7 @@
 package lk.thogamura.protocol.tcp;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -29,7 +30,9 @@ import java.util.UUID;
  */
 public final class TcpMessageCodec {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
 
     private TcpMessageCodec() {
     }
@@ -108,6 +111,10 @@ public final class TcpMessageCodec {
      * @throws MalformedFrameException if required fields are missing or invalid
      */
     public static void validateEnvelope(JsonNode node) throws MalformedFrameException {
+        validateEnvelope(node, ProtocolInfo.WIRE_VERSION);
+    }
+
+    public static void validateEnvelope(JsonNode node, int expectedVersion) throws MalformedFrameException {
         Objects.requireNonNull(node, "node must not be null");
 
         // Extract requestId early if possible for error correlation
@@ -122,9 +129,9 @@ public final class TcpMessageCodec {
             );
         }
         int version = node.get("v").asInt();
-        if (version != ProtocolInfo.WIRE_VERSION) {
+        if (version != expectedVersion) {
             throw new ProtocolVersionException(
-                    "Unsupported protocol version: " + version + " (expected " + ProtocolInfo.WIRE_VERSION + ")",
+                    "Unsupported protocol version: " + version + " (expected " + expectedVersion + ")",
                     version,
                     potentialRequestId
             );
@@ -184,12 +191,16 @@ public final class TcpMessageCodec {
      * @return serialized JSON error envelope string
      */
     public static String formatErrorResponse(String requestId, String errorCode, String message) {
+        return formatErrorResponse(ProtocolInfo.WIRE_VERSION, requestId, errorCode, message);
+    }
+
+    public static String formatErrorResponse(int version, String requestId, String errorCode, String message) {
         String effectiveRequestId = (requestId != null && !requestId.isBlank())
                 ? requestId
                 : UUID.randomUUID().toString();
 
         ObjectNode root = OBJECT_MAPPER.createObjectNode();
-        root.put("v", ProtocolInfo.WIRE_VERSION);
+        root.put("v", version);
         root.put("type", ProtocolInfo.TYPE_RESULT);
         root.put("requestId", effectiveRequestId);
         root.put("status", ProtocolInfo.STATUS_ERROR);
@@ -214,11 +225,15 @@ public final class TcpMessageCodec {
      * @return serialized JSON result envelope string
      */
     public static String formatResultResponse(String requestId, String status, Object data) {
+        return formatResultResponse(ProtocolInfo.WIRE_VERSION, requestId, status, data);
+    }
+
+    public static String formatResultResponse(int version, String requestId, String status, Object data) {
         Objects.requireNonNull(requestId, "requestId must not be null");
         Objects.requireNonNull(status, "status must not be null");
 
         ObjectNode root = OBJECT_MAPPER.createObjectNode();
-        root.put("v", ProtocolInfo.WIRE_VERSION);
+        root.put("v", version);
         root.put("type", ProtocolInfo.TYPE_RESULT);
         root.put("requestId", requestId);
         root.put("status", status);
@@ -243,11 +258,15 @@ public final class TcpMessageCodec {
      * @return serialized JSON command envelope string
      */
     public static String formatRequest(String type, String requestId, Object data) {
+        return formatRequest(ProtocolInfo.WIRE_VERSION, type, requestId, data);
+    }
+
+    public static String formatRequest(int version, String type, String requestId, Object data) {
         Objects.requireNonNull(type, "type must not be null");
         Objects.requireNonNull(requestId, "requestId must not be null");
 
         ObjectNode root = OBJECT_MAPPER.createObjectNode();
-        root.put("v", ProtocolInfo.WIRE_VERSION);
+        root.put("v", version);
         root.put("type", type);
         root.put("requestId", requestId);
 

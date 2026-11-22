@@ -23,18 +23,28 @@ function getTurbopackRoot(): string {
   return process.cwd();
 }
 
+const workspaceEnabled = process.env.THOGAMURA_ACCESS_ENABLED === "true";
+
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_WORKSPACE_ENABLED: String(workspaceEnabled) },
+  async redirects() {
+    if (!workspaceEnabled) return [];
+    return ["/", "/products", "/requests/:path*", "/warehouse", "/suppliers"].map((source) => ({
+      source,
+      destination: "/workspace",
+      permanent: false,
+    }));
+  },
   reactStrictMode: true,
   turbopack: {
     root: getTurbopackRoot(),
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${process.env.GATEWAY_URL || "http://localhost:8080"}/api/v1/:path*`,
-      },
-    ];
+    const gateway = process.env.GATEWAY_URL || "http://localhost:8080";
+    return ["v1", "v2"].map((version) => ({
+      source: `/api/${version}/:path*`,
+      destination: `${gateway}/api/${version}/:path*`,
+    }));
   },
 };
 

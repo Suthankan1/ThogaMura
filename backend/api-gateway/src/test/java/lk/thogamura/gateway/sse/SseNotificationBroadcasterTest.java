@@ -160,6 +160,8 @@ class SseNotificationBroadcasterTest {
         };
 
         broadcaster.registerEmitter(slowEmitter);
+        CapturingSseEmitter healthy = new CapturingSseEmitter();
+        broadcaster.registerEmitter(healthy);
 
         long start = System.currentTimeMillis();
         // This onNotification simulates the NIO subscriber thread
@@ -173,8 +175,13 @@ class SseNotificationBroadcasterTest {
         boolean started = slowClientStarted.await(2, TimeUnit.SECONDS);
         assertThat(started).isTrue();
 
-        // Release the slow client
-        allowSlowClientToFinish.countDown();
+        try {
+            broadcaster.onNotification(301L);
+            await().atMost(1, TimeUnit.SECONDS)
+                    .until(() -> healthy.getSentData().stream().anyMatch(event -> event.contains("data:301")));
+        } finally {
+            allowSlowClientToFinish.countDown();
+        }
     }
 
     @Test
@@ -186,6 +193,7 @@ class SseNotificationBroadcasterTest {
 
         broadcaster.sendHeartbeat();
 
+        await().atMost(1, TimeUnit.SECONDS).until(() -> emitter.getSentData().size() == 2);
         assertThat(emitter.getSentData()).hasSize(2);
         assertThat(emitter.getSentData().get(1)).contains(":ping");
     }
@@ -199,7 +207,7 @@ class SseNotificationBroadcasterTest {
 
         broadcaster.sendHeartbeat();
 
-        assertThat(broadcaster.getActiveEmitterCount()).isEqualTo(0);
+        await().atMost(1, TimeUnit.SECONDS).until(() -> broadcaster.getActiveEmitterCount() == 0);
     }
 
     @Test

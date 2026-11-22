@@ -12,7 +12,7 @@
 10. Security scope, limitations and future work.
 11. Learning outcomes/contributions and references.
 
-Keep PDF under `reports/final/ThogaMura_Project_Report.pdf` once finished; it is not generated yet. Include no invented test results.
+The rendered group-review report is under `reports/final/ThogaMura_Project_Report.pdf`. Add verified student IDs and physical two-device evidence after the group review.
 
 ## Submission package
 

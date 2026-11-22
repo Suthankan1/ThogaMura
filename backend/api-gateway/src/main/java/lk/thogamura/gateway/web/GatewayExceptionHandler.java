@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -115,7 +116,7 @@ public class GatewayExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleMessageNotReadable(HttpMessageNotReadableException e) {
-        logger.warn("Malformed HTTP request body: {}", e.getMessage());
+        logger.debug("Rejected malformed HTTP request body");
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", ProtocolInfo.ERROR_VALIDATION);
         body.put("message", "Malformed JSON request body syntax.");
@@ -165,6 +166,11 @@ public class GatewayExceptionHandler {
         body.put("code", ProtocolInfo.ERROR_NOT_FOUND);
         body.put("message", "Requested resource or endpoint does not exist.");
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleDisconnectedStream(AsyncRequestNotUsableException exception) {
+        logger.debug("Asynchronous response closed by its client: {}", exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

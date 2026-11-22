@@ -102,11 +102,11 @@ public class TcpCommandServerConfig {
 
         try {
             InetAddress address = InetAddress.getByName(host);
-            if (!address.isLoopbackAddress() && !allowNonLoopbackPlaintext && !tlsEnabled) {
+            if (!address.isLoopbackAddress() && !tlsEnabled) {
                 throw new IllegalStateException(
                         "Plaintext TCP command transport is strictly prohibited on non-loopback interface '" + host
                                 + "' without TLS. Only loopback binding is permitted for development/testing "
-                                + "(set allowNonLoopbackPlaintext=true to override for test environments)."
+                                + "(non-loopback always requires TLS)."
                 );
             }
         } catch (UnknownHostException e) {

@@ -108,7 +108,7 @@ describe("Audit Findings F01-F37 Verification Tests", () => {
       let currentQueryCounter = 0;
       let displayedResult: SupplierAvailability | null = null;
 
-      function dispatchInquiry(sku: string): number {
+      function dispatchInquiry(): number {
         return ++currentQueryCounter;
       }
 
@@ -120,11 +120,11 @@ describe("Audit Findings F01-F37 Verification Tests", () => {
       }
 
       // Query 1: slow response for ITEM-008 (id = 1)
-      const q1Id = dispatchInquiry("ITEM-008");
+      const q1Id = dispatchInquiry();
       assert.equal(q1Id, 1);
 
       // Query 2: fast response for ITEM-ZERO (id = 2)
-      const q2Id = dispatchInquiry("ITEM-ZERO");
+      const q2Id = dispatchInquiry();
       assert.equal(q2Id, 2);
 
       // Query 2 completes first

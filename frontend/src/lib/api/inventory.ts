@@ -1,11 +1,4 @@
-import type {
-  Product,
-  StockRequest,
-  StockMovement,
-  SupplierAvailability,
-  SupplierStatus,
-  ApiErrorResponse,
-} from "../types/inventory";
+import type { Product, StockRequest, StockMovement, SupplierAvailability, SupplierStatus } from "../types/inventory";
 
 const GATEWAY_URL =
   process.env.NEXT_PUBLIC_GATEWAY_URL ||
@@ -26,254 +19,158 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Parses JSON error from gateway response or returns default error object.
- */
-async function parseErrorResponse(res: Response, fallbackCode: string): Promise<ApiError> {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function isNonnegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function badResponse() {
+  return new ApiError(502, "INVALID_RESPONSE", "Gateway returned an incomplete warehouse response.");
+}
+
+async function warehouseJson(path: string, init?: RequestInit): Promise<unknown> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const errorData = (await res.json()) as ApiErrorResponse;
-    return new ApiError(
-      res.status,
-      errorData.code || fallbackCode,
-      errorData.message || `Request failed with status ${res.status}`,
-      errorData.requestId
-    );
-  } catch {
-    return new ApiError(res.status, fallbackCode, `HTTP Error ${res.status}: ${res.statusText}`);
+    const response = await fetch(`${GATEWAY_URL}/api/v1${path}`, {
+      ...init,
+      headers: { Accept: "application/json", ...init?.headers },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    const payload: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      const details = isRecord(payload) ? payload : {};
+      throw new ApiError(
+        response.status,
+        isText(details.code) ? details.code : "GATEWAY_ERROR",
+        isText(details.message) ? details.message : `Gateway request failed (HTTP ${response.status}).`,
+        isText(details.requestId) ? details.requestId : undefined,
+      );
+    }
+    if (payload === null) throw badResponse();
+    return payload;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (controller.signal.aborted) {
+      throw new ApiError(504, "GATEWAY_TIMEOUT", "Gateway did not confirm the outcome before the deadline.");
+    }
+    throw new ApiError(503, "GATEWAY_UNREACHABLE", "The browser could not reach the gateway.");
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
-/**
- * Fetches the authoritative product catalog from GET /api/v1/products.
- */
+function rows<T>(value: unknown, isRow: (item: unknown) => item is T): T[] {
+  if (!Array.isArray(value) || !value.every(isRow)) throw badResponse();
+  return value;
+}
+
+function isProduct(row: unknown): row is Product {
+  return isRecord(row) && isText(row.sku) && isText(row.name)
+    && isNonnegativeInteger(row.onHand) && isNonnegativeInteger(row.reserved)
+    && isNonnegativeInteger(row.available) && row.onHand - row.reserved === row.available;
+}
+
+function isStockRequest(row: unknown): row is StockRequest {
+  return isRecord(row) && isText(row.requestId) && isText(row.sku)
+    && isNonnegativeInteger(row.quantity) && row.quantity > 0
+    && (row.status === "ACCEPTED" || row.status === "REJECTED" || row.status === "PICKED" || row.status === "DISPATCHED")
+    && (row.createdAt === undefined || isText(row.createdAt));
+}
+
+function isMovement(row: unknown): row is StockMovement {
+  return isRecord(row) && isNonnegativeInteger(row.id) && isText(row.stockRequestId)
+    && isText(row.sku) && isText(row.reason) && isText(row.occurredAt)
+    && typeof row.quantityDelta === "number" && Number.isSafeInteger(row.quantityDelta);
+}
+
 export async function fetchProducts(): Promise<Product[]> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-  try {
-    const res = await fetch(`${GATEWAY_URL}/api/v1/products`, {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      throw await parseErrorResponse(res, "PRODUCTS_FETCH_FAILED");
-    }
-
-    return (await res.json()) as Product[];
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    throw new ApiError(503, "GATEWAY_UNREACHABLE", "Cannot reach API Gateway service");
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  return rows(await warehouseJson("/products"), isProduct);
 }
 
-/**
- * Submits a stock reservation request with a durable canonical UUID v4 idempotency key.
- */
-export async function createStockRequest(
-  sku: string,
-  quantity: number,
-  idempotencyKey: string
-): Promise<StockRequest> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-  try {
-    const res = await fetch(`${GATEWAY_URL}/api/v1/requests`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "Idempotency-Key": idempotencyKey,
-      },
-      body: JSON.stringify({ sku, quantity }),
-    });
-
-    if (!res.ok) {
-      throw await parseErrorResponse(res, "REQUEST_SUBMISSION_FAILED");
-    }
-
-    return (await res.json()) as StockRequest;
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    throw new ApiError(503, "GATEWAY_UNREACHABLE", "Cannot reach API Gateway service", idempotencyKey);
-  } finally {
-    clearTimeout(timeoutId);
+export async function createStockRequest(sku: string, quantity: number, idempotencyKey: string): Promise<StockRequest> {
+  const value = await warehouseJson("/requests", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify({ sku, quantity }),
+  });
+  if (!isStockRequest(value) || value.status !== "ACCEPTED" ||
+      value.requestId !== idempotencyKey || value.sku !== sku || value.quantity !== quantity) {
+    throw badResponse();
   }
+  return value;
 }
 
-/**
- * Fetches all stock requests with optional status filtering.
- */
 export async function fetchStockRequests(statusFilter?: string): Promise<StockRequest[]> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-  try {
-    const url = new URL(`${GATEWAY_URL}/api/v1/requests`);
-    if (statusFilter && statusFilter !== "ALL") {
-      url.searchParams.set("status", statusFilter);
-    }
-
-    const res = await fetch(url.toString(), {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      throw await parseErrorResponse(res, "REQUESTS_FETCH_FAILED");
-    }
-
-    return (await res.json()) as StockRequest[];
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    throw new ApiError(503, "GATEWAY_UNREACHABLE", "Cannot reach API Gateway service");
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const query = statusFilter && statusFilter !== "ALL" ? `?status=${encodeURIComponent(statusFilter)}` : "";
+  return rows(await warehouseJson(`/requests${query}`), isStockRequest);
 }
 
-/**
- * Marks an ACCEPTED request as PICKED.
- */
-export async function pickStockRequest(
-  stockRequestId: string
-): Promise<{ stockRequestId: string; status: string }> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-  try {
-    const res = await fetch(`${GATEWAY_URL}/api/v1/requests/${stockRequestId}/pick`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-    });
-
-    if (!res.ok) {
-      throw await parseErrorResponse(res, "PICK_FAILED");
-    }
-
-    return (await res.json()) as { stockRequestId: string; status: string };
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    throw new ApiError(503, "GATEWAY_UNREACHABLE", "Cannot reach API Gateway service");
-  } finally {
-    clearTimeout(timeoutId);
-  }
+async function transition(stockRequestId: string, action: "pick" | "dispatch", expected: "PICKED" | "DISPATCHED") {
+  const value = await warehouseJson(`/requests/${encodeURIComponent(stockRequestId)}/${action}`, { method: "POST" });
+  if (!isRecord(value) || value.stockRequestId !== stockRequestId || value.status !== expected) throw badResponse();
+  return { stockRequestId, status: expected };
 }
 
-/**
- * Marks a PICKED request as DISPATCHED.
- */
-export async function dispatchStockRequest(
-  stockRequestId: string
-): Promise<{ stockRequestId: string; status: string }> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-  try {
-    const res = await fetch(`${GATEWAY_URL}/api/v1/requests/${stockRequestId}/dispatch`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-    });
-
-    if (!res.ok) {
-      throw await parseErrorResponse(res, "DISPATCH_FAILED");
-    }
-
-    return (await res.json()) as { stockRequestId: string; status: string };
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    throw new ApiError(503, "GATEWAY_UNREACHABLE", "Cannot reach API Gateway service");
-  } finally {
-    clearTimeout(timeoutId);
-  }
+export function pickStockRequest(stockRequestId: string) {
+  return transition(stockRequestId, "pick", "PICKED");
 }
 
-/**
- * Fetches historical dispatch movements.
- */
+export function dispatchStockRequest(stockRequestId: string) {
+  return transition(stockRequestId, "dispatch", "DISPATCHED");
+}
+
 export async function fetchStockMovements(): Promise<StockMovement[]> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-  try {
-    const res = await fetch(`${GATEWAY_URL}/api/v1/movements`, {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      throw await parseErrorResponse(res, "MOVEMENTS_FETCH_FAILED");
-    }
-
-    return (await res.json()) as StockMovement[];
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    throw new ApiError(503, "GATEWAY_UNREACHABLE", "Cannot reach API Gateway service");
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  return rows(await warehouseJson("/movements"), isMovement);
 }
 
-/**
- * Advisory supplier stock inquiry via GET /api/v1/suppliers/availability?sku=...
- */
+const supplierErrorStatuses: Record<string, SupplierStatus> = {
+  NOT_FOUND: "UNKNOWN",
+  SKU_NOT_FOUND: "UNKNOWN",
+  SUPPLIER_TIMEOUT: "SUPPLIER_TIMEOUT",
+  SUPPLIER_UNAVAILABLE: "SUPPLIER_UNAVAILABLE",
+  SUPPLIER_UNKNOWN: "INVALID_SUPPLIER_RESPONSE",
+  WAREHOUSE_TIMEOUT: "WAREHOUSE_TIMEOUT",
+  WAREHOUSE_UNAVAILABLE: "WAREHOUSE_UNAVAILABLE",
+  VALIDATION_ERROR: "INVALID_REQUEST",
+  GATEWAY_UNREACHABLE: "GATEWAY_UNAVAILABLE",
+  GATEWAY_TIMEOUT: "GATEWAY_TIMEOUT",
+  INVALID_RESPONSE: "INVALID_SUPPLIER_RESPONSE",
+};
+
 export async function fetchSupplierAvailability(sku: string): Promise<SupplierAvailability> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
-
   try {
-    const url = new URL(`${GATEWAY_URL}/api/v1/suppliers/availability`);
-    url.searchParams.set("sku", sku);
-
-    const res = await fetch(url.toString(), {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const errorData = (await res.json().catch(() => ({}))) as ApiErrorResponse;
-      let status: SupplierStatus = "SUPPLIER_UNAVAILABLE";
-      let message = errorData.message;
-
-      if (res.status === 404 || errorData.code === "NOT_FOUND" || errorData.code === "SKU_NOT_FOUND") {
-        status = "UNKNOWN";
-        message = message || "SKU not found in supplier catalog";
-      } else if (errorData.code === "WAREHOUSE_UNAVAILABLE" || (res.status === 503 && message?.toLowerCase().includes("warehouse"))) {
-        status = "WAREHOUSE_UNAVAILABLE";
-        message = message || "The central warehouse command server is unreachable over Java TCP.";
-      } else if (res.status === 504 || errorData.code === "SUPPLIER_TIMEOUT" || errorData.code === "WAREHOUSE_TIMEOUT") {
-        status = "SUPPLIER_UNAVAILABLE";
-        message = "Supplier inquiry timed out. Try again.";
-      } else {
-        status = "SUPPLIER_UNAVAILABLE";
-        message = message || "Supplier service unavailable. Try again.";
-      }
-
-      return {
-        sku,
-        status,
-        message,
-      };
+    const value = await warehouseJson(`/suppliers/availability?sku=${encodeURIComponent(sku)}`);
+    if (!isRecord(value) || value.status !== "AVAILABLE" || value.sku !== sku ||
+        !isNonnegativeInteger(value.reportedQuantity) || !isText(value.supplier) ||
+        !isText(value.checkedAt) || !Number.isFinite(Date.parse(value.checkedAt)) || !isText(value.source)) {
+      throw badResponse();
     }
-
-    return (await res.json()) as SupplierAvailability;
-  } catch {
     return {
       sku,
-      status: "SUPPLIER_UNAVAILABLE",
-      message: "Supplier service unavailable. Try again.",
+      status: "AVAILABLE",
+      supplier: value.supplier,
+      source: value.source,
+      checkedAt: value.checkedAt,
+      reportedQuantity: value.reportedQuantity,
+      estimatedRestockDays: isNonnegativeInteger(value.estimatedRestockDays) ? value.estimatedRestockDays : undefined,
     };
-  } finally {
-    clearTimeout(timeoutId);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return {
+        sku,
+        status: supplierErrorStatuses[error.code] ?? "INQUIRY_FAILED",
+        message: error.message,
+      };
+    }
+    throw error;
   }
 }

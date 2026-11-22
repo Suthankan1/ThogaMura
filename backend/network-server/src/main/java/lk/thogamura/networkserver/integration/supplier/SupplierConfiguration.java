@@ -18,8 +18,13 @@ public class SupplierConfiguration {
             @Value("${thogamura.supplier.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${thogamura.supplier.read-timeout-ms:5000}") int readTimeoutMs,
             @Value("${thogamura.supplier.max-response-bytes:16384}") int maxResponseBytes,
-            @Value("${thogamura.supplier.allow-unapproved-urls:false}") boolean allowUnapprovedUrls) {
-        return new SupplierClientConfig(baseUrl, connectTimeoutMs, readTimeoutMs, maxResponseBytes, allowUnapprovedUrls);
+            @Value("${thogamura.supplier.approved-origins:}") String approvedOrigins) {
+        var origins = java.util.Arrays.stream(approvedOrigins.split(","))
+                .map(String::trim).filter(value -> !value.isBlank())
+                .collect(java.util.stream.Collectors.toSet());
+        var config = new SupplierClientConfig(baseUrl, connectTimeoutMs, readTimeoutMs, maxResponseBytes, origins);
+        config.validate();
+        return config;
     }
 
     @Bean

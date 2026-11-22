@@ -70,10 +70,10 @@ public class DefaultSupplierHttpClient implements SupplierHttpClient {
             config.validate();
         } catch (SecurityException e) {
             logger.error("SSRF violation blocked for supplier base URL '{}': {}", config.getBaseUrl(), e.getMessage());
-            return SupplierStockResponse.unavailable(trimmedSku, ProtocolInfo.ERROR_INTERNAL, e.getMessage());
+            return SupplierStockResponse.unavailable(trimmedSku, ProtocolInfo.ERROR_INTERNAL, "Supplier connector configuration is invalid");
         } catch (IllegalArgumentException e) {
             logger.error("Invalid supplier client configuration: {}", e.getMessage());
-            return SupplierStockResponse.unavailable(trimmedSku, ProtocolInfo.ERROR_INTERNAL, e.getMessage());
+            return SupplierStockResponse.unavailable(trimmedSku, ProtocolInfo.ERROR_INTERNAL, "Supplier connector configuration is invalid");
         }
 
         HttpURLConnection conn = null;
