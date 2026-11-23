@@ -14,7 +14,6 @@ export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProp
     upstreamNioStatus,
     isLive,
     isRefreshing,
-    lastVersion,
     warningMessage,
   } = useStockEvents();
 
@@ -30,7 +29,7 @@ export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProp
     dotStyle = "bg-teal-600 animate-pulse";
     compactBg = "bg-teal-50 border-teal-200";
   } else if (isLive) {
-    statusText = lastVersion ? `Live updates active (v${lastVersion})` : "Live updates active";
+    statusText = "Live updates active";
     statusBadgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100";
     dotStyle = "bg-emerald-500";
     compactBg = "bg-emerald-50 border-emerald-200";
@@ -46,17 +45,17 @@ export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProp
     compactBg = "bg-rose-50 border-rose-200";
   }
 
-  // Mobile compact presentation: accessible 36x36px icon indicator linking to /activity
+  // Keep the connection state readable on narrow screens.
   if (compact) {
     return (
       <Link
         href="/activity"
         aria-label={`System status: ${statusText}. View diagnostics.`}
         title={`${statusText}. View diagnostics.`}
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border ${compactBg} transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600`}
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold text-slate-800 ${compactBg} transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600`}
       >
         <span className={`inline-block h-2.5 w-2.5 rounded-full ${dotStyle}`} aria-hidden="true" />
-        <span className="sr-only">{statusText}</span>
+        <span>{isRefreshing ? "Syncing" : isLive ? "Live" : sseStatus === "CONNECTING" ? "Connecting" : "Paused"}</span>
       </Link>
     );
   }
@@ -71,7 +70,7 @@ export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProp
       <Link
         href="/activity"
         aria-label={`System diagnostics: ${statusText}`}
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600 ${statusBadgeStyle}`}
+        className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600 ${statusBadgeStyle}`}
         title={warningMessage || `SSE: ${sseStatus}, Warehouse NIO: ${upstreamNioStatus}`}
       >
         <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotStyle}`} aria-hidden="true" />

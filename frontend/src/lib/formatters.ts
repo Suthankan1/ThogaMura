@@ -68,3 +68,25 @@ export function formatUnits(count: number | string | null | undefined): string {
   return `${safeNum} ${safeNum === 1 ? "unit" : "units"}`;
 }
 
+
+export function formatAge(timestamp?: string) {
+  const elapsed = timestamp ? Date.now() - Date.parse(timestamp) : NaN;
+  if (!Number.isFinite(elapsed)) return "time unavailable";
+  const minutes = Math.max(0, Math.floor(elapsed / 60_000));
+  if (minutes < 1) return "under a minute";
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days) return `${days}d ${hours % 24}h`;
+  return hours ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+}
+
+export function localDateBounds(from: string, through: string) {
+  function boundary(value: string, nextDay: boolean) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+    const date = new Date(`${value}T00:00:00`);
+    if (!Number.isFinite(date.getTime())) return "";
+    if (nextDay) date.setDate(date.getDate() + 1);
+    return date.toISOString();
+  }
+  return { from: boundary(from, false), before: boundary(through, true) };
+}

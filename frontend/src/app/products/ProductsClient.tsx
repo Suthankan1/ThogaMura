@@ -3,16 +3,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { fetchProducts } from "@/lib/api/inventory";
-import { formatUnits } from "@/lib/formatters";
+import { listPage, ListPages, updateListParams } from "@/components/ListPages";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
-import { Freshness, primaryAction, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
-
-const filters = [
-  { key: "", label: "All stock" },
-  { key: "in_stock", label: "4+ available" },
-  { key: "low_stock", label: "Low stock" },
-  { key: "out_of_stock", label: "Out of stock" },
-];
+import { Availability, Freshness, primaryAction, secondaryAction, stockFilters as filters, surface, WorkspaceHeading } from "@/components/Workspace";
 
 export function ProductsClient() {
   const params = useSearchParams();
@@ -27,6 +20,7 @@ export function ProductsClient() {
     if (filter === "out_of_stock") return item.available === 0;
     return true;
   });
+  const page = listPage(rows, params.get("page"));
   const returnTo = `/products${params.size > 0 ? `?${params}` : ""}`;
 
   return (
@@ -39,37 +33,36 @@ export function ProductsClient() {
             <div><h2 id="catalog-title" className="font-semibold">Product catalog</h2><Freshness {...inventory} /></div>
             <button type="button" className={secondaryAction} onClick={() => void inventory.refresh()}>Refresh</button>
           </div>
-          <form action="/products" className="flex flex-wrap items-end gap-3">
+          <form className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_auto]" onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            updateListParams({ q: String(data.get("q")).trim(), filter: String(data.get("filter")), page: null });
+          }}>
             <label className="min-w-0 flex-1 text-sm font-semibold">Name or SKU
-              <input type="search" name="q" key={search} defaultValue={search} className="mt-1 block min-h-11 w-full min-w-44 rounded-lg border border-slate-300 px-3 text-sm font-normal" />
+              <input type="search" name="q" key={search} defaultValue={search} className="mt-1 block min-h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-sm font-normal" />
             </label>
             <label className="text-sm font-semibold">Availability
-              <select name="filter" key={filter} defaultValue={filter} className="mt-1 block min-h-11 rounded-lg border border-slate-300 px-3 text-sm font-normal">
+              <select name="filter" key={filter} defaultValue={filter} className="mt-1 block min-h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-sm font-normal">
                 {filters.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}</option>)}
               </select>
             </label>
-            <button type="submit" className={secondaryAction}>Apply filters</button>
+            <button type="submit" className={`${secondaryAction} justify-self-start`}>Apply filters</button>
           </form>
           {inventory.error && <p role="alert" className="text-sm text-rose-900">{inventory.error}</p>}
           {inventory.data && <p className="text-xs text-slate-600">{rows.length} of {inventory.data.length} loaded items</p>}
         </header>
         {rows.length ? (
           <ul className="divide-y divide-slate-100">
-            {rows.map((item) => (
+            {page.items.map((item) => (
               <li key={item.sku} className="grid items-center gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_auto]">
                 <div>
                   <p className="break-words font-semibold text-slate-950">{item.name}</p>
                   <p className="mt-1 break-all font-mono text-xs text-slate-600">{item.sku}</p>
                 </div>
-                <dl className="grid max-w-xs grid-cols-3 gap-2 text-sm tabular-nums">
-                  <div><dt className="text-xs text-slate-600">Available</dt>
-                    <dd className={`font-semibold ${item.available === 0 ? "text-rose-900" : item.available <= 3 ? "text-amber-900" : "text-teal-900"}`}>
-                      {formatUnits(item.available)}
-                    </dd>
-                  </div>
-                  <div><dt className="text-xs text-slate-600">On hand</dt><dd>{item.onHand}</dd></div>
-                  <div><dt className="text-xs text-slate-600">Reserved</dt><dd>{item.reserved}</dd></div>
-                </dl>
+                <div className="space-y-2 text-sm">
+                  <Availability units={item.available} />
+                  <p className="text-slate-700">{item.onHand} on hand · {item.reserved} reserved</p>
+                </div>
                 {item.available === 0 ? (
                   <Link className={secondaryAction} href={`/suppliers?sku=${encodeURIComponent(item.sku)}&returnTo=${encodeURIComponent(returnTo)}`}>Check supplier</Link>
                 ) : (
@@ -79,6 +72,7 @@ export function ProductsClient() {
             ))}
           </ul>
         ) : inventory.data && <p className="p-5 text-sm text-slate-600">{inventory.data.length ? "No loaded items match these filters." : "The warehouse catalog is empty."}</p>}
+        <ListPages {...page} onChange={(next) => updateListParams({ page: String(next) })} />
         {inventory.data?.length === 500 && <p className="border-t border-slate-200 p-4 text-sm text-slate-600">Filters apply to the 500 items loaded from the warehouse.</p>}
       </section>
     </div>

@@ -117,7 +117,7 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
             SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at, branch_id
             FROM stock_requests
             WHERE branch_id IS NULL
-            ORDER BY created_at ASC, request_id ASC
+            ORDER BY created_at DESC, request_id DESC
             LIMIT ?
             """;
         return jdbcTemplate.query(sql, ROW_MAPPER, MAX_QUERY_LIMIT);
@@ -130,7 +130,7 @@ public class JdbcStockRequestRepository implements StockRequestRepository {
             SELECT request_id, request_fingerprint, sku, quantity, status, decision_reason, created_at, updated_at, branch_id
             FROM stock_requests
             WHERE status = ? AND branch_id IS NULL
-            ORDER BY created_at ASC, request_id ASC
+            ORDER BY created_at DESC, request_id DESC
             LIMIT ?
             """;
         return jdbcTemplate.query(sql, ROW_MAPPER, status, MAX_QUERY_LIMIT);

@@ -1,11 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { workspaceCall, workspacePage, WORKSPACE_ENABLED, WorkspaceError } from "@/lib/api/workspace";
+import type { Product } from "@/lib/types/inventory";
 import { fetchProducts } from "@/lib/api/inventory";
 import { useStockEvents } from "@/lib/events/useStockEvents";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
 import { formatFullDateTime } from "@/lib/formatters";
 import { Freshness, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
+
+async function readInventory() {
+  if (!WORKSPACE_ENABLED) return { signIn: false, items: await fetchProducts() };
+  try {
+    const page = await workspacePage<Product>(workspaceCall, "/products?limit=1");
+    return { signIn: false, items: page.items };
+  } catch (error) {
+    if (error instanceof WorkspaceError && error.status === 401) return { signIn: true };
+    throw error;
+  }
+}
 
 const demonstrations = [
   ["M1 · TCP commands", "Send a framed request to the warehouse JVM. Replay a lost result using the original request reference and verify stock was reserved once."],
@@ -17,7 +30,7 @@ const demonstrations = [
 
 export function ActivityStatusClient() {
   const { sseStatus, upstreamNioStatus, networkDetails, eventsLog, warningMessage } = useStockEvents();
-  const catalog = useWarehouseQuery(fetchProducts);
+  const catalog = useWarehouseQuery(readInventory);
   const feed = networkDetails?.nioFeed;
   const tls = networkDetails?.tlsCommand?.status;
   const transport = tls === "OPERATIONAL" ? "Verified TLS response"
@@ -29,7 +42,7 @@ export function ActivityStatusClient() {
     { name: "Warehouse NIO feed", value: upstreamNioStatus === "CONNECTED"
       ? "Connected · version hints only" : feed?.enabled === false ? "Disabled" : upstreamNioStatus.toLowerCase() },
     { name: "Warehouse command transport", value: transport },
-    { name: "Warehouse inventory query", value: catalog.error ? "Read failed" : catalog.latencyMs !== null ? `Catalog read confirmed · ${catalog.latencyMs} ms round trip` : "Awaiting first read" },
+    { name: "Warehouse inventory query", value: catalog.error ? "Read failed" : catalog.data?.signIn ? "Sign in to check inventory" : catalog.latencyMs !== null ? `Catalog read confirmed · ${catalog.latencyMs} ms round trip` : "Awaiting first read" },
   ];
 
   return (
@@ -44,15 +57,17 @@ export function ActivityStatusClient() {
         <dl className="divide-y divide-slate-100">
           {rows.map(({ name, value }) => (
             <div key={name} className="grid gap-1 p-4 text-sm sm:grid-cols-[1fr_1fr] sm:p-5">
-              <dt className="font-semibold">{name}</dt><dd className="text-slate-700 first-letter:uppercase">{value}</dd>
+              <dt className="font-semibold">{name}</dt><dd className="text-slate-700 first-letter:uppercase">{value}
+                {name === "Warehouse inventory query" && catalog.data?.signIn && <Link href="/workspace" className={`${secondaryAction} ml-2`}>Sign in</Link>}
+              </dd>
             </div>
           ))}
           <div className="grid gap-1 p-4 text-sm sm:grid-cols-[1fr_1fr] sm:p-5">
-            <dt className="font-semibold">Inventory check time</dt><dd><Freshness {...catalog} /></dd>
+            <dt className="font-semibold">Inventory check time</dt><dd>{catalog.data?.signIn ? "Sign-in required" : <Freshness {...catalog} />}</dd>
           </div>
           <div className="grid gap-1 p-4 text-sm sm:grid-cols-[1fr_1fr] sm:p-5">
             <dt className="font-semibold">Supplier service</dt>
-            <dd><Link href="/suppliers" className="font-semibold text-teal-800 underline">Run a live inquiry</Link></dd>
+            <dd><Link href={WORKSPACE_ENABLED ? "/workspace?section=suppliers" : "/suppliers"} className={secondaryAction}>Run a live inquiry</Link></dd>
           </div>
         </dl>
       </section>

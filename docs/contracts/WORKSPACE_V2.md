@@ -23,19 +23,19 @@ The warehouse assigns the branch from the signed assertion. Callers receive 404 
 
 | HTTP under `/api/v2` | Warehouse command | Inputs |
 | --- | --- | --- |
-| `GET /products` | `GET_PRODUCTS` | Optional SKU prefix `search` |
-| `GET /requests` | `GET_REQUESTS` | Optional exact `status` |
+| `GET /products` | `GET_PRODUCTS` | Optional case-insensitive `search` in SKU or product name, exact `sku`, and `availability` (`in_stock` for 4+, `low_stock` for 1–3, or `out_of_stock` for zero) |
+| `GET /requests` | `GET_REQUESTS` | Optional exact `status`, case-insensitive `search` in SKU, product name, reference or branch, and creation-time `from` / `before` |
 | `GET /requests/{id}` | `GET_REQUEST` | `stockRequestId` from path |
 | `POST /requests` | `REQUEST_STOCK` | `sku`, positive integer `quantity` |
 | `POST /requests/{id}/cancel` | `CANCEL_REQUEST` | `stockRequestId` from path |
 | `POST /requests/{id}/pick` | `MARK_PICKED` | `stockRequestId` from path |
 | `POST /requests/{id}/dispatch` | `MARK_DISPATCHED` | `stockRequestId` from path |
 | `POST /receiving` | `RECEIVE_STOCK` | Existing `sku`, positive integer `quantity`, nonblank `note` up to 160 characters |
-| `GET /movements` | `GET_MOVEMENTS` | Supervisor ledger |
+| `GET /movements` | `GET_MOVEMENTS` | Supervisor ledger with optional `reason` (`RECEIVE` or `DISPATCH`), case-insensitive `search` in SKU, ledger or command reference, branch, actor or note, and movement-time `from` / `before` |
 | `GET /suppliers/availability?sku=…` | `GET_SUPPLIER_STOCK` | Advisory lookup by `sku` |
 | `GET /session`, `POST /session`, `DELETE /session` | Gateway-local session | Sign-in JSON contains `name` and `password` |
 
-List responses contain `items` and `nextCursor`. Pass the cursor unchanged to the same list and filter. Limits range from 1 to 24 and default to 16. The sort keys are SKU ascending, request creation timestamp and UUID descending, and movement ID descending. Each cursor marks an exclusive boundary. A page traversal reads live records, so status changes can affect a filtered traversal between requests. Refresh the first page to see new records ahead of the current cursor. Product names and decision reasons are bounded display fields.
+List responses contain `items` and `nextCursor`. Pass the cursor unchanged to the same list and filter. Limits range from 1 to 24 and default to 16. The sort keys are SKU ascending, request creation timestamp and UUID descending, and movement ID descending. Each cursor marks an exclusive boundary. A page traversal reads live records, so status changes can affect a filtered traversal between requests. Refresh the first page to see new records ahead of the current cursor. Product names and decision reasons are bounded display fields. Request rows and exact details include `productName` and `updatedAt`. Movement rows include `stockRequestId` for dispatch or `receivingCommandId` for receiving. Search accepts up to 100 characters and treats input as literal text. Date filters use ISO 8601 timestamps with offsets. The start is inclusive and the end is exclusive. The UI converts its date inputs from the browser’s local timezone. Cursors issued before this filter update are invalid. Restart at the first page if a saved cursor is rejected.
 
 A mutating request requires an `Idempotency-Key` header with a lowercase UUID v4. Repeat the original request with the same key until the outcome can be confirmed. Successful stock and receiving writes return 201. Successful transitions return 200. Domain failures use 400, 401, 403, 404 or 409. Dependency failures can return 502, 503 or 504. The warehouse uses the normal versioned `RESULT` envelope, including `FORBIDDEN` for invalid assertions or insufficient privileges.
 

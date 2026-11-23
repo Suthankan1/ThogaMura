@@ -63,12 +63,20 @@ final class WorkspaceController {
         return session == null ? signInRequired() : ResponseEntity.ok(session.publicDetails());
     }
 
+    record SignInBody(JsonNode name, JsonNode password) {
+        @Override
+        public String toString() {
+            return "SignInBody[credentials redacted]";
+        }
+    }
+
     @PostMapping(value = "/session", consumes = MediaType.APPLICATION_JSON_VALUE)
-    ResponseEntity<?> signIn(@RequestBody JsonNode body, HttpServletRequest request) {
+    ResponseEntity<?> signIn(@RequestBody SignInBody body, HttpServletRequest request) {
         if (!"browser".equals(request.getHeader("X-Workspace-Client"))) {
             return error(HttpStatus.FORBIDDEN, WorkspaceAccess.ERROR_FORBIDDEN, "Workspace sign-in must use the application");
         }
-        Actor actor = accounts.authenticate(body.path("name").textValue(), body.path("password").textValue());
+        Actor actor = accounts.authenticate(body.name() == null ? null : body.name().textValue(),
+                body.password() == null ? null : body.password().textValue());
         if (actor == null) {
             return error(HttpStatus.UNAUTHORIZED, "SIGN_IN_FAILED", "Sign-in failed. Check the credentials or try again in a minute.");
         }
@@ -91,16 +99,19 @@ final class WorkspaceController {
 
     @GetMapping("/products")
     ResponseEntity<?> products(HttpServletRequest request, @RequestParam(defaultValue = "16") int limit,
-                               @RequestParam(defaultValue = "") String cursor, @RequestParam(defaultValue = "") String search)
+                               @RequestParam(defaultValue = "") String cursor, @RequestParam(defaultValue = "") String search,
+                               @RequestParam(defaultValue = "") String availability, @RequestParam(defaultValue = "") String sku)
             throws CommandTransportException {
-        return read(request, ProtocolInfo.COMMAND_GET_PRODUCTS, Map.of("limit", limit, "cursor", cursor, "search", search));
+        return read(request, ProtocolInfo.COMMAND_GET_PRODUCTS, Map.of("limit", limit, "cursor", cursor, "search", search, "availability", availability, "sku", sku));
     }
 
     @GetMapping("/requests")
     ResponseEntity<?> requests(HttpServletRequest request, @RequestParam(defaultValue = "16") int limit,
-                               @RequestParam(defaultValue = "") String cursor, @RequestParam(defaultValue = "") String status)
+                               @RequestParam(defaultValue = "") String cursor, @RequestParam(defaultValue = "") String status,
+                               @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "") String from,
+                               @RequestParam(defaultValue = "") String before)
             throws CommandTransportException {
-        return read(request, ProtocolInfo.COMMAND_GET_REQUESTS, Map.of("limit", limit, "cursor", cursor, "status", status));
+        return read(request, ProtocolInfo.COMMAND_GET_REQUESTS, Map.of("limit", limit, "cursor", cursor, "status", status, "search", search, "from", from, "before", before));
     }
 
     @GetMapping("/requests/{id}")
@@ -110,8 +121,11 @@ final class WorkspaceController {
 
     @GetMapping("/movements")
     ResponseEntity<?> movements(HttpServletRequest request, @RequestParam(defaultValue = "16") int limit,
-                                @RequestParam(defaultValue = "") String cursor) throws CommandTransportException {
-        return read(request, ProtocolInfo.COMMAND_GET_MOVEMENTS, Map.of("limit", limit, "cursor", cursor));
+                                @RequestParam(defaultValue = "") String cursor, @RequestParam(defaultValue = "") String search,
+                                @RequestParam(defaultValue = "") String reason, @RequestParam(defaultValue = "") String from,
+                                @RequestParam(defaultValue = "") String before) throws CommandTransportException {
+        return read(request, ProtocolInfo.COMMAND_GET_MOVEMENTS,
+                Map.of("limit", limit, "cursor", cursor, "search", search, "reason", reason, "from", from, "before", before));
     }
 
     @GetMapping("/suppliers/availability")
