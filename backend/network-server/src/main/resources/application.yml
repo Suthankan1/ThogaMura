@@ -11,6 +11,11 @@ spring:
     enabled: true
 
 thogamura:
+  followup:
+    owners: ${THOGAMURA_FOLLOWUP_OWNERS:}
+  access:
+    enabled: ${THOGAMURA_ACCESS_ENABLED:false}
+    signing-key: ${THOGAMURA_ACCESS_SIGNING_KEY:}
   command:
     server:
       # Disabled by default in tests; enable explicitly when starting warehouse server
@@ -49,4 +54,4 @@ thogamura:
     connect-timeout-ms: ${THOGAMURA_SUPPLIER_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${THOGAMURA_SUPPLIER_READ_TIMEOUT_MS:5000}
     max-response-bytes: ${THOGAMURA_SUPPLIER_MAX_RESPONSE_BYTES:16384}
-    allow-unapproved-urls: ${THOGAMURA_SUPPLIER_ALLOW_UNAPPROVED_URLS:false}
+    approved-origins: ${THOGAMURA_SUPPLIER_APPROVED_ORIGINS:}

@@ -1,221 +1,122 @@
+"use client";
+
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import { fetchProducts, fetchStockRequests } from "@/lib/api/inventory";
+import { formatAge, formatFullDateTime, formatUnits } from "@/lib/formatters";
+import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
+import { useStockEvents } from "@/lib/events/useStockEvents";
+import { Freshness, primaryAction, secondaryAction, RequestBadge, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
 
-const technicalConcepts = [
-  {
-    title: "Java TCP Sockets & Framing",
-    member: "Member 1 (@sankharavindu)",
-    concept: "java.net.Socket, newline framing, frame deadline & safe same-ID retries",
-    href: "/requests/new",
-    actionLabel: "Test TCP Command Path",
-  },
-  {
-    title: "Java URI / HttpURLConnection",
-    member: "Member 2 (@sandunikarunarathna)",
-    concept: "Outbound supplier HTTP lookup, timeouts, SSRF allowlisting & advisory states",
-    href: "/suppliers",
-    actionLabel: "Query Supplier",
-  },
-  {
-    title: "Java NIO Selectors & Channels",
-    member: "Member 3 (@Suthankan1)",
-    concept: "Version-only invalidation broadcast on private demo LAN & SSE browser bridge",
-    href: "/activity",
-    actionLabel: "View Live Signals",
-  },
-  {
-    title: "PostgreSQL Transactions & Concurrency",
-    member: "Member 4 (@Yasiru-ruwantha)",
-    concept: "Atomic stock reservation, durable command receipts & single-movement dispatch",
-    href: "/warehouse",
-    actionLabel: "Inspect Queue",
-  },
-  {
-    title: "JSSE TLS & Identity Protection",
-    member: "Member 5 (@vibhathkalsara99)",
-    concept: "Server certificate verification, SAN hostname validation & fail-closed security",
-    href: "/activity",
-    actionLabel: "Inspect TLS Status",
-  },
-];
-
-const quickActions = [
-  {
-    title: "Product Catalog",
-    desc: "Authoritative stock balances (on-hand, reserved, available) stored in PostgreSQL with real-time SSE cache invalidation.",
-    href: "/products",
-    badge: "Inventory Core",
-    cta: "Browse Products →",
-  },
-  {
-    title: "New Stock Request",
-    desc: "Submit an atomic reservation request with canonical UUID v4 idempotency keys and safe retry preservation.",
-    href: "/requests/new",
-    badge: "Branch Orders",
-    cta: "Create Request →",
-  },
-  {
-    title: "Warehouse Fulfillment",
-    desc: "Fulfillment queue executing strict ACCEPTED → PICKED → DISPATCHED transitions with immutable movement audits.",
-    href: "/warehouse",
-    badge: "Picker Queue",
-    cta: "Open Queue →",
-  },
-  {
-    title: "Supplier Availability",
-    desc: "Advisory stock lookup via outbound Java URL networking when warehouse inventory is depleted. Strictly read-only.",
-    href: "/suppliers",
-    badge: "External Advisory",
-    cta: "Inquire Supplier →",
-  },
-];
+const readPicks = () => fetchStockRequests("ACCEPTED");
+const readDispatches = () => fetchStockRequests("PICKED");
 
 export default function Home() {
+  const products = useWarehouseQuery(fetchProducts);
+  const picks = useWarehouseQuery(readPicks);
+  const dispatches = useWarehouseQuery(readDispatches);
+  const { warningMessage } = useStockEvents();
+  const shortages = products.data?.filter((item) => item.available === 0);
+  const lowStock = products.data?.filter((item) => item.available > 0 && item.available <= 3);
+  const pending = [
+    ...picks.data?.map((item) => ({ item, stage: "pick" })) ?? [],
+    ...dispatches.data?.map((item) => ({ item, stage: "dispatch" })) ?? [],
+  ].sort((a, b) => (a.item.createdAt ?? "").localeCompare(b.item.createdAt ?? "")).slice(0, 6);
+
   return (
-    <div className="space-y-10">
-      {/* Hero Section */}
-      <section className="rounded-3xl bg-slate-900 px-7 py-12 text-white shadow-xl sm:px-12">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="rounded-full bg-teal-400/10 border border-teal-400/30 px-3.5 py-1 text-xs font-semibold tracking-wider uppercase text-teal-300">
-            Java Network Programming · Assignment 02
-          </span>
-          <span className="rounded-full bg-emerald-400/10 border border-emerald-400/30 px-3.5 py-1 text-xs font-semibold text-emerald-300">
-            ✓ Integrated Multi-Module Architecture
-          </span>
-        </div>
-        <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
-          Branch-to-Warehouse Stock Coordination
-        </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
-          A resilient, multi-process distributed stock management system. Commands travel
-          over real Java TCP/TLS sockets to PostgreSQL 17 transactions, while live change invalidation
-          hints stream via Java NIO selectors and Server-Sent Events.
+    <div className="space-y-7">
+      <div className="overview-heading"><WorkspaceHeading title="Warehouse overview" description={["Central warehouse", picks.data && `${picks.data.length} request${picks.data.length === 1 ? "" : "s"} to pick`, shortages && `${shortages.length} item${shortages.length === 1 ? "" : "s"} out of stock`].filter(Boolean).join(" · ")}
+        action={<Link href="/requests/new?returnTo=/" className={primaryAction}>New request</Link>} /></div>
+
+      {warningMessage && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          {warningMessage} <Link className="font-semibold underline" href="/activity">View diagnostics</Link>
         </p>
-        <div className="mt-8 flex flex-wrap gap-4">
-          <Link
-            href="/products"
-            className="inline-flex items-center rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-500 focus:outline-hidden focus:ring-2 focus:ring-teal-400"
-          >
-            Explore Product Inventory
-          </Link>
-          <Link
-            href="/requests/new"
-            className="inline-flex items-center rounded-xl border border-slate-700 bg-slate-800/80 px-5 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white focus:outline-hidden focus:ring-2 focus:ring-slate-500"
-          >
-            Submit Stock Request
-          </Link>
-          <Link
-            href="/activity"
-            className="inline-flex items-center rounded-xl border border-slate-700 bg-slate-800/80 px-5 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white focus:outline-hidden focus:ring-2 focus:ring-slate-500"
-          >
-            Live Diagnostics →
-          </Link>
-        </div>
-      </section>
+      )}
 
-      {/* Primary Workflow Actions */}
-      <section aria-labelledby="quick-actions-title">
-        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="quick-actions-title" className="text-2xl font-bold text-slate-900">
-            Core Operations &amp; Workflows
-          </h2>
-          <span className="text-xs font-medium text-slate-500">
-            Connected via Spring Boot API Gateway
-          </span>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2">
-          {quickActions.map((qa) => (
-            <div
-              key={qa.title}
-              className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition-shadow hover:shadow-md"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
-                    {qa.badge}
-                  </span>
-                </div>
-                <h3 className="mt-3 text-xl font-bold text-slate-900">{qa.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{qa.desc}</p>
-              </div>
-              <div className="mt-6 border-t border-slate-100 pt-4">
-                <Link
-                  href={qa.href}
-                  className="inline-flex items-center text-sm font-semibold text-teal-700 hover:text-teal-800"
-                >
-                  {qa.cta}
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <nav aria-label="Warehouse totals" className="overview-totals">
+        {[
+          { title: "To pick", rows: picks.data, href: "/warehouse?stage=pick" },
+          { title: "Ready to dispatch", rows: dispatches.data, href: "/warehouse?stage=dispatch" },
+          { title: "Out of stock", rows: shortages, href: "/products?filter=out_of_stock" },
+          { title: "Low stock", rows: lowStock, href: "/products?filter=low_stock" },
+        ].map(({ title, rows, href }) => (
+          <Link key={title} href={href} className="metric-card work-surface summary-tile">
+            <span className="flex items-start justify-between gap-2 text-sm font-semibold text-slate-700">{title}
+              <ArrowUpRight size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-teal-800" />
+            </span>
+            <strong className="text-3xl leading-none font-semibold tabular-nums">{rows?.length ?? "—"}</strong>
+          </Link>
+        ))}
+      </nav>
 
-      {/* Five Lecture Concepts */}
-      <section aria-labelledby="technical-concepts-title">
-        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
-          <div>
-            <h2 id="technical-concepts-title" className="text-2xl font-bold text-slate-900">
-              Five Individually Owned Technical Domains
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Each student owns a discrete, verifiable Java networking or concurrency concept.
+      <div className="space-y-2 min-[58rem]:hidden">
+        <p className={surface + " p-3"}>{products.error ? "Inventory unavailable" : shortages?.[0] ?
+          <Link className={textAction} href={`/suppliers?returnTo=/&sku=${encodeURIComponent(shortages[0].sku)}`}>{shortages[0].name} · Out of stock · Check supplier</Link> :
+          products.data ? "No stockouts in loaded inventory" : "Checking inventory…"}</p>
+        <p className={surface + " p-3"}>{picks.error || dispatches.error ? "Queue unavailable" : pending[0] ?
+          <Link className={textAction} href={`/warehouse?stage=${pending[0].stage}&requestId=${pending[0].item.requestId}`}>{products.data?.find(p => p.sku === pending[0].item.sku)?.name ?? pending[0].item.sku} · Requested {formatAge(pending[0].item.createdAt)} ago</Link> :
+          picks.data && dispatches.data ? "No waiting requests in loaded queues" : "Checking queue…"}</p>
+      </div>
+      <div className="grid items-start gap-5 min-[58rem]:grid-cols-2 xl:grid-cols-[5fr_7fr]">
+        <section className={surface} aria-labelledby="pending-heading">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+            <h2 id="pending-heading" className="text-lg font-semibold">Fulfillment queue</h2>
+            <Link href="/warehouse" className={textAction}>View queue</Link>
+          </header>
+          {pending.length > 0 ? (
+            <ul className="divide-y divide-slate-100">
+              {pending.map(({ item, stage }) => (
+                <li key={item.requestId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                  <div>
+                    <Link className={textAction} aria-label={`Open ${stage === "pick" ? "picking" : "dispatch"} request for ${products.data?.find((product) => product.sku === item.sku)?.name ?? item.sku}`}
+                      href={`/warehouse?stage=${stage}&requestId=${encodeURIComponent(item.requestId)}`}>
+                      {products.data?.find((product) => product.sku === item.sku)?.name ?? item.sku}
+                    </Link>
+                    <p className="mt-1 text-xs text-slate-600">{formatUnits(item.quantity)} </p>
+                  </div>
+                  <div className="space-y-2"><RequestBadge status={item.status} /><p title={formatFullDateTime(item.createdAt)} className="text-sm text-slate-700">Requested {formatAge(item.createdAt)} ago</p></div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="p-5 text-sm text-slate-600">
+              {picks.error || dispatches.error ? "Some fulfillment work could not be checked."
+                : picks.loading || dispatches.loading ? "Checking warehouse queue…" : "No pending items in the loaded queues."}
             </p>
-          </div>
-          <Link
-            href="/activity"
-            className="text-xs font-semibold text-teal-700 hover:text-teal-800"
-          >
-            View Real-Time Pipeline Diagnostics →
-          </Link>
-        </div>
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {technicalConcepts.map((item) => (
-            <li
-              key={item.title}
-              className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-xs"
-            >
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-                  {item.member}
-                </p>
-                <h3 className="mt-2 text-lg font-bold text-slate-900">{item.title}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.concept}</p>
-              </div>
-              <div className="mt-5 border-t border-slate-100 pt-3">
-                <Link
-                  href={item.href}
-                  className="text-xs font-semibold text-slate-700 hover:text-teal-700"
-                >
-                  {item.actionLabel} →
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+          )}
+        </section>
 
-      {/* Architectural Guarantee Notice */}
-      <section className="rounded-2xl border border-teal-200 bg-teal-50 p-7 text-slate-800">
-        <h2 className="text-lg font-bold text-teal-950">Non-Negotiable Architecture Invariants</h2>
-        <ul className="mt-3 grid gap-2.5 text-xs text-slate-700 sm:grid-cols-2">
-          <li className="flex items-start gap-2">
-            <span className="font-bold text-teal-800">1.</span>
-            <span>PostgreSQL 17 is the sole authoritative inventory source; no browser/gateway direct DB access.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-bold text-teal-800">2.</span>
-            <span>Business stock commands cross real Java TCP/TLS sockets in a separate JVM process.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-bold text-teal-800">3.</span>
-            <span>Java NIO on port 7444 is restricted to private demo LAN and carries version-only invalidation signals.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="font-bold text-teal-800">4.</span>
-            <span>Supplier stock availability is advisory, read-only, and queried via independent mock HTTP service.</span>
-          </li>
-        </ul>
-      </section>
+        <section className={surface + " stock-exceptions"} aria-labelledby="shortages-heading">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+            <h2 id="shortages-heading" className="text-lg font-semibold">Stock exceptions</h2>
+            <Link href="/products" className={textAction}>View inventory</Link>
+          </header>
+          {(shortages?.length || lowStock?.length) ? (
+            <ul className="divide-y divide-slate-100">
+              {[...(shortages ?? []).slice(0, 3), ...[...(lowStock ?? [])].sort((a, b) => a.available - b.available).slice(0, 3)].map((item) => (
+                <li key={item.sku} className="exception-row">
+                  <div className="exception-product">
+                    <p className="text-sm font-semibold">{item.name}</p>
+                    <p className="mt-1 font-mono text-xs text-slate-600">{item.sku}</p>
+                  </div>
+                  <span className={`stock-level rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${item.available === 0 ? "bg-rose-50 text-rose-900" : "bg-amber-50 text-amber-900"}`}>
+                    {item.available === 0 ? <><span className="sr-only">0 available · </span>Out of stock</> : `${item.available} available`}
+                  </span>
+                  <Link className={secondaryAction} aria-label={`Check supplier for ${item.name}`} href={`/suppliers?returnTo=/&sku=${encodeURIComponent(item.sku)}`}>Check supplier</Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="p-5 text-sm text-slate-600">
+              {products.error ? "Warehouse inventory could not be checked." : products.loading ? "Checking inventory…" : "No shortages in the loaded inventory."}
+            </p>
+          )}
+        </section>
+      </div>
+      <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-600">
+        <div>Loaded picking requests<Freshness {...picks} /></div><div>Loaded dispatch requests<Freshness {...dispatches} /></div><div>Inventory{products.data && ` · ${products.data.length} loaded items`}<Freshness {...products} /></div>
+      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@
 
 1. **Branch machine:** Next.js browser UI (`frontend/`, port 3000) and Spring Boot API gateway (`backend/api-gateway/`, port 8080). Gateway exposes REST/SSE, holds configured warehouse host, and uses **Java TLS/TCP** to communicate with central server. It never accesses PostgreSQL directly.
 2. **Warehouse machine:** Spring Boot **Java network server** (`backend/network-server/`), custom `java.net` TLS/TCP listener, NIO selector change feed, bounded worker pool, stock persistence in PostgreSQL. No duplicate REST write path.
-3. **Supplier availability simulator:** separate lightweight HTTP process (`lk.thogamura.networkserver.integration.supplier.SupplierSimulatorServer`), running on configurable port (default 8090) with an allowlisted URL, queried by Member 2's central Java `HttpURLConnection` client (`DefaultSupplierStockClient`) for advisory stock availability. Timeouts, 503 errors, and invalid JSON return structured UNAVAILABLE/UNKNOWN without mutating warehouse stock.
+3. **Supplier availability simulator:** separate lightweight HTTP process (`lk.thogamura.networkserver.integration.supplier.SupplierHttpSimulator`), running on configurable port (default 8090) with an allowlisted URL, queried by Member 2's central Java `HttpURLConnection` client (`DefaultSupplierHttpClient`) for advisory stock availability. Timeouts, 503 errors, and invalid JSON return structured UNAVAILABLE/UNKNOWN without mutating warehouse stock.
 
 This boundary is justified by **actual branch-to-warehouse process/machine separation**, not by claiming a raw TCP protocol is superior to HTTP.
 
@@ -29,12 +29,12 @@ Branch browser --HTTP/SSE--> Branch gateway --JSSE TLS/TCP--> Central Java netwo
 | 8090 | HTTP | Central -> supplier simulator | Test/demo stub only; production supplier connection would use HTTPS |
 | 5432 | PostgreSQL | Central Java server only | No browser/gateway DB access |
 
-**No UDP port or broadcast discovery**. `THOGAMURA_NETWORK_HOST` is explicitly configured via hostname or IP. TLS validation must be based on a trusted configured identity, not only a discovered IP.
+**No UDP port or broadcast discovery**. `THOGAMURA_WAREHOUSE_HOST` is explicitly configured via hostname or IP. TLS validation must be based on a trusted configured identity, not only a discovered IP.
 
 ## Command workflow
 
 1. Shop user submits one-SKU request through Next.js.
-2. Gateway sends framed JSON via TLS/TCP to warehouse server with a stable idempotency UUID.
+2. Gateway sends framed JSON via TLS/TCP to the warehouse server. A browser reservation carries its stored UUID. Pick and dispatch each derive a stable command reference from the request and action.
 3. Server's bounded worker pool executes a PostgreSQL transaction that serializes competing stock decisions.
 4. The request and durable receipt commit; server sends original ACCEPTED/REJECTED result.
 5. NIO broadcaster emits only a monotonically increasing **change version** after commit; gateway re-emits browser SSE `stock-changed`.

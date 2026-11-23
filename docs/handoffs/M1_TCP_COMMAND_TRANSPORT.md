@@ -314,3 +314,13 @@ TESTCONTAINERS_RYUK_DISABLED=true mvn -f backend/pom.xml clean verify
 
 - **Issue #13 — [SHARED][W2] Implement product list and stock request frontend-to-TCP path:**
   Member 2 (@sandunikarunarathna) and Member 1 can now safely begin full stock-request integration. The TCP client guarantees safe same-ID retries, finite timeouts, and deterministic error translation for `POST /api/v1/requests` and `GET /api/v1/products`.
+
+## Stabilization handoff
+
+Reservation validation now rejects non-integer JSON values at the gateway, and business errors retain their documented HTTP status. Pick and dispatch derive stable command references across HTTP retries. Review the total command budget and the pending paging proposal before changing contracts.
+
+## Authenticated workspace handoff
+
+The opt-in v2 envelope carries command-bound gateway assertions with the same TCP frame and correlation rules. Warehouse v1 business commands are denied in this profile. For the individual demonstration, show one protected read and one refused v1 business call alongside the existing TCP framing and retry evidence. [Workspace contract](../contracts/WORKSPACE_V2.md)
+
+Review the signed dashboard commands in docs/contracts/WORKSPACE_V2.md. Supplier task mutations use the existing retry key; a duplicate open task returns a replayable conflict identifying the original task.

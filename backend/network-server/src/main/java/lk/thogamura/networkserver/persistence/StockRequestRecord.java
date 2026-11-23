@@ -16,7 +16,8 @@ public record StockRequestRecord(
         String status,
         String decisionReason,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String branchId
 ) {
     public static final String STATUS_ACCEPTED = "ACCEPTED";
     public static final String STATUS_REJECTED = "REJECTED";
@@ -24,8 +25,18 @@ public record StockRequestRecord(
     public static final String STATUS_DISPATCHED = "DISPATCHED";
 
     private static final Set<String> VALID_STATUSES = Set.of(
-            STATUS_ACCEPTED, STATUS_REJECTED, STATUS_PICKED, STATUS_DISPATCHED
+            STATUS_ACCEPTED, STATUS_REJECTED, STATUS_PICKED, STATUS_DISPATCHED, "CANCELLED"
     );
+
+    public StockRequestRecord(UUID requestId, String requestFingerprint, String sku, int quantity,
+                              String status, String decisionReason, Instant createdAt, Instant updatedAt) {
+        this(requestId, requestFingerprint, sku, quantity, status, decisionReason, createdAt, updatedAt, null);
+    }
+
+    public StockRequestRecord forBranch(String branch) {
+        return new StockRequestRecord(requestId, requestFingerprint, sku, quantity, status,
+                decisionReason, createdAt, updatedAt, branch);
+    }
 
     public StockRequestRecord {
         Objects.requireNonNull(requestId, "requestId must not be null");

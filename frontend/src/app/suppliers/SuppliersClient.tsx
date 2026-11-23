@@ -1,258 +1,147 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { fetchSupplierAvailability } from "@/lib/api/inventory";
-import type { SupplierAvailability } from "@/lib/types/inventory";
+import { useSearchParams } from "next/navigation";
+import { fetchProducts, fetchSupplierAvailability } from "@/lib/api/inventory";
+import { formatFullDateTime, formatUnits } from "@/lib/formatters";
+import { safeReturnTo } from "@/lib/returnTo";
+import type { SupplierAvailability, SupplierStatus } from "@/lib/types/inventory";
+import { isSku } from "@/lib/reservationAttempt";
+import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
+import { field, Freshness, primaryAction, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
 
-export function SuppliersClient() {
-  const searchParams = useSearchParams();
-  const initialSku = searchParams.get("sku") || "";
+const outcomes: Record<SupplierStatus, string> = {
+  AVAILABLE: "Availability reported",
+  UNKNOWN: "SKU unknown to supplier",
+  UNAVAILABLE: "Supplier unavailable",
+  SUPPLIER_UNAVAILABLE: "Supplier unavailable",
+  SUPPLIER_TIMEOUT: "Supplier timed out",
+  WAREHOUSE_UNAVAILABLE: "Warehouse unavailable",
+  WAREHOUSE_TIMEOUT: "Warehouse did not respond",
+  INVALID_SUPPLIER_RESPONSE: "Supplier response could not be verified",
+  INVALID_REQUEST: "Check the SKU",
+  GATEWAY_UNAVAILABLE: "Gateway unavailable",
+  GATEWAY_TIMEOUT: "Gateway did not respond",
+  INQUIRY_FAILED: "Inquiry failed",
+};
 
+function SupplierInquiry({ initialSku, back }: { initialSku: string; back: string }) {
   const [sku, setSku] = useState(initialSku);
-  const [loading, setLoading] = useState(false);
+  const [lookup, setLookup] = useState<string | null>(null);
   const [result, setResult] = useState<SupplierAvailability | null>(null);
+  const [validation, setValidation] = useState(false);
+  const revision = useRef(0);
+  const invalidate = useCallback(() => { revision.current++; }, []);
+  const products = useWarehouseQuery(fetchProducts);
+  const product = products.data?.find((row) => row.sku === sku.trim());
+
+  const inquire = useCallback(async (requested: string) => {
+    const normalized = requested.trim();
+    if (!isSku(normalized)) {
+      setValidation(true);
+      return;
+    }
+    const ticket = ++revision.current;
+    setLookup(normalized);
+    setResult(null);
+    setValidation(false);
+    try {
+      const supplier = await fetchSupplierAvailability(normalized);
+      if (ticket === revision.current) setResult(supplier);
+    } catch {
+      if (ticket === revision.current) setResult({ sku: normalized, status: "INQUIRY_FAILED" });
+    } finally {
+      if (ticket === revision.current) setLookup(null);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!initialSku) return;
-    let ignore = false;
-    async function init() {
-      const res = await fetchSupplierAvailability(initialSku.trim());
-      if (!ignore) {
-        setResult(res);
-      }
-    }
-    void init();
+    const timer = initialSku ? setTimeout(() => void inquire(initialSku), 0) : undefined;
     return () => {
-      ignore = true;
+      clearTimeout(timer);
+      invalidate();
     };
-  }, [initialSku]);
+  }, [initialSku, inquire, invalidate]);
 
-  async function executeInquiry(skuToQuery: string) {
-    if (!skuToQuery.trim()) return;
-    setLoading(true);
+  function edit(value: string) {
+    revision.current++;
+    setSku(value);
+    setLookup(null);
     setResult(null);
-
-    const res = await fetchSupplierAvailability(skuToQuery.trim());
-    setResult(res);
-    setLoading(false);
+    setValidation(false);
   }
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    void executeInquiry(sku);
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    void inquire(sku);
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      {/* Page Header */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-          Member 2 — URL/HttpURLConnection Integration
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Advisory Supplier Availability
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          When warehouse stock is depleted, query the independent supplier HTTP simulator. Results are strictly advisory and never fabricate or alter central stock.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <WorkspaceHeading title="Supplier availability" description="Check what the supplier reports for an item before following up manually."
+        action={<Link href={back} className={secondaryAction}>{back === "/" ? "Back to overview" : back.startsWith("/products") ? "Back to inventory" : "Back"}</Link>} />
 
-      {/* Architectural Disclaimer */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 space-y-1">
-        <strong className="text-slate-900 block font-semibold">
-          Architectural Notice (Member 2 Technical Area):
-        </strong>
-        <p>
-          The central warehouse server executes outbound Java <code className="font-mono text-teal-800">java.net.HttpURLConnection</code> requests to the configured mock supplier service. This data is read-only and does not automatically purchase goods or mutate PostgreSQL inventory balances.
-        </p>
-      </div>
-
-      {/* Inquiry Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4"
-      >
-        <div>
-          <label htmlFor="supplier-sku-input" className="block text-sm font-semibold text-slate-900">
-            Product SKU to Inquire
-          </label>
-          <div className="mt-2 flex gap-3">
-            <input
-              id="supplier-sku-input"
-              type="text"
-              required
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              placeholder="e.g. ITEM-008"
-              className="flex-1 rounded-lg border border-slate-300 px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono"
-            />
-            <button
-              type="submit"
-              disabled={loading || !sku.trim()}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
-            >
-              {loading && (
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              )}
-              {loading ? "Querying Supplier..." : "Inquire Availability"}
-            </button>
-          </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-            <span>Demo Scenarios:</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSku("ITEM-008");
-                void executeInquiry("ITEM-008");
-              }}
-              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-teal-800 hover:bg-slate-200"
-            >
-              ITEM-008 (Available Units)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSku("ITEM-ZERO");
-                void executeInquiry("ITEM-ZERO");
-              }}
-              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-amber-800 hover:bg-slate-200"
-            >
-              ITEM-ZERO (Confirmed Zero)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSku("ITEM-UNKNOWN");
-                void executeInquiry("ITEM-UNKNOWN");
-              }}
-              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-700 hover:bg-slate-200"
-            >
-              ITEM-UNKNOWN (404 Catalog)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSku("ITEM-OUTAGE");
-                void executeInquiry("ITEM-OUTAGE");
-              }}
-              className="rounded bg-slate-100 px-2 py-0.5 font-mono text-rose-700 hover:bg-slate-200"
-            >
-              ITEM-OUTAGE (503 Service Outage)
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Click any scenario button above to test the Java URL HTTP mock connector response mapping.
-          </p>
-        </div>
-      </form>
-
-      {/* Results View */}
-      {result && (
-        <div className="space-y-4">
-          {result.status === "AVAILABLE" && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-xs text-emerald-950 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
-                  AVAILABLE AT SUPPLIER
-                </span>
-                <span className="text-xs font-mono text-emerald-800">
-                  Source: {result.source || "MOCK_SUPPLIER"}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 rounded-lg bg-white/70 p-4 text-xs">
-                <div>
-                  <span className="text-slate-500 block">Product SKU:</span>
-                  <span className="font-mono font-bold text-base text-slate-900">{result.sku}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Reported Quantity:</span>
-                  <span className="font-mono font-bold text-base text-emerald-700">
-                    {result.reportedQuantity} units
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Supplier Name:</span>
-                  <span className="font-semibold text-slate-800">{result.supplier || "Demo Supplier"}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Checked At (UTC):</span>
-                  <span className="font-mono text-slate-700">
-                    {result.checkedAt ? new Date(result.checkedAt).toLocaleString() : "Recent"}
-                  </span>
-                </div>
-              </div>
+      <div className="grid items-start gap-5 sm:grid-cols-2">
+        <form onSubmit={submit} className={`${surface} space-y-4 p-5 sm:col-span-2`}>
+          <label htmlFor="supplier-sku" className="block text-sm font-semibold">Product SKU</label>
+          <input id="supplier-sku" type="search" list="supplier-products" value={sku} onChange={(event) => edit(event.target.value)}
+            className={field + " mt-1"}
+            aria-describedby={validation ? "supplier-error" : "supplier-help"} aria-invalid={validation} />
+          <datalist id="supplier-products">
+            {products.data?.map((item) => <option key={item.sku} value={item.sku}>{item.name}</option>)}
+          </datalist>
+          {validation
+            ? <p id="supplier-error" role="alert" className="text-sm text-rose-900">Enter a SKU with 1–64 letters, digits, hyphens or underscores.</p>
+            : <p id="supplier-help" className="text-sm text-slate-600">Choose a warehouse item or enter its exact SKU.</p>}
+          <button type="submit" className={primaryAction} disabled={lookup !== null}>{lookup ? "Checking…" : "Check availability"}</button>
+          <details className="border-t border-slate-200 pt-4 text-sm">
+            <summary className="cursor-pointer font-semibold text-slate-700">Supplier demo scenarios</summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[["ITEM-008", "Available"], ["ITEM-ZERO", "Confirmed zero"], ["ITEM-UNKNOWN", "Unknown SKU"], ["ITEM-OUTAGE", "Outage"], ["ITEM-MALFORMED", "Malformed response"]].map(([item, label]) => (
+                <button key={item} type="button" className={secondaryAction} onClick={() => { edit(item); void inquire(item); }}>{label}</button>
+              ))}
             </div>
-          )}
+          </details>
+        </form>
 
-          {result.status === "UNAVAILABLE" && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-xs text-amber-950 space-y-3">
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
-                CONFIRMED ZERO UNITS
-              </span>
-              <p className="text-sm text-amber-900">
-                Supplier confirmed this SKU is recognized but currently has 0 available units in stock.
-              </p>
-              {result.checkedAt && (
-                <p className="text-xs text-amber-700">
-                  Verified at: {new Date(result.checkedAt).toLocaleString()}
-                </p>
-              )}
-            </div>
-          )}
+        <section className={`${surface} space-y-2 p-5`} aria-label="Warehouse stock">
+          <h2 className="font-semibold">Warehouse available</h2>
+          {product ? (
+            <><p className="text-2xl font-semibold tabular-nums">{formatUnits(product.available)} available</p><p className="text-sm text-slate-700">{product.name} · {product.sku}</p></>
+          ) : <p className="text-sm text-slate-600">{sku.trim() ? "No balance for this SKU in the loaded catalog." : "Choose a SKU to see its warehouse balance."}</p>}
+          <Freshness {...products} />
+        </section>
 
-          {result.status === "UNKNOWN" && (
-            <div className="rounded-xl border border-slate-300 bg-slate-50 p-6 shadow-xs text-slate-900 space-y-3">
-              <span className="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-800">
-                UNKNOWN TO SUPPLIER
-              </span>
-              <p className="text-sm text-slate-700">
-                Supplier returned HTTP 404: SKU <code className="font-mono font-semibold">{result.sku}</code> is not carried in the supplier product catalog.
-              </p>
-            </div>
-          )}
-
-          {result.status === "SUPPLIER_UNAVAILABLE" && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 shadow-xs text-rose-950 space-y-3">
-              <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
-                SUPPLIER SERVICE OUTAGE
-              </span>
-              <p className="text-sm text-rose-800">
-                {result.message || "Supplier HTTP service is offline, timed out, or returned an invalid response. Stock cannot be confirmed."}
-              </p>
-              <p className="text-xs text-rose-700">
-                Note: A supplier timeout is not evidence that stock is zero.
-              </p>
-            </div>
-          )}
-
-          {result.status === "WAREHOUSE_UNAVAILABLE" && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 shadow-xs text-rose-950 space-y-3">
-              <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
-                WAREHOUSE GATEWAY OUTAGE
-              </span>
-              <p className="text-sm text-rose-800">
-                {result.message || "The central warehouse command server is unreachable over Java TCP."}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Navigation */}
-      <div className="pt-4 flex justify-between text-sm">
-        <Link href="/products" className="font-medium text-teal-700 hover:text-teal-800">
-          ← Back to Product Catalog
-        </Link>
-        <Link href="/activity" className="font-medium text-slate-600 hover:text-slate-900">
-          View Network Status →
-        </Link>
+      <section className={`${surface} min-h-40 space-y-2 p-5`} aria-label="Supplier result" aria-live="polite">
+        <h2 className="text-lg font-semibold">Supplier reported</h2>
+        {lookup && <p className="text-sm text-slate-600">Checking supplier for {lookup}…</p>}
+        {!result && !lookup && <p className="text-sm text-slate-600">Run an inquiry to see the supplier’s reported stock.</p>}
+        {result && (
+          <>
+            <p className="text-sm font-semibold text-slate-700">{result.status === "UNKNOWN" ? `Supplier has no listing for ${result.sku}` : `${result.sku} · ${outcomes[result.status]}`}</p>
+            {result.status === "AVAILABLE" ? (
+              <>
+                <p className="text-2xl font-semibold tabular-nums text-slate-950">{formatUnits(result.reportedQuantity)} reported</p>
+                <p className="text-sm text-slate-700">{result.supplier || (result.source === "MOCK_SUPPLIER" ? "Demo supplier" : result.source)} · Checked {formatFullDateTime(result.checkedAt)}</p>
+                {result.estimatedRestockDays !== undefined && <p className="text-sm text-slate-600">Supplier restock estimate {result.estimatedRestockDays} days</p>}
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-700">{result.message ?? "No supplier quantity was confirmed."}</p>
+                <button type="button" className={secondaryAction} onClick={() => void inquire(result.sku)}>Check again</button>
+              </>
+            )}
+          </>
+        )}
+      </section>
       </div>
     </div>
   );
+}
+
+export function SuppliersClient() {
+  const params = useSearchParams();
+  const initialSku = params.get("sku") ?? "";
+  return <SupplierInquiry key={initialSku} initialSku={initialSku} back={safeReturnTo(params.get("returnTo"))} />;
 }

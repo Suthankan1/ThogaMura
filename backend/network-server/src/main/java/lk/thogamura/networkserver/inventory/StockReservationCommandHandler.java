@@ -72,6 +72,13 @@ public class StockReservationCommandHandler implements CommandHandler {
         }
         String sku = dataNode.get("sku").asText().trim();
 
+        if (!ProtocolInfo.isValidSku(sku)) {
+            return TcpMessageCodec.formatErrorResponse(
+                    requestIdStr, ProtocolInfo.ERROR_VALIDATION,
+                    "SKU must contain 1–64 letters, digits, underscores or hyphens"
+            );
+        }
+
         // 4. Validate 'quantity'
         if (!dataNode.has("quantity") || !dataNode.get("quantity").isInt()) {
             return TcpMessageCodec.formatErrorResponse(

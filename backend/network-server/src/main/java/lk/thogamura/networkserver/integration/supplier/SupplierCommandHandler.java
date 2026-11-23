@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.Objects;
 
 /**
@@ -22,6 +23,7 @@ public class SupplierCommandHandler implements CommandHandler {
     private static final Logger logger = LoggerFactory.getLogger(SupplierCommandHandler.class);
 
     private final SupplierHttpClient supplierClient;
+    private final Semaphore supplierSlots = new Semaphore(4);
 
     public SupplierCommandHandler(SupplierHttpClient supplierClient) {
         this.supplierClient = Objects.requireNonNull(supplierClient, "supplierClient must not be null");
@@ -36,7 +38,7 @@ public class SupplierCommandHandler implements CommandHandler {
         String requestId = requestNode.hasNonNull("requestId") ? requestNode.get("requestId").asText() : null;
         JsonNode dataNode = requestNode.get("data");
 
-        if (dataNode == null || !dataNode.hasNonNull("sku") || dataNode.get("sku").asText().isBlank()) {
+        if (dataNode == null || !dataNode.path("sku").isTextual() || !ProtocolInfo.isValidSku(dataNode.path("sku").textValue().trim())) {
             logger.warn("Rejecting GET_SUPPLIER_STOCK command without required 'sku' (requestId: '{}')", requestId);
             return TcpMessageCodec.formatErrorResponse(
                     requestId,
@@ -48,7 +50,17 @@ public class SupplierCommandHandler implements CommandHandler {
         String sku = dataNode.get("sku").asText().trim();
         logger.debug("Dispatching GET_SUPPLIER_STOCK inquiry for SKU '{}' (requestId: '{}')", sku, requestId);
 
-        SupplierStockResponse response = supplierClient.checkAvailability(sku);
+        SupplierStockResponse response;
+        if (supplierSlots.tryAcquire()) {
+            try {
+                response = supplierClient.checkAvailability(sku);
+            } finally {
+                supplierSlots.release();
+            }
+        } else {
+            response = SupplierStockResponse.unavailable(sku, ProtocolInfo.ERROR_SUPPLIER_UNAVAILABLE,
+                    "Supplier inquiry capacity is busy. Please check again shortly.");
+        }
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("sku", response.sku());

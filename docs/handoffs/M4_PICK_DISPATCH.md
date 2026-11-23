@@ -105,3 +105,5 @@ All 194 automated tests across all 4 modules passed with 0 failures, 0 errors:
 - `backend/protocol`: 21 tests
 - `backend/network-server`: 92 tests
 - `backend/api-gateway`: 81 tests
+
+Review migration V4 with M1. A warehouse request insert records submission and decision. Each status change records its timestamp in the same database transaction. WorkspaceQueriesIntegrationTest covers old rows and branch-scoped priority reads. The protected gateway verifier exercises receipt replay and shared follow-up uniqueness.

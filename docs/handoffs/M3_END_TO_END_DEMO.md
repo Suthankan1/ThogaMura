@@ -205,3 +205,17 @@ When presenting Member 3's contribution, explain these explicit JDK APIs:
 6. **Slow Subscriber Memory Bounding:**
    - Each client session has a bounded outbound queue (default 50 messages).
    - If a slow client fails to read and exceeds this bound, the server closes its channel and evicts it, isolating slow subscribers so healthy subscribers never suffer latency or memory exhaustion.
+
+The signed-in inventory now compares consecutive confirmed balances. Review the two-session browser rehearsal in frontend/tests/workspace-stock-demo.mjs and the setup instructions under Operator dashboard rehearsal. Feature implementation was AI-assisted and awaits individual source review and physical LAN demonstration.
+
+### Demo Inventory and Stock requests UI
+
+The shared Next.js products/stock request screens roadmap item now uses compact tables and a URL-addressable request drawer. This AI-assisted frontend change is ready for individual review. The existing v1 reads and SSE invalidation still supply the records.
+
+With the standard six-product, four-request demo running, run `node frontend/tests/record-lists.mjs`. The browser walkthrough reads live inventory and requests, follows the SKU-specific links, and checks copying a reference and restoring focus. Browser-local response overrides exercise refresh failure, suffix collisions, long names and empty results.
+
+At 1,021 px wide, the first Inventory row moved from 392 to 227 px and the first Stock requests row from 360 to 228 px. Rows measured 59 px on both pages. The final visible records ended at 582 and 464 px respectively. [Desktop and mobile screenshots](../../reports/evidence/record-lists/).
+
+For a manual demonstration, filter Inventory to low stock, open the Yukon Gold Potatoes request and cancel back to the filter. Switch to out-of-stock items and open the Red Onions supplier inquiry. In Stock requests, search Organic Carrots, open the two-unit record, copy its reference, and press Escape to restore focus to that record. The dedicated list test does not submit reservations or dispatch stock.
+
+Verification passed for the 49 frontend unit tests, typecheck, lint, the dedicated browser walkthrough, and the webpack production build. The default Turbopack build encountered a local worker port-binding permission error. The existing reservation-and-dispatch smoke suite requires a fresh disposable database and was not exercised against the active demo.

@@ -15,9 +15,11 @@ import type {
   UpstreamFeedStatus,
 } from "../types/network";
 import { fetchNetworkStatus } from "../api/network";
+import { createRefreshQueue } from "./refreshQueue";
 
 const GATEWAY_URL =
   process.env.NEXT_PUBLIC_GATEWAY_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
   (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
 
 type InvalidationCallback = (version: number, source: InvalidationEvent["source"]) => void | Promise<void>;
@@ -55,73 +57,26 @@ export function StockEventsProvider({ children }: { children: React.ReactNode })
   const [lastVersion, setLastVersion] = useState<number | null>(null);
   const [lastInvalidatedAt, setLastInvalidatedAt] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [eventsLog, setEventsLog] = useState<InvalidationEvent[]>([]);
   const [networkDetails, setNetworkDetails] = useState<NetworkStatusResponse | null>(null);
 
   const listenersRef = useRef<Set<InvalidationCallback>>(new Set());
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const isRefreshingRef = useRef(false);
-  const hasEverConnectedRef = useRef(false);
-  const prevNioReconnectCountRef = useRef<number>(-1);
-  const lastRefreshTimeRef = useRef<number>(0);
-
-  // Executes an authoritative refresh across all registered components
-  const triggerRefresh = useCallback(
-    async (source: InvalidationEvent["source"] = "MANUAL") => {
-      // Throttle rapid repeated refreshes (minimum 300ms between calls)
-      const now = Date.now();
-      if (isRefreshingRef.current || now - lastRefreshTimeRef.current < 300) {
-        return;
-      }
-
-      isRefreshingRef.current = true;
-      setIsRefreshing(true);
-      lastRefreshTimeRef.current = now;
-
-      try {
-        const callbacks = Array.from(listenersRef.current);
-        await Promise.allSettled(callbacks.map((cb) => cb(lastVersion ?? 0, source)));
-        setLastInvalidatedAt(new Date());
-      } finally {
-        isRefreshingRef.current = false;
-        setIsRefreshing(false);
-      }
-    },
-    [lastVersion]
-  );
-
-  // Checks the upstream Java NIO connection status from the gateway
-  const checkUpstreamStatus = useCallback(async () => {
-    const details = await fetchNetworkStatus();
-    setNetworkDetails(details);
-
-    if (!details) {
-      setUpstreamNioStatus("UNKNOWN");
-      setWarningMessage("Unable to reach Spring Boot API gateway.");
-      return;
+  const versionRef = useRef(0);
+  const [enqueueRefresh] = useState(() => createRefreshQueue<InvalidationEvent["source"]>(async (source) => {
+    setIsRefreshing(true);
+    try {
+      const version = versionRef.current;
+      const listeners = Array.from(listenersRef.current);
+      await Promise.allSettled(listeners.map(async (listener) => listener(version, source)));
+    } finally {
+      setIsRefreshing(false);
     }
+  }));
 
-    const nio = details.nioFeed;
-    const status = (nio?.status as UpstreamFeedStatus) || "UNKNOWN";
-    setUpstreamNioStatus(status);
+  const triggerRefresh = useCallback((source: InvalidationEvent["source"] = "MANUAL") => {
+    return enqueueRefresh(source);
+  }, [enqueueRefresh]);
 
-    if (!nio?.connected || status === "RECONNECTING" || status === "DISCONNECTED") {
-      setWarningMessage("Warehouse Java NIO notification feed interrupted. Updates paused.");
-    } else {
-      setWarningMessage(null);
-    }
-
-    // If upstream NIO reconnected, trigger authoritative refresh
-    if (nio && prevNioReconnectCountRef.current !== -1 && nio.reconnectCount > prevNioReconnectCountRef.current) {
-      void triggerRefresh("RECONNECT");
-    }
-    if (nio) {
-      prevNioReconnectCountRef.current = nio.reconnectCount;
-    }
-  }, [triggerRefresh]);
-
-  // Subscribe a component callback to invalidation events
   const subscribeInvalidation = useCallback((callback: InvalidationCallback) => {
     listenersRef.current.add(callback);
     return () => {
@@ -129,103 +84,97 @@ export function StockEventsProvider({ children }: { children: React.ReactNode })
     };
   }, []);
 
-  // Connects to GET /api/v1/events using the native browser EventSource API
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
+    let stream: EventSource | undefined;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let disposed = false;
+    let probing = false;
+    let openedBefore = false;
+    let previousFeed: NetworkStatusResponse["nioFeed"] | null = null;
+
+    async function checkUpstream() {
+      if (disposed || probing) return;
+      probing = true;
+      try {
+        const details = await fetchNetworkStatus();
+        if (disposed) return;
+
+        const feed = details?.nioFeed ?? null;
+        setNetworkDetails(details);
+        setUpstreamNioStatus(feed?.status ?? "UNKNOWN");
+        if (feed?.connected && previousFeed !== null &&
+            (!previousFeed.connected || previousFeed.reconnectCount !== feed.reconnectCount)) {
+          void triggerRefresh("RECONNECT");
+        }
+        if (feed) previousFeed = feed;
+      } finally {
+        probing = false;
+      }
     }
 
-    let isMounted = true;
-    const sseUrl = `${GATEWAY_URL}/api/v1/events`;
+    function connect() {
+      if (disposed) return;
+      const source = new EventSource(`${GATEWAY_URL}/api/v1/events`);
+      stream = source;
+      source.onopen = () => {
+        setSseStatus("CONNECTED");
+        void checkUpstream();
+        if (openedBefore) void triggerRefresh("RECONNECT");
+        openedBefore = true;
+      };
+      source.onerror = () => {
+        setSseStatus("DISCONNECTED");
+        // EventSource reconnects on transient errors. Recreate it if the browser closed it permanently.
+        if (source.readyState === EventSource.CLOSED && retryTimer === undefined) {
+          retryTimer = setTimeout(() => {
+            retryTimer = undefined;
+            connect();
+          }, 2000);
+        }
+      };
+      source.addEventListener("stock-changed", (event: MessageEvent<string>) => {
+        if (!/^\d+$/.test(event.data)) return;
+        const version = Number(event.data);
+        if (!Number.isSafeInteger(version)) return;
 
-    const es = new EventSource(sseUrl);
-    eventSourceRef.current = es;
+        versionRef.current = Math.max(versionRef.current, version);
+        setLastVersion(versionRef.current);
+        const receivedAt = new Date();
+        setLastInvalidatedAt(receivedAt);
+        setEventsLog((previous) => [{ version, receivedAt, source: "SSE_EVENT" }, ...previous.slice(0, 9)]);
+        void triggerRefresh("SSE_EVENT");
+      });
+    }
 
-    es.onopen = () => {
-      if (!isMounted) return;
-      setSseStatus("CONNECTED");
-      void checkUpstreamStatus();
-
-      // If reconnecting after a drop, execute authoritative state refresh
-      if (hasEverConnectedRef.current) {
-        setWarningMessage(null);
-        void triggerRefresh("RECONNECT");
-      }
-      hasEverConnectedRef.current = true;
-    };
-
-    es.onerror = () => {
-      if (!isMounted) return;
-      setSseStatus("DISCONNECTED");
-      setWarningMessage("Real-time event stream disconnected. Reconnecting to gateway...");
-      // Browser EventSource automatically retries natively
-    };
-
-    // Listen specifically for the version-only invalidation signal
-    es.addEventListener("stock-changed", (e: MessageEvent<string>) => {
-      if (!isMounted) return;
-      const ver = parseInt(e.data, 10);
-      const parsedVersion = Number.isNaN(ver) ? 0 : ver;
-
-      setLastVersion(parsedVersion);
-      setEventsLog((prev) => [
-        {
-          version: parsedVersion,
-          receivedAt: new Date(),
-          source: "SSE_EVENT",
-        },
-        ...prev.slice(0, 9),
-      ]);
-
-      // CRITICAL ARCHITECTURAL RULE:
-      // The version is strictly an invalidation hint; trigger authoritative REST refresh.
-      // Under NO circumstances may the version number become an inventory quantity.
-      void triggerRefresh("SSE_EVENT");
-    });
-
-    // Handle Page Focus / Tab Visibility recovery
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void checkUpstreamStatus();
-        void triggerRefresh("PAGE_FOCUS");
-      }
-    };
-
-    const handleFocus = () => {
-      void checkUpstreamStatus();
+    function onFocus() {
+      if (document.visibilityState !== "visible") return;
+      void checkUpstream();
       void triggerRefresh("PAGE_FOCUS");
-    };
+    }
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-
-    // Periodic upstream NIO status check (every 12 seconds)
-    const statusInterval = setInterval(() => {
-      if (isMounted) {
-        void checkUpstreamStatus();
-      }
-    }, 12000);
-
-    // Initial check (deferred to prevent synchronous setState during effect mount)
-    const initialCheckTimeout = setTimeout(() => {
-      if (isMounted) {
-        void checkUpstreamStatus();
-      }
-    }, 0);
-
+    connect();
+    void checkUpstream();
+    const statusInterval = setInterval(() => void checkUpstream(), 12000);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
     return () => {
-      isMounted = false;
-      clearTimeout(initialCheckTimeout);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
+      disposed = true;
+      stream?.close();
+      clearTimeout(retryTimer);
       clearInterval(statusInterval);
-      es.close();
-      eventSourceRef.current = null;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
     };
-  }, [checkUpstreamStatus, triggerRefresh]);
+  }, [triggerRefresh]);
 
-  // isLive is true ONLY when both local SSE and upstream NIO feeds are connected
   const isLive = sseStatus === "CONNECTED" && upstreamNioStatus === "CONNECTED";
+  const warningMessage = sseStatus === "DISCONNECTED"
+    ? "Live connection interrupted. Refresh to check for new warehouse changes."
+    : upstreamNioStatus === "UNKNOWN"
+      ? "Gateway status is unavailable."
+      : upstreamNioStatus !== "CONNECTED" && upstreamNioStatus !== "CONNECTING"
+        ? "Warehouse change feed interrupted. Inventory can still be checked manually."
+        : null;
 
   return (
     <StockEventsContext.Provider

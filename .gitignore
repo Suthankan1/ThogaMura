@@ -23,12 +23,15 @@ certs/
 
 # Node / Next.js
 **/node_modules/
+node_modules/
+node_modules
 **/.next/
 **/out/
 **/.turbo/
 **/coverage/
 *.tsbuildinfo
 frontend/AGENTS.md
+frontend/next-env.d.ts
 
 # Editor / OS
 .idea/

@@ -15,4 +15,7 @@ public interface CommandDispatcher {
      * @return serialized JSON response envelope string
      */
     String dispatch(JsonNode requestNode);
+    default int expectedVersion(int advertisedVersion) {
+        return 1;
+    }
 }

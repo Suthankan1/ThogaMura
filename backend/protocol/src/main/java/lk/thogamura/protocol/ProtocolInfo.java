@@ -1,5 +1,7 @@
 package lk.thogamura.protocol;
 
+import java.util.regex.Pattern;
+
 /**
  * Shared protocol constants for ThogaMura Wire Protocol v1.
  *
@@ -59,6 +61,12 @@ public final class ProtocolInfo {
 
     // Java NIO Notification Feed Constants
     public static final String NOTIFICATION_TYPE_CHANGED = "CHANGED";
+
+    private static final Pattern SKU_PATTERN = Pattern.compile("^[A-Za-z0-9_-]{1,64}$");
+
+    public static boolean isValidSku(String sku) {
+        return sku != null && SKU_PATTERN.matcher(sku).matches();
+    }
 
     private ProtocolInfo() {
     }

@@ -85,11 +85,12 @@ class FulfillmentControllerTest {
         ObjectNode response = OBJECT_MAPPER.createObjectNode();
         response.put("v", 1);
         response.put("type", "RESULT");
-        response.put("status", "REJECTED");
+        response.put("status", "ERROR");
         response.put("requestId", "123e4567-e89b-12d3-a456-426614174000");
 
-        ObjectNode data = response.putObject("data");
-        data.put("reason", "Request must be in ACCEPTED state to be picked, but was DISPATCHED");
+        ObjectNode error = response.putObject("error");
+        error.put("code", "INVALID_TRANSITION");
+        error.put("message", "Request must be in ACCEPTED state to be picked, but was DISPATCHED");
 
         given(tcpCommandClient.sendCommand(eq(ProtocolInfo.COMMAND_MARK_PICKED), any(), any()))
                 .willReturn(response);
@@ -97,8 +98,37 @@ class FulfillmentControllerTest {
         mockMvc.perform(post("/api/v1/requests/" + VALID_STOCK_REQUEST_ID + "/pick")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"))
+                .andExpect(jsonPath("$.code").value("INVALID_TRANSITION"))
                 .andExpect(jsonPath("$.stockRequestId").value(VALID_STOCK_REQUEST_ID));
+    }
+
+    @Test
+    void shouldUseTheSameCommandIdAfterASecondHttpAttempt() throws Exception {
+        ObjectNode response = OBJECT_MAPPER.createObjectNode().put("status", "PICKED");
+        given(tcpCommandClient.sendCommand(eq(ProtocolInfo.COMMAND_MARK_PICKED), any(), any()))
+                .willReturn(response);
+
+        String path = "/api/v1/requests/" + VALID_STOCK_REQUEST_ID + "/pick";
+        mockMvc.perform(post(path)).andExpect(status().isOk());
+        mockMvc.perform(post(path)).andExpect(status().isOk());
+
+        var commandIds = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(tcpCommandClient, org.mockito.Mockito.times(2))
+                .sendCommand(eq(ProtocolInfo.COMMAND_MARK_PICKED), commandIds.capture(), any());
+        org.assertj.core.api.Assertions.assertThat(commandIds.getAllValues()).containsOnly(commandIds.getValue());
+        org.assertj.core.api.Assertions.assertThat(java.util.UUID.fromString(commandIds.getValue()).version()).isEqualTo(4);
+    }
+
+    @Test
+    void shouldReturn404WhenPickTargetDoesNotExist() throws Exception {
+        ObjectNode response = OBJECT_MAPPER.createObjectNode().put("status", "ERROR");
+        response.putObject("error").put("code", "NOT_FOUND").put("message", "Request does not exist");
+        given(tcpCommandClient.sendCommand(eq(ProtocolInfo.COMMAND_MARK_PICKED), any(), any()))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/v1/requests/" + VALID_STOCK_REQUEST_ID + "/pick"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test

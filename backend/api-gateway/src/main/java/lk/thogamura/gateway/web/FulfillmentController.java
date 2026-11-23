@@ -17,6 +17,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,127 +48,65 @@ public class FulfillmentController {
     }
 
     @PostMapping("/requests/{id}/pick")
-    public ResponseEntity<?> markPicked(@PathVariable("id") String requestIdStr) {
-        if (requestIdStr == null || !TcpMessageCodec.isCanonicalUuidV4(requestIdStr.trim())) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", "VALIDATION_ERROR");
-            body.put("message", "Path parameter 'id' must be a canonical lowercase UUID v4");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-        }
-
-        String commandRequestId = UUID.randomUUID().toString();
-        try {
-            Map<String, Object> data = Map.of("stockRequestId", requestIdStr.trim());
-            JsonNode response = tcpCommandClient.sendCommand(
-                    ProtocolInfo.COMMAND_MARK_PICKED,
-                    commandRequestId,
-                    data
-            );
-
-            String status = response.path("status").asText();
-            if (ProtocolInfo.STATUS_PICKED.equals(status)) {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("stockRequestId", requestIdStr.trim());
-                body.put("status", "PICKED");
-                return ResponseEntity.ok(body);
-            } else if (ProtocolInfo.STATUS_REJECTED.equals(status)) {
-                String reason = response.path("data").path("reason").asText("Cannot transition request to PICKED");
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("code", "INVALID_STATE_TRANSITION");
-                body.put("message", reason);
-                body.put("stockRequestId", requestIdStr.trim());
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-            } else {
-                JsonNode errorNode = response.path("error");
-                String code = errorNode.path("code").asText("INTERNAL_ERROR");
-                String message = errorNode.path("message").asText("Warehouse rejected pick operation");
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("code", code);
-                body.put("message", message);
-                body.put("stockRequestId", requestIdStr.trim());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-            }
-        } catch (ServerUnavailableException e) {
-            logger.warn("Warehouse command server is unreachable during markPicked: {}", e.getMessage());
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", "WAREHOUSE_UNAVAILABLE");
-            body.put("message", "Warehouse command server is unreachable. Please verify service status.");
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
-        } catch (CommandTimeoutException e) {
-            logger.warn("Warehouse command timed out during markPicked: {}", e.getMessage());
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", "WAREHOUSE_TIMEOUT");
-            body.put("message", "Warehouse command timed out. Please retry.");
-            return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(body);
-        } catch (CommandTransportException e) {
-            logger.error("Transport error during markPicked: {}", e.getMessage(), e);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", "INTERNAL_TRANSPORT_ERROR");
-            body.put("message", "Warehouse command transport error occurred.");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
-        }
+    public ResponseEntity<?> markPicked(@PathVariable("id") String requestId) {
+        return transition(requestId, ProtocolInfo.COMMAND_MARK_PICKED, ProtocolInfo.STATUS_PICKED);
     }
 
     @PostMapping("/requests/{id}/dispatch")
-    public ResponseEntity<?> markDispatched(@PathVariable("id") String requestIdStr) {
-        if (requestIdStr == null || !TcpMessageCodec.isCanonicalUuidV4(requestIdStr.trim())) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", "VALIDATION_ERROR");
-            body.put("message", "Path parameter 'id' must be a canonical lowercase UUID v4");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    public ResponseEntity<?> markDispatched(@PathVariable("id") String requestId) {
+        return transition(requestId, ProtocolInfo.COMMAND_MARK_DISPATCHED, ProtocolInfo.STATUS_DISPATCHED);
+    }
+
+    private ResponseEntity<?> transition(String rawRequestId, String command, String expectedStatus) {
+        String requestId = rawRequestId.trim();
+        if (!TcpMessageCodec.isCanonicalUuidV4(requestId)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "code", ProtocolInfo.ERROR_VALIDATION,
+                    "message", "Path parameter 'id' must be a canonical lowercase UUID v4"
+            ));
         }
 
-        String commandRequestId = UUID.randomUUID().toString();
         try {
-            Map<String, Object> data = Map.of("stockRequestId", requestIdStr.trim());
-            JsonNode response = tcpCommandClient.sendCommand(
-                    ProtocolInfo.COMMAND_MARK_DISPATCHED,
-                    commandRequestId,
-                    data
-            );
-
-            String status = response.path("status").asText();
-            if (ProtocolInfo.STATUS_DISPATCHED.equals(status)) {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("stockRequestId", requestIdStr.trim());
-                body.put("status", "DISPATCHED");
-                return ResponseEntity.ok(body);
-            } else if (ProtocolInfo.STATUS_REJECTED.equals(status)) {
-                String reason = response.path("data").path("reason").asText("Cannot transition request to DISPATCHED");
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("code", "INVALID_STATE_TRANSITION");
-                body.put("message", reason);
-                body.put("stockRequestId", requestIdStr.trim());
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-            } else {
-                JsonNode errorNode = response.path("error");
-                String code = errorNode.path("code").asText("INTERNAL_ERROR");
-                String message = errorNode.path("message").asText("Warehouse rejected dispatch operation");
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("code", code);
-                body.put("message", message);
-                body.put("stockRequestId", requestIdStr.trim());
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+            String commandRequestId = fulfillmentCommandId(command, requestId);
+            JsonNode response = tcpCommandClient.sendCommand(command, commandRequestId, Map.of("stockRequestId", requestId));
+            if (expectedStatus.equals(response.path("status").asText())) {
+                return ResponseEntity.ok(Map.of("stockRequestId", requestId, "status", expectedStatus));
             }
+            return WarehouseHttpErrors.from(response, "stockRequestId", requestId);
         } catch (ServerUnavailableException e) {
-            logger.warn("Warehouse command server is unreachable during markDispatched: {}", e.getMessage());
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", "WAREHOUSE_UNAVAILABLE");
-            body.put("message", "Warehouse command server is unreachable. Please verify service status.");
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+            return transitionFailure(HttpStatus.SERVICE_UNAVAILABLE, "WAREHOUSE_UNAVAILABLE", requestId);
         } catch (CommandTimeoutException e) {
-            logger.warn("Warehouse command timed out during markDispatched: {}", e.getMessage());
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", "WAREHOUSE_TIMEOUT");
-            body.put("message", "Warehouse command timed out. Please retry.");
-            return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(body);
+            return transitionFailure(HttpStatus.GATEWAY_TIMEOUT, "WAREHOUSE_TIMEOUT", requestId);
         } catch (CommandTransportException e) {
-            logger.error("Transport error during markDispatched: {}", e.getMessage(), e);
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", "INTERNAL_TRANSPORT_ERROR");
-            body.put("message", "Warehouse command transport error occurred.");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+            logger.warn("Warehouse {} transport failed for stock request {}", command, requestId, e);
+            return transitionFailure(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_TRANSPORT_ERROR", requestId);
         }
+    }
+
+    private static ResponseEntity<Map<String, String>> transitionFailure(HttpStatus status, String code, String requestId) {
+        return ResponseEntity.status(status).body(Map.of(
+                "code", code,
+                "message", "Warehouse did not confirm the transition. Retrying the same action is safe.",
+                "stockRequestId", requestId
+        ));
+    }
+
+    /**
+     * Each fulfillment action is a single intent per stock request. Derive its stable command
+     * identifier so an HTTP retry can find the same receipt through any gateway.
+     */
+    private static String fulfillmentCommandId(String command, String requestId) {
+        byte[] hash;
+        try {
+            hash = MessageDigest.getInstance("SHA-256")
+                    .digest(("thogamura.fulfillment.v1/" + command + "/" + requestId).getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is required by the Java runtime", e);
+        }
+        hash[6] = (byte) ((hash[6] & 0x0f) | 0x40);
+        hash[8] = (byte) ((hash[8] & 0x3f) | 0x80);
+        ByteBuffer words = ByteBuffer.wrap(hash);
+        return new UUID(words.getLong(), words.getLong()).toString();
     }
 
     @GetMapping("/movements")
@@ -183,17 +125,19 @@ public class FulfillmentController {
 
             JsonNode movementsNode = response.path("data").path("movements");
             List<Map<String, Object>> movements = new ArrayList<>();
-            if (movementsNode.isArray()) {
-                for (JsonNode item : movementsNode) {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("id", item.path("id").asLong());
-                    m.put("stockRequestId", item.path("stockRequestId").asText());
-                    m.put("sku", item.path("sku").asText());
-                    m.put("quantityDelta", item.path("quantityDelta").asInt());
-                    m.put("reason", item.path("reason").asText());
-                    m.put("occurredAt", item.path("occurredAt").asText());
-                    movements.add(m);
+            if (!movementsNode.isArray()) return WarehouseHttpErrors.invalidData();
+            for (JsonNode item : movementsNode) {
+                if (!item.path("id").isIntegralNumber() || !item.path("id").canConvertToLong() ||
+                        !WarehouseHttpErrors.hasText(item, "stockRequestId") || !WarehouseHttpErrors.hasText(item, "sku") ||
+                        !item.path("quantityDelta").isInt() || !WarehouseHttpErrors.hasText(item, "reason") ||
+                        !WarehouseHttpErrors.hasText(item, "occurredAt")) {
+                    return WarehouseHttpErrors.invalidData();
                 }
+                movements.add(Map.of(
+                        "id", item.path("id").longValue(), "stockRequestId", item.path("stockRequestId").textValue(),
+                        "sku", item.path("sku").textValue(), "quantityDelta", item.path("quantityDelta").intValue(),
+                        "reason", item.path("reason").textValue(), "occurredAt", item.path("occurredAt").textValue()
+                ));
             }
             return ResponseEntity.ok(movements);
         } catch (ServerUnavailableException e) {

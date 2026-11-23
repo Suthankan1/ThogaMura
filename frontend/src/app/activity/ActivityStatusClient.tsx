@@ -1,252 +1,105 @@
 "use client";
 
-import React from "react";
+import Link from "next/link";
+import { workspaceCall, workspacePage, WORKSPACE_ENABLED, WorkspaceError } from "@/lib/api/workspace";
+import type { Product } from "@/lib/types/inventory";
+import { fetchProducts } from "@/lib/api/inventory";
 import { useStockEvents } from "@/lib/events/useStockEvents";
+import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
+import { formatFullDateTime } from "@/lib/formatters";
+import { Freshness, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
+
+async function readInventory() {
+  if (!WORKSPACE_ENABLED) return { signIn: false, items: await fetchProducts() };
+  try {
+    const page = await workspacePage<Product>(workspaceCall, "/products?limit=1");
+    return { signIn: false, items: page.items };
+  } catch (error) {
+    if (error instanceof WorkspaceError && error.status === 401) return { signIn: true };
+    throw error;
+  }
+}
+
+const demonstrations = [
+  ["M1 · TCP commands", "Send a framed request to the warehouse JVM. Replay a lost result using the original request reference and verify stock was reserved once."],
+  ["M2 · Supplier HTTP", "Use the independent supplier simulator to observe positive, zero, unknown and unavailable outcomes. An inquiry leaves warehouse stock intact."],
+  ["M3 · Java NIO", "Observe a version hint below, disconnect a branch subscriber and confirm it refreshes warehouse records after reconnecting."],
+  ["M4 · Concurrent reservations", "Try two requests for eight units against ten available. Compare the two outcomes and verify that dispatch records one movement."],
+  ["M5 · JSSE TLS", "Check that the branch can reach the warehouse with a trusted certificate and that an incorrect certificate identity fails in the LAN rehearsal."],
+];
 
 export function ActivityStatusClient() {
-  const {
-    sseStatus,
-    upstreamNioStatus,
-    isLive,
-    lastVersion,
-    lastInvalidatedAt,
-    isRefreshing,
-    warningMessage,
-    eventsLog,
-    triggerRefresh,
-    networkDetails,
-  } = useStockEvents();
-
-  const nioFeed = networkDetails?.nioFeed;
-  const sseInfo = networkDetails?.sse;
+  const { sseStatus, upstreamNioStatus, networkDetails, eventsLog, warningMessage } = useStockEvents();
+  const catalog = useWarehouseQuery(readInventory);
+  const feed = networkDetails?.nioFeed;
+  const tls = networkDetails?.tlsCommand?.status;
+  const transport = tls === "OPERATIONAL" ? "Verified TLS response"
+    : tls === "DISABLED" ? "Local development · TLS disabled"
+    : tls === "MISCONFIGURED" ? "TLS misconfigured"
+    : tls === "UNREACHABLE" ? "TLS probe failed" : "Probe unavailable";
+  const rows = [
+    { name: "Browser event stream", value: sseStatus === "CONNECTED" ? "Connected" : sseStatus === "CONNECTING" ? "Connecting" : "Interrupted" },
+    { name: "Warehouse NIO feed", value: upstreamNioStatus === "CONNECTED"
+      ? "Connected · version hints only" : feed?.enabled === false ? "Disabled" : upstreamNioStatus.toLowerCase() },
+    { name: "Warehouse command transport", value: transport },
+    { name: "Warehouse inventory query", value: catalog.error ? "Read failed" : catalog.data?.signIn ? "Sign in to check inventory" : catalog.latencyMs !== null ? `Catalog read confirmed · ${catalog.latencyMs} ms round trip` : "Awaiting first read" },
+  ];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-          Member 3 — Real-Time Notification &amp; Network Health
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Activity &amp; Connection Status
-        </h1>
-        <p className="mt-3 max-w-3xl text-slate-700">
-          Monitor the end-to-end Java networking path: from warehouse Java NIO change events
-          to Spring Boot Server-Sent Events (SSE) and authoritative browser state reconciliation.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <WorkspaceHeading title="Network diagnostics" description="Check each connection in the stock workflow and inspect the change hints received by this browser."
+        action={<button type="button" className={secondaryAction} onClick={() => void catalog.refresh()}>Check inventory read</button>} />
 
-      {/* Network Alert / Warning Banner */}
-      {warningMessage ? (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
-        >
-          <svg className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <div>
-            <h2 className="font-semibold text-amber-900">Network Disruption Detected</h2>
-            <p className="mt-1 text-sm text-amber-800">{warningMessage}</p>
-            <p className="mt-1 text-xs text-amber-700">
-              Displayed stock quantities may be outdated. The browser will automatically reconcile authoritative state upon reconnection.
-            </p>
-          </div>
-        </div>
-      ) : isLive ? (
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-          <span className="flex h-3 w-3 shrink-0 rounded-full bg-emerald-500" />
-          <p className="text-sm font-medium">
-            <strong>All real-time feeds active.</strong> Warehouse Java NIO notification feed and browser SSE stream are synchronized.
-          </p>
-        </div>
-      ) : null}
+      {warningMessage && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{warningMessage}</p>}
 
-      {/* 3-Hop Architecture Status Grid */}
-      <div className="grid gap-5 md:grid-cols-3">
-        {/* Hop 1: Gateway SSE Stream */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Browser Stream
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                sseStatus === "CONNECTED"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-rose-100 text-rose-800"
-              }`}
-            >
-              {sseStatus}
-            </span>
-          </div>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">HTTP Server-Sent Events</h2>
-          <p className="mt-1 text-xs text-slate-500">GET /api/v1/events (EventSource)</p>
-
-          <dl className="mt-4 space-y-2 text-xs">
-            <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="text-slate-500">Active Emitters:</dt>
-              <dd className="font-semibold text-slate-800">{sseInfo?.activeClients ?? 1}</dd>
+      <section className={surface} aria-labelledby="connections">
+        <h2 id="connections" className="border-b border-slate-200 p-4 text-lg font-semibold sm:p-5">Connections</h2>
+        <dl className="divide-y divide-slate-100">
+          {rows.map(({ name, value }) => (
+            <div key={name} className="grid gap-1 p-4 text-sm sm:grid-cols-[1fr_1fr] sm:p-5">
+              <dt className="font-semibold">{name}</dt><dd className="text-slate-700 first-letter:uppercase">{value}
+                {name === "Warehouse inventory query" && catalog.data?.signIn && <Link href="/workspace" className={`${secondaryAction} ml-2`}>Sign in</Link>}
+              </dd>
             </div>
-            <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="text-slate-500">Last SSE Version:</dt>
-              <dd className="font-semibold text-slate-800">{lastVersion ? `v${lastVersion}` : "None"}</dd>
-            </div>
-          </dl>
-        </div>
-
-        {/* Hop 2: Warehouse Java NIO Feed */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Warehouse Feed
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                upstreamNioStatus === "CONNECTED"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : upstreamNioStatus === "RECONNECTING"
-                  ? "bg-amber-100 text-amber-800"
-                  : "bg-rose-100 text-rose-800"
-              }`}
-            >
-              {upstreamNioStatus}
-            </span>
+          ))}
+          <div className="grid gap-1 p-4 text-sm sm:grid-cols-[1fr_1fr] sm:p-5">
+            <dt className="font-semibold">Inventory check time</dt><dd>{catalog.data?.signIn ? "Sign-in required" : <Freshness {...catalog} />}</dd>
           </div>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">Java NIO SocketChannel</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            {networkDetails?.centralHost || "127.0.0.1"}:{networkDetails?.nioPort || 7444} (Selector Loop)
-          </p>
-
-          <dl className="mt-4 space-y-2 text-xs">
-            <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="text-slate-500">Reconnect Count:</dt>
-              <dd className="font-semibold text-slate-800">{nioFeed?.reconnectCount ?? 0}</dd>
-            </div>
-            <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="text-slate-500">Inbound Changes:</dt>
-              <dd className="font-semibold text-slate-800">{nioFeed?.notificationCount ?? 0}</dd>
-            </div>
-          </dl>
-        </div>
-
-        {/* Hop 3: TLS Command Transport */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Command Transport
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                networkDetails?.tlsCommand?.status === "OPERATIONAL"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : networkDetails?.tlsCommand?.status === "DISABLED"
-                  ? "bg-slate-100 text-slate-700"
-                  : networkDetails?.tlsCommand?.status === "MISCONFIGURED"
-                  ? "bg-rose-100 text-rose-800"
-                  : "bg-amber-100 text-amber-800"
-              }`}
-            >
-              {networkDetails?.tlsCommand?.status || "DISABLED"}
-            </span>
+          <div className="grid gap-1 p-4 text-sm sm:grid-cols-[1fr_1fr] sm:p-5">
+            <dt className="font-semibold">Supplier service</dt>
+            <dd><Link href={WORKSPACE_ENABLED ? "/workspace?section=suppliers" : "/suppliers"} className={secondaryAction}>Run a live inquiry</Link></dd>
           </div>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">JSSE TLS Socket</h2>
-          <p className="mt-1 text-xs text-slate-500">Port 7443 (Authoritative Stock Commands)</p>
+        </dl>
+      </section>
 
-          <dl className="mt-4 space-y-2 text-xs">
-            <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="text-slate-500">Owner:</dt>
-              <dd className="font-semibold text-slate-800">Member 5 (@vibhathkalsara99)</dd>
-            </div>
-            <div className="flex justify-between border-t border-slate-100 pt-2">
-              <dt className="text-slate-500">Security:</dt>
-              <dd className="font-semibold text-slate-800">TLS 1.3 / X.509 TrustStore</dd>
-            </div>
-          </dl>
+      <section className={surface} aria-labelledby="events-title">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-4 sm:p-5">
+          <h2 id="events-title" className="text-lg font-semibold">Recent change hints</h2>
+          {feed && <p className="text-xs text-slate-600">{feed.notificationCount} received by gateway · {feed.reconnectCount} reconnects</p>}
         </div>
-      </div>
+        {eventsLog.length ? (
+          <ol className="divide-y divide-slate-100">
+            {eventsLog.map((event, index) => (
+              <li key={`${event.version}:${event.receivedAt.getTime()}:${index}`} className="flex flex-wrap justify-between gap-2 p-4 text-sm sm:p-5">
+                <span className="font-semibold tabular-nums">Version {event.version}</span>
+                <time dateTime={event.receivedAt.toISOString()} className="text-slate-600">{formatFullDateTime(event.receivedAt)}</time>
+              </li>
+            ))}
+          </ol>
+        ) : <p className="p-5 text-sm text-slate-600">This browser has yet to receive a warehouse change hint.</p>}
+      </section>
 
-      {/* Authoritative Refresh Panel */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Authoritative State Reconciliation</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Last reconciled:{" "}
-              <span className="font-medium text-slate-700">
-                {lastInvalidatedAt ? lastInvalidatedAt.toLocaleTimeString() : "Pending initial load"}
-              </span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void triggerRefresh("MANUAL")}
-            disabled={isRefreshing}
-            className="inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 disabled:opacity-50"
-          >
-            <svg
-              className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-              />
-            </svg>
-            {isRefreshing ? "Reconciling..." : "Trigger Authoritative Refresh"}
-          </button>
+      <section className={surface} aria-labelledby="demonstrations">
+        <h2 id="demonstrations" className="border-b border-slate-200 p-4 text-lg font-semibold sm:p-5">Coursework demonstrations</h2>
+        <div className="divide-y divide-slate-100">
+          {demonstrations.map(([title, description]) => (
+            <details key={title} className="p-4 sm:p-5">
+              <summary className="cursor-pointer text-sm font-semibold text-teal-900">{title}</summary>
+              <p className="mt-2 max-w-prose text-sm text-slate-700">{description}</p>
+            </details>
+          ))}
         </div>
-
-        <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 border border-slate-100">
-          <strong>Architectural Disclosure:</strong> Invalidation signals (`stock-changed`) carry strictly version numbers.
-          Product stock quantities, reservation status, and movements are never derived from SSE payloads.
-          The browser reconciles authoritative data exclusively through validated REST endpoints (`/api/v1/products`).
-        </div>
-      </div>
-
-      {/* Live Invalidation Log */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-        <h2 className="text-lg font-bold text-slate-900">Recent Invalidation Events Log</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Record of real-time signals received by this browser session.
-        </p>
-
-        {eventsLog.length === 0 ? (
-          <p className="mt-4 rounded-lg border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">
-            No change events received yet. When warehouse inventory changes, version-only invalidation signals will stream here.
-          </p>
-        ) : (
-          <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-              <thead className="bg-slate-50 text-slate-700">
-                <tr>
-                  <th scope="col" className="px-4 py-2 font-semibold">Time</th>
-                  <th scope="col" className="px-4 py-2 font-semibold">Source</th>
-                  <th scope="col" className="px-4 py-2 font-semibold">Change Version</th>
-                  <th scope="col" className="px-4 py-2 font-semibold">Action Dispatched</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-600">
-                {eventsLog.map((ev, idx) => (
-                  <tr key={`${ev.version}-${idx}`}>
-                    <td className="px-4 py-2 text-slate-800">{ev.receivedAt.toLocaleTimeString()}</td>
-                    <td className="px-4 py-2 font-mono text-teal-700">{ev.source}</td>
-                    <td className="px-4 py-2 font-semibold text-slate-900">v{ev.version}</td>
-                    <td className="px-4 py-2 text-slate-600">Authoritative REST refetch dispatched</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -33,7 +33,7 @@ class DefaultSupplierHttpClientTest {
                 3000,
                 5000,
                 16384,
-                false
+                java.util.Set.of()
         );
         client = new DefaultSupplierHttpClient(config);
     }
@@ -104,7 +104,7 @@ class DefaultSupplierHttpClientTest {
                 1000,
                 1000,
                 16384,
-                false
+                java.util.Set.of()
         );
         DefaultSupplierHttpClient offlineClient = new DefaultSupplierHttpClient(offlineConfig);
 
@@ -122,7 +122,7 @@ class DefaultSupplierHttpClientTest {
                 1000,
                 300,
                 16384,
-                false
+                java.util.Set.of()
         );
         DefaultSupplierHttpClient timeoutClient = new DefaultSupplierHttpClient(timeoutConfig);
 
@@ -168,7 +168,7 @@ class DefaultSupplierHttpClientTest {
                     1000,
                     2000,
                     16384, // 16 KB max
-                    false
+                    java.util.Set.of()
             );
             DefaultSupplierHttpClient clientWithLimits = new DefaultSupplierHttpClient(oversizedConfig);
 
@@ -237,25 +237,25 @@ class DefaultSupplierHttpClientTest {
                 3000,
                 5000,
                 16384,
-                false
+                java.util.Set.of()
         );
 
         assertThatThrownBy(ssrfConfig::validate)
                 .isInstanceOf(SecurityException.class)
-                .hasMessageContaining("SSRF protection blocks unapproved external hosts");
+                .hasMessageContaining("approved HTTPS allowlist");
     }
 
     @Test
-    @DisplayName("Should permit unapproved URL only when explicitly authorized for testing")
-    void shouldAllowUnapprovedUrlWhenExplicitlyAuthorized() {
+    @DisplayName("Should permit an explicitly allowlisted HTTPS origin")
+    void shouldAllowConfiguredHttpsOrigin() {
         SupplierClientConfig testConfig = new SupplierClientConfig(
-                "http://192.168.1.200:8090",
+                "https://supplier.example.test:8443",
                 3000,
                 5000,
                 16384,
-                true // explicitly allowed
+                java.util.Set.of("https://supplier.example.test:8443")
         );
         testConfig.validate();
-        assertThat(testConfig.isAllowUnapprovedUrls()).isTrue();
+
     }
 }

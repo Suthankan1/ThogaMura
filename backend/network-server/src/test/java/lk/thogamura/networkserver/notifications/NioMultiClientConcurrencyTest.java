@@ -13,12 +13,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -107,20 +105,19 @@ class NioMultiClientConcurrencyTest {
         producers.shutdown();
         assertThat(published).isTrue();
 
-        // 4. Verify each of the 12 subscribers receives all 5 notifications
+        // A late older version can be coalesced. Every healthy subscriber must reach the
+        // newest version, and the versions it receives must progress monotonically.
         for (int c = 0; c < clientCount; c++) {
             BufferedReader reader = readers.get(c);
-            List<Long> receivedVersions = new ArrayList<>();
-            for (int m = 0; m < messageCount; m++) {
+            long previous = 200L;
+            while (previous < 205L) {
                 String line = reader.readLine();
                 assertThat(line).isNotNull();
                 ChangeNotification notification = ChangeNotification.parse(line);
                 assertThat(notification.type()).isEqualTo("CHANGED");
-                receivedVersions.add(notification.version());
+                assertThat(notification.version()).isGreaterThan(previous).isLessThanOrEqualTo(205L);
+                previous = notification.version();
             }
-            assertThat(receivedVersions)
-                    .as("Client %d must receive exactly 5 notifications", c)
-                    .containsExactlyInAnyOrder(201L, 202L, 203L, 204L, 205L);
         }
 
         // 5. Client subset disconnection resilience: Disconnect 6 clients

@@ -31,6 +31,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -427,10 +429,10 @@ class StockFulfillmentIntegrationTest {
         assertThat(res.get("error").get("message").asText()).contains("Stock request '" + unknownId + "' not found");
     }
 
-    @Test
+    @ParameterizedTest(name = "Concurrent dispatch with same command ID: {0}")
+    @ValueSource(booleans = {false, true})
     @Order(7)
-    @DisplayName("7. Concurrent dispatch requests on same stock request serialize: exactly 1 succeeds, 1 rejected")
-    void shouldPreventConcurrentDuplicateDispatch() throws Exception {
+    void shouldPreventConcurrentDuplicateDispatch(boolean sameCommandId) throws Exception {
         UUID stockRequestId = UUID.randomUUID();
         sendCommand(tcpPort, TcpMessageCodec.formatRequest(
                 ProtocolInfo.COMMAND_REQUEST_STOCK, stockRequestId.toString(),
@@ -441,7 +443,7 @@ class StockFulfillmentIntegrationTest {
                 Map.of("stockRequestId", stockRequestId.toString())
         ));
 
-        // 2 threads attempt to dispatch the same request concurrently with different command IDs
+        UUID originalCommandId = UUID.randomUUID();
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch startGate = new CountDownLatch(1);
         CountDownLatch doneGate = new CountDownLatch(2);
@@ -454,7 +456,7 @@ class StockFulfillmentIntegrationTest {
             executor.submit(() -> {
                 try {
                     startGate.await();
-                    UUID cmdId = UUID.randomUUID();
+                    UUID cmdId = sameCommandId ? originalCommandId : UUID.randomUUID();
                     String req = TcpMessageCodec.formatRequest(
                             ProtocolInfo.COMMAND_MARK_DISPATCHED, cmdId.toString(),
                             Map.of("stockRequestId", stockRequestId.toString())
@@ -483,9 +485,11 @@ class StockFulfillmentIntegrationTest {
         assertThat(completed).isTrue();
         assertThat(responses).hasSize(2);
 
-        // Exactly one dispatch succeeds, the other receives INVALID_TRANSITION
-        assertThat(successCount.get()).isEqualTo(1);
-        assertThat(conflictCount.get()).isEqualTo(1);
+        assertThat(successCount.get()).isEqualTo(sameCommandId ? 2 : 1);
+        assertThat(conflictCount.get()).isEqualTo(sameCommandId ? 0 : 1);
+        if (sameCommandId) {
+            assertThat(responses.getFirst()).isEqualTo(responses.getLast());
+        }
 
         // Inventory is decremented only once (10 - 8 = 2)
         assertStockBalances(SyntheticInventoryFixtures.SKU_ITEM_007, 2, 0, 2);

@@ -8,13 +8,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import javax.sql.DataSource;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Properties;
-
 /**
  * Shared test fixture initializing PostgreSQL DataSource, Flyway migration,
  * and TransactionManager for database integration tests.
@@ -51,111 +44,33 @@ public final class PostgresTestHelper {
     }
 
     private static void initDataSource() {
-        String jdbcUrl = System.getenv("THOGAMURA_DB_URL");
-        String username = System.getenv("THOGAMURA_DB_USER");
-        String password = System.getenv("THOGAMURA_DB_PASSWORD");
-
-        if (jdbcUrl == null || jdbcUrl.isBlank()) {
-            Path envPath = findDotEnvPath();
-            if (envPath != null && Files.isReadable(envPath)) {
-                Properties props = loadEnvProperties(envPath);
-                jdbcUrl = props.getProperty("THOGAMURA_DB_URL");
-                username = props.getProperty("THOGAMURA_DB_USER");
-                password = props.getProperty("THOGAMURA_DB_PASSWORD");
-            }
+        // The suite clears application tables. Its only target is a fresh, disposable container.
+        if (System.getProperty("DOCKER_API_VERSION") == null && System.getenv("DOCKER_API_VERSION") == null) {
+            System.setProperty("api.version", "1.44");
         }
+        postgresContainer = new PostgreSQLContainer<>("postgres:17-alpine")
+                .withDatabaseName("thogamura_test")
+                .withUsername("thogamura")
+                .withPassword("test_secret");
+        postgresContainer.start();
 
-        boolean canConnect = false;
-        if (jdbcUrl != null && !jdbcUrl.isBlank()) {
-            PGSimpleDataSource probeDs = new PGSimpleDataSource();
-            probeDs.setUrl(jdbcUrl);
-            probeDs.setUser(username != null ? username : "thogamura");
-            probeDs.setPassword(password != null ? password : "");
-            try (java.sql.Connection conn = probeDs.getConnection()) {
-                canConnect = true;
-            } catch (Exception ignored) {
-                // Configured DB is unavailable or authentication failed; fall back to Testcontainers
-            }
-        }
-
-        if (!canConnect) {
-            if (System.getProperty("DOCKER_API_VERSION") == null && System.getenv("DOCKER_API_VERSION") == null) {
-                System.setProperty("DOCKER_API_VERSION", "1.44");
-                System.setProperty("api.version", "1.44");
-            }
-            postgresContainer = new PostgreSQLContainer<>("postgres:17-alpine")
-                    .withDatabaseName("thogamura_test")
-                    .withUsername("thogamura")
-                    .withPassword("test_secret");
-            postgresContainer.start();
-
-            jdbcUrl = postgresContainer.getJdbcUrl();
-            username = postgresContainer.getUsername();
-            password = postgresContainer.getPassword();
-        }
-
-        if (username == null) {
-            username = "thogamura";
-        }
-        if (password == null) {
-            password = "";
-        }
-
-        PGSimpleDataSource ds = new PGSimpleDataSource();
-        ds.setUrl(jdbcUrl);
-        ds.setUser(username);
-        ds.setPassword(password);
-        dataSource = ds;
-
-        // Run Flyway migrations
-        Flyway flyway = Flyway.configure()
-                .dataSource(dataSource)
-                .locations("classpath:db/migration")
-                .cleanDisabled(false)
-                .load();
-        flyway.migrate();
+        PGSimpleDataSource containerDataSource = new PGSimpleDataSource();
+        containerDataSource.setUrl(postgresContainer.getJdbcUrl());
+        containerDataSource.setUser(postgresContainer.getUsername());
+        containerDataSource.setPassword(postgresContainer.getPassword());
+        Flyway.configure().dataSource(containerDataSource)
+                .locations("classpath:db/migration").load().migrate();
+        dataSource = containerDataSource;
     }
 
     public static void clearAllTables(JdbcTemplate template) {
+        if (template.getDataSource() != getDataSource()) {
+            throw new IllegalArgumentException("Test cleanup requires the disposable PostgreSQL container");
+        }
+        template.update("DELETE FROM supplier_followups");
         template.update("DELETE FROM stock_movements");
         template.update("DELETE FROM stock_requests");
         template.update("DELETE FROM command_receipts");
         template.update("DELETE FROM product_stock");
-    }
-
-    private static Path findDotEnvPath() {
-        Path[] candidateLocations = new Path[]{
-                Paths.get(".env"),
-                Paths.get("../.env"),
-                Paths.get("../../.env"),
-                Paths.get("../../../.env")
-        };
-        for (Path candidate : candidateLocations) {
-            if (Files.isRegularFile(candidate)) {
-                return candidate.toAbsolutePath().normalize();
-            }
-        }
-        return null;
-    }
-
-    private static Properties loadEnvProperties(Path envPath) {
-        Properties properties = new Properties();
-        try (BufferedReader reader = Files.newBufferedReader(envPath)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-                int eq = line.indexOf('=');
-                if (eq > 0) {
-                    String key = line.substring(0, eq).trim();
-                    String value = line.substring(eq + 1).trim();
-                    properties.setProperty(key, value);
-                }
-            }
-        } catch (IOException ignored) {
-        }
-        return properties;
     }
 }

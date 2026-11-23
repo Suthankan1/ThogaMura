@@ -1,414 +1,227 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  fetchStockRequests,
-  pickStockRequest,
-  dispatchStockRequest,
-  fetchStockMovements,
-  ApiError,
-} from "@/lib/api/inventory";
-import type { StockRequest, StockMovement } from "@/lib/types/inventory";
-import { useStockEvents } from "@/lib/events/useStockEvents";
+import { useSearchParams } from "next/navigation";
+import { ApiError, dispatchStockRequest, fetchProducts, fetchStockMovements, fetchStockRequests, pickStockRequest } from "@/lib/api/inventory";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { ListPages, listPage, updateListParams } from "@/components/ListPages";
+import { formatAge, formatFullDateTime, formatUnits } from "@/lib/formatters";
+import type { StockRequest } from "@/lib/types/inventory";
+import { downloadCsv, filterMovements, movementCsv } from "@/lib/movementReport";
+import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
+import { field, Freshness, primaryAction, RequestBadge, secondaryAction, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
+
+const readPicks = () => fetchStockRequests("ACCEPTED");
+const readDispatches = () => fetchStockRequests("PICKED");
+
+type Stage = "pick" | "dispatch" | "movements";
+const stages: { key: Stage; label: string }[] = [
+  { key: "pick", label: "To pick" },
+  { key: "dispatch", label: "Ready to dispatch" },
+  { key: "movements", label: "Movements" },
+];
 
 export function WarehouseQueueClient() {
-  const [queue, setQueue] = useState<StockRequest[]>([]);
-  const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  const { subscribeInvalidation, isLive, warningMessage } = useStockEvents();
-
-  const loadWarehouseData = useCallback(async () => {
-    try {
-      const [allRequests, movementRecords] = await Promise.all([
-        fetchStockRequests(),
-        fetchStockMovements(),
-      ]);
-
-      // Only show requests that require picker action: ACCEPTED or PICKED
-      const actionable = allRequests.filter(
-        (r) => r.status === "ACCEPTED" || r.status === "PICKED"
-      );
-      setQueue(actionable);
-      setMovements(movementRecords);
-      setError(null);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(`${err.code}: ${err.message}`);
-      } else {
-        setError("Failed to load warehouse fulfillment queue.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const params = useSearchParams();
+  const target = params.get("requestId");
+  const preferredStage = params.get("stage")?.toLowerCase();
+  const stage = preferredStage === "dispatch" || preferredStage === "movements" ? preferredStage : "pick";
+  const search = params.get("q") ?? "";
+  const picks = useWarehouseQuery(readPicks);
+  const dispatches = useWarehouseQuery(readDispatches);
+  const catalog = useWarehouseQuery(fetchProducts);
+  const movements = useWarehouseQuery(fetchStockMovements, stage === "movements");
+  const [movementSku, setMovementSku] = useState("");
+  const [movementFrom, setMovementFrom] = useState("");
+  const [movementThrough, setMovementThrough] = useState("");
+  const filteredMovements = filterMovements(movements.data ?? [], movementSku, movementFrom, movementThrough)
+    .filter((row) => !target || target === row.stockRequestId).reverse();
+  const movementPage = listPage(filteredMovements, params.get("page"));
+  const [review, setReview] = useState<StockRequest | null>(null);
+  const [working, setWorking] = useState<string | null>(null);
+  const actionInFlight = useRef(false);
+  const [feedback, setFeedback] = useState<{
+    id: string;
+    text: string;
+    error?: boolean;
+    retry?: { request: StockRequest; action: "pick" | "dispatch" };
+  } | null>(null);
+  const targetRef = useRef<HTMLLIElement>(null);
+  const query = stage === "pick" ? picks : dispatches;
+  const loaded = query.data ?? [];
+  const hasTarget = stage !== "movements" && !!target && loaded.some((row) => row.requestId === target);
+  const rows = loaded.filter((row) => !search || `${row.sku} ${row.requestId} ${nameFor(row.sku)}`.toLowerCase().includes(search.toLowerCase()));
+  const targetIndex = hasTarget ? rows.findIndex((row) => row.requestId === target) : -1;
+  const queuePage = listPage(rows, params.get("page"), targetIndex);
 
   useEffect(() => {
-    let ignore = false;
-    async function init() {
-      try {
-        const [allRequests, movementRecords] = await Promise.all([
-          fetchStockRequests(),
-          fetchStockMovements(),
-        ]);
-        if (!ignore) {
-          const actionable = allRequests.filter(
-            (r) => r.status === "ACCEPTED" || r.status === "PICKED"
-          );
-          setQueue(actionable);
-          setMovements(movementRecords);
-          setError(null);
-        }
-      } catch (err) {
-        if (!ignore) {
-          if (err instanceof ApiError) {
-            setError(`${err.code}: ${err.message}`);
-          } else {
-            setError("Failed to load warehouse fulfillment queue.");
-          }
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
+    if (hasTarget) {
+      targetRef.current?.scrollIntoView({ block: "nearest" });
+      targetRef.current?.focus({ preventScroll: true });
     }
-    void init();
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  }, [hasTarget, target]);
 
-  // Real-time invalidation
-  useEffect(() => {
-    return subscribeInvalidation(() => {
-      void loadWarehouseData();
-    });
-  }, [subscribeInvalidation, loadWarehouseData]);
-
-  async function handlePick(requestId: string) {
-    setActionLoading((prev) => ({ ...prev, [requestId]: true }));
-    setError(null);
-    setSuccessMessage(null);
-
+  async function transition(request: StockRequest, action: "pick" | "dispatch") {
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
+    setWorking(request.requestId);
+    setFeedback(null);
+    setReview(null);
     try {
-      await pickStockRequest(requestId);
-      setSuccessMessage(`Request ${requestId.slice(0, 8)}... successfully marked as PICKED.`);
-      await loadWarehouseData();
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(`Failed to pick request: ${err.message}`);
-      } else {
-        setError("Network failure marking request as picked.");
-      }
+      if (action === "pick") await pickStockRequest(request.requestId);
+      else await dispatchStockRequest(request.requestId);
+      setFeedback({ id: request.requestId, text: action === "pick" ? "Pickup confirmed. The request is ready to dispatch." : "Dispatch confirmed. The stock movement is recorded." });
+      await Promise.all([picks.refresh(), dispatches.refresh(), catalog.refresh(), movements.refresh()]);
+    } catch (error) {
+      const confirmed = error instanceof ApiError && error.status < 500;
+      setFeedback({
+        id: request.requestId,
+        text: confirmed ? error.message : "Warehouse response unconfirmed. Retrying this action will use the same command reference.",
+        error: true,
+        retry: confirmed ? undefined : { request, action },
+      });
+      if (confirmed) await Promise.all([picks.refresh(), dispatches.refresh()]);
     } finally {
-      setActionLoading((prev) => ({ ...prev, [requestId]: false }));
+      actionInFlight.current = false;
+      setWorking(null);
     }
   }
 
-  async function handleDispatch(requestId: string) {
-    setActionLoading((prev) => ({ ...prev, [requestId]: true }));
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      await dispatchStockRequest(requestId);
-      setSuccessMessage(
-        `Request ${requestId.slice(0, 8)}... successfully marked as DISPATCHED. PostgreSQL balances decremented.`
-      );
-      await loadWarehouseData();
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(`Failed to dispatch request: ${err.message}`);
-      } else {
-        setError("Network failure marking request as dispatched.");
-      }
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [requestId]: false }));
-    }
+  function nameFor(sku: string) {
+    return catalog.data?.find((product) => product.sku === sku)?.name ?? sku;
   }
-
-  const pendingPicks = queue.filter((r) => r.status === "ACCEPTED").length;
-  const pendingDispatches = queue.filter((r) => r.status === "PICKED").length;
-  const totalMovements = movements.length;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-teal-700">
-            Operations & Fulfillment
-          </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Warehouse Queue
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Pickers review accepted reservations and execute strict ACCEPTED → PICKED → DISPATCHED transitions.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void loadWarehouseData()}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
-        >
-          <svg
-            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="2"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-            />
-          </svg>
-          Refresh Queue
-        </button>
-      </div>
+    <div className="space-y-6">
+      <WorkspaceHeading title="Warehouse queue" description="Pick accepted requests and confirm shipments from the warehouse."
+        action={<button className={secondaryAction} onClick={() => void (stage === "movements" ? movements.refresh() : query.refresh())}>Refresh view</button>} />
 
-      {/* Metrics Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Pending Pick</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-blue-900">{pendingPicks}</p>
-        </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">Pending Dispatch</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-amber-900">{pendingDispatches}</p>
-        </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Audit Movements</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-emerald-900">{totalMovements}</p>
-        </div>
-      </div>
+      <nav aria-label="Warehouse views" className="flex flex-wrap gap-2">
+        {stages.map((item) => (
+          <button key={item.key} type="button" aria-pressed={stage === item.key}
+            onClick={() => updateListParams({ stage: item.key, page: null, q: null, requestId: null })}
+            className={`${secondaryAction} ${stage === item.key ? "border-teal-600 bg-teal-50 text-teal-950" : ""}`}>
+            {item.label}
+          </button>
+        ))}
+      </nav>
 
-      {/* Network Warning */}
-      {warningMessage && (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
-        >
-          <svg className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <div>
-            <h2 className="font-semibold text-amber-900">Real-Time Invalidation Interrupted</h2>
-            <p className="mt-1 text-sm text-amber-800">{warningMessage}</p>
+      {feedback && (
+        <p role={feedback.error ? "alert" : "status"} className={`rounded-lg border p-4 text-sm ${feedback.error ? "border-amber-200 bg-amber-50 text-amber-950" : "border-teal-200 bg-teal-50 text-teal-950"}`}>
+          {feedback.text}{" "}
+          <Link className={textAction} href={`/requests?ref=${encodeURIComponent(feedback.id)}`}>View request</Link>
+          {feedback.retry && (
+            <button type="button" disabled={working !== null} className="ml-3 font-semibold underline disabled:opacity-50"
+              onClick={() => {
+                if (feedback.retry) void transition(feedback.retry.request, feedback.retry.action);
+              }}>
+              Retry same action
+            </button>
+          )}
+        </p>
+      )}
+
+      {stage === "movements" ? (
+        <section className={surface} aria-labelledby="movements-title">
+          <div className="border-b border-slate-200 p-4 sm:p-5">
+            <h2 id="movements-title" className="font-semibold text-slate-950">Stock movements</h2>
+            <Freshness {...movements} />
+            {movements.error && <p role="alert" className="mt-2 text-sm text-rose-900">{movements.error}</p>}
           </div>
-        </div>
-      )}
-
-      {/* Action Success / Error Notifications */}
-      {successMessage && (
-        <div
-          role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900"
-        >
-          ✓ {successMessage}
-        </div>
-      )}
-
-      {error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-900"
-        >
-          ⚠ {error}
-        </div>
-      )}
-
-      {/* Actionable Queue */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-900">
-            Pending Fulfillment ({queue.length})
-          </h2>
-          <span className="text-xs text-slate-500">
-            Feed status:{" "}
-            <strong className={isLive ? "text-emerald-700" : "text-amber-700"}>
-              {isLive ? "Synchronized" : "Stale"}
-            </strong>
-          </span>
-        </div>
-
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-20 animate-pulse rounded-xl border border-slate-200 bg-slate-100"
-              />
-            ))}
+          {movements.data && (
+            <div className="flex flex-wrap items-end gap-3 border-b border-slate-200 p-4 text-sm">
+              <label className="font-semibold">SKU
+                <input value={movementSku} onChange={(event) => { setMovementSku(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className={field + " mt-1 max-w-48"} />
+              </label>
+              <label className="font-semibold">From date
+                <input type="date" value={movementFrom} onChange={(event) => { setMovementFrom(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className={field + " mt-1"} />
+              </label>
+              <label className="font-semibold">Through date
+                <input type="date" min={movementFrom || undefined} value={movementThrough} onChange={(event) => { setMovementThrough(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className={field + " mt-1"} />
+              </label>
+              <button type="button" className={secondaryAction} disabled={filteredMovements.length === 0} onClick={() => downloadCsv("thogamura-movements.csv", movementCsv(filteredMovements))}>Export loaded rows</button>
+            </div>
+          )}
+          {target && <div className="border-b border-slate-200 p-4 text-sm">
+            <p className="break-all">Movements for request {target}</p>
+            <button className={textAction} onClick={() => updateListParams({ requestId: null, page: null })}>Show all movements</button>
+          </div>}
+          {filteredMovements.length ? (
+            <ul className="divide-y divide-slate-100">
+              {movementPage.items.map((movement) => (
+                <li key={movement.id} className="grid grid-cols-[1fr_auto] gap-3 p-4 text-sm sm:p-5">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{nameFor(movement.sku)}</p>
+                    <p className="text-xs text-slate-600">{movement.sku} · {formatFullDateTime(movement.occurredAt)}</p>
+                    <Link className={textAction} href={`/requests?ref=${encodeURIComponent(movement.stockRequestId)}`}>Request {movement.stockRequestId.slice(0, 8)}</Link>
+                  </div>
+                  <p className="text-right font-semibold tabular-nums text-rose-900">{formatUnits(movement.quantityDelta)}<span className="block text-xs font-normal text-slate-600">Dispatch</span></p>
+                </li>
+              ))}
+            </ul>
+          ) : movements.data && <p className="p-5 text-sm text-slate-600">No movements match this selection in the demo ledger.</p>}
+          <ListPages {...movementPage} onChange={(next) => updateListParams({ page: String(next) })} />
+          {movements.data?.length === 500 && <p className="border-t border-slate-200 p-4 text-sm text-slate-600">Showing the warehouse’s bounded movement list.</p>}
+        </section>
+      ) : (
+        <section className={surface} aria-labelledby="queue-title">
+          <div className="border-b border-slate-200 p-4 sm:p-5">
+            <h2 id="queue-title" className="font-semibold text-slate-950">{stage === "pick" ? "Accepted requests" : "Picked requests"}</h2>
+            <Freshness {...query} />
+            <form className="mt-3 grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={(event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              updateListParams({ q: String(data.get("q")).trim(), page: null, requestId: null });
+            }}>
+              <label className="min-w-0 text-sm font-semibold">Product, SKU, or reference
+                <input key={search} name="q" type="search" defaultValue={search} className={field + " mt-1"} />
+              </label>
+              <button className={`${secondaryAction} justify-self-start`}>Search queue</button>
+            </form>
+            {query.error && <p role="alert" className="mt-2 text-sm text-rose-900">{query.error}</p>}
           </div>
-        ) : queue.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center">
-            <p className="font-medium text-slate-900">Fulfillment queue is clear</p>
-            <p className="mt-1 text-xs text-slate-500">
-              No accepted or picked requests are currently pending picker action.
+          {target && !hasTarget && !query.loading && query.data && (
+            <p className="border-b border-slate-200 p-4 text-sm text-slate-700">
+              This reference is absent from the loaded stage. <Link className="font-semibold text-teal-800 underline" href={`/requests?ref=${encodeURIComponent(target)}`}>Check request history</Link>
             </p>
-            <Link
-              href="/requests/new"
-              className="mt-4 inline-flex items-center rounded-lg bg-teal-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-800"
-            >
-              Create Stock Request
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  <tr>
-                    <th scope="col" className="px-6 py-3">
-                      Request ID
-                    </th>
-                    <th scope="col" className="px-6 py-3">
-                      Item
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right">
-                      Quantity
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-center">
-                      Current Stage
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right">
-                      Picker Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {queue.map((r) => {
-                    const isProcessing = !!actionLoading[r.requestId];
-                    return (
-                      <tr key={r.requestId} className="hover:bg-slate-50">
-                        <td className="px-6 py-4 font-mono text-xs text-slate-900 select-all">
-                          {r.requestId}
-                        </td>
-                        <td className="px-6 py-4 font-mono font-semibold text-slate-900">
-                          {r.sku}
-                        </td>
-                        <td className="px-6 py-4 text-right font-mono font-bold text-slate-800">
-                          {r.quantity}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              r.status === "ACCEPTED"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-amber-100 text-amber-800"
-                            }`}
-                          >
-                            {r.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {r.status === "ACCEPTED" && (
-                            <button
-                              type="button"
-                              onClick={() => void handlePick(r.requestId)}
-                              disabled={isProcessing}
-                              className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 disabled:opacity-50"
-                            >
-                              {isProcessing ? "Processing..." : "Mark Picked"}
-                            </button>
-                          )}
-                          {r.status === "PICKED" && (
-                            <button
-                              type="button"
-                              onClick={() => void handleDispatch(r.requestId)}
-                              disabled={isProcessing}
-                              className="inline-flex items-center rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 disabled:opacity-50"
-                            >
-                              {isProcessing ? "Processing..." : "Mark Dispatched"}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+          {rows.length ? (
+            <ol className="divide-y divide-slate-100">
+              {queuePage.items.map((item) => (
+                <li key={item.requestId} ref={item.requestId === target ? targetRef : undefined} tabIndex={item.requestId === target ? -1 : undefined}
+                  className={`grid items-center gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:p-5 ${item.requestId === target ? "bg-teal-50" : ""}`}>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-950">{nameFor(item.sku)}</p>
+                    <p className="mt-1 text-xs text-slate-600">{item.sku} · {formatFullDateTime(item.createdAt)}</p>
+                    <Link href={`/requests?ref=${encodeURIComponent(item.requestId)}`} className={`${textAction} break-all`}>
+                      Request {item.requestId}
+                    </Link>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-sm font-semibold tabular-nums">{formatUnits(item.quantity)}</p>
+                    <RequestBadge status={item.status} />
+                    <p className="mt-1 text-sm text-amber-900">Requested {formatAge(item.createdAt)} ago</p>
+                  </div>
+                  <button type="button" className={primaryAction} disabled={working !== null}
+                    onClick={() => {
+                      if (stage === "pick") void transition(item, "pick");
+                      else setReview(item);
+                    }}>
+                    {working === item.requestId ? "Confirming…" : stage === "pick" ? "Mark picked" : "Review dispatch"}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : query.data && <p className="p-5 text-sm text-slate-600">{search ? "No loaded requests match this search." : stage === "dispatch" ? "No requests ready to dispatch." : "No requests waiting to pick."}</p>}
+          <ListPages {...queuePage} onChange={(next) => updateListParams({ page: String(next) })} />
+          {loaded.length === 500 && <p className="border-t border-slate-200 p-4 text-sm text-slate-600">Showing the first 500 requests in this stage.</p>}
+        </section>
+      )}
 
-      {/* Dispatch Movement History */}
-      <div className="space-y-4 pt-6 border-t border-slate-200">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Stock Movements History</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Immutable PostgreSQL audit records of completed stock dispatches.
-          </p>
-        </div>
-
-        {movements.length === 0 ? (
-          <p className="text-xs text-slate-500 rounded-lg border border-dashed border-slate-200 p-6 text-center">
-            No stock movements recorded yet. Completed dispatches will appear here.
-          </p>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-                <thead className="bg-slate-50 font-semibold uppercase tracking-wider text-slate-600">
-                  <tr>
-                    <th scope="col" className="px-4 py-2.5">
-                      Movement ID
-                    </th>
-                    <th scope="col" className="px-4 py-2.5">
-                      Request ID
-                    </th>
-                    <th scope="col" className="px-4 py-2.5">
-                      SKU
-                    </th>
-                    <th scope="col" className="px-4 py-2.5 text-right">
-                      Quantity Delta
-                    </th>
-                    <th scope="col" className="px-4 py-2.5">
-                      Reason
-                    </th>
-                    <th scope="col" className="px-4 py-2.5">
-                      Timestamp
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
-                  {movements.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-2.5 font-bold text-slate-900">#{m.id}</td>
-                      <td className="px-4 py-2.5 text-slate-600 select-all">
-                        {m.stockRequestId.slice(0, 18)}...
-                      </td>
-                      <td className="px-4 py-2.5 font-semibold text-slate-900">{m.sku}</td>
-                      <td className="px-4 py-2.5 text-right font-bold text-rose-700">
-                        {m.quantityDelta}
-                      </td>
-                      <td className="px-4 py-2.5 font-sans font-semibold text-slate-600">
-                        {m.reason}
-                      </td>
-                      <td className="px-4 py-2.5 font-sans text-slate-500">
-                        {new Date(m.occurredAt).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
+      {review && <ConfirmAction title="Confirm dispatch" action="Confirm dispatch"
+        description={`Confirm that ${formatUnits(review.quantity)} of ${nameFor(review.sku)} have left the warehouse. This records a stock movement for request ${review.requestId}.`}
+        onClose={() => setReview(null)} onConfirm={() => void transition(review, "dispatch")} />}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 package lk.thogamura.gateway.web;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lk.thogamura.gateway.sse.SseNotificationBroadcaster;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,7 +33,9 @@ public class EventsController {
      * @return an open {@link SseEmitter} streaming {@code stock-changed} events
      */
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribe() {
+    public SseEmitter subscribe(HttpServletResponse response) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-transform");
+        response.setHeader("X-Accel-Buffering", "no");
         return broadcaster.registerEmitter();
     }
 }

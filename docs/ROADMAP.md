@@ -1,6 +1,6 @@
 # Five-week implementation roadmap — v2 execution status
 
-> **Status Summary (2026-11-22):** Weeks 1–4 software implementation, network protocol integration, and failure-mode verification across all five student concepts are **fully completed and verified** by 220+ automated backend tests and 16 frontend tests. Week 5 physical multi-machine LAN rehearsal (#27) and Moodle submission bundle packaging (#28) remain pending final course presentation.
+> **Status summary (23 November 2026).** The software, authenticated workspace and private-bridge rehearsal have verified evidence. The coursework bundle is assembled for group review. Physical LAN rehearsal and the designated student's Moodle upload remain open.
 
 ## Week 1 — contracts and two-device topology
 - [x] Approve the five distinct concepts; assign names/GitHub handles.
@@ -34,10 +34,19 @@
 **Gate:** each member's success+failure proof passed. *(PASSED)*
 
 ## Week 5 — presentation and submission
-- [ ] Full clean-clone Java frontend builds, PostgreSQL and two-machine tests (#27).
-- [ ] Capture real logs/screenshots, authored source evidence and limitations.
-- [ ] Report clearly distinguishes a mock supplier from a real external API.
-- [ ] Export report PDF and complete source to a single verified ZIP; one designated Moodle submission (#28).
+- [x] Run the Java and frontend checks and exercise the private segmented test topology.
+- [x] Record measured logs, a browser screenshot, and software limitations.
+- [x] Distinguish the independent supplier simulator in the report.
+- [x] Assemble and verify the source ZIP and group-review report.
+- [ ] Run the two-device LAN with course firewall rules. Each member supplies their own source attribution and live proof (#27).
+- [ ] Confirm student IDs, course approval and the submission slot. A designated student uploads the reviewed ZIP once (#28).
 
 ## Task and evidence process
 Each issue gets an owner (once known), objective, small slice, tests, failure demo and review. Never merge automatically generated networking code without proving actual socket or HTTP communication.
+
+## Operator dashboard increments for member review
+
+- [ ] Shared UI / M1 / M4 — review scoped overview and desktop/mobile priority rows.
+- [ ] M2 / M4 / M5 — review staff assignment, duplicate prevention, and branch read access.
+- [ ] M4 / M1 — review recorded request stages and historical timestamps.
+- [ ] M3 — rehearse draft preservation and balance correction through two branch gateways.

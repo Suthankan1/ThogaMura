@@ -8,7 +8,9 @@ import lk.thogamura.networkserver.inventory.StockReservationCommandHandler;
 import lk.thogamura.networkserver.inventory.StockReservationService;
 import lk.thogamura.networkserver.persistence.ProductStock;
 import lk.thogamura.networkserver.persistence.ProductStockRepository;
+import lk.thogamura.networkserver.workspace.WarehouseWorkspace;
 import lk.thogamura.protocol.ProtocolInfo;
+import lk.thogamura.protocol.access.WorkspaceAccess;
 import lk.thogamura.protocol.tcp.TcpMessageCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,18 @@ public class DefaultCommandDispatcher implements CommandDispatcher {
 
     private final Map<String, CommandHandler> handlers = new ConcurrentHashMap<>();
     private final ProductStockRepository productStockRepository;
+    private WarehouseWorkspace workspace;
+
+    @Autowired(required = false)
+    void setWorkspace(WarehouseWorkspace workspace) {
+        this.workspace = workspace;
+    }
+
+    @Override
+    public int expectedVersion(int advertised) {
+        return workspace != null && advertised == WorkspaceAccess.VERSION
+                ? WorkspaceAccess.VERSION : ProtocolInfo.WIRE_VERSION;
+    }
 
     public DefaultCommandDispatcher() {
         this((StockReservationService) null, (SupplierCommandHandler) null, (StockFulfillmentService) null, (ProductStockRepository) null);
@@ -145,6 +159,14 @@ public class DefaultCommandDispatcher implements CommandDispatcher {
     public String dispatch(JsonNode requestNode) {
         String type = requestNode.hasNonNull("type") ? requestNode.get("type").asText() : "";
         String requestId = requestNode.hasNonNull("requestId") ? requestNode.get("requestId").asText() : null;
+
+        if (workspace != null) {
+            if (requestNode.path("v").asInt() == WorkspaceAccess.VERSION) return workspace.dispatch(requestNode);
+            if (!ProtocolInfo.COMMAND_PING.equals(type)) {
+                return TcpMessageCodec.formatErrorResponse(requestId, ProtocolInfo.ERROR_VALIDATION,
+                        "Business commands require the authenticated workspace protocol");
+            }
+        }
 
         CommandHandler handler = handlers.get(type);
         if (handler == null) {

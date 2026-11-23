@@ -198,4 +198,12 @@ class NioPrivateNetworkSecurityTest {
         assertThat(wireJson).doesNotContain("token");
         assertThat(wireJson).doesNotContain("key");
     }
+
+    @Test
+    void rejectsPublicBindAndClientAddressesEvenWithLanOptIn() {
+        assertThatThrownBy(() -> NotificationServerConfig.forPrivateLan("203.0.113.10", 7444, Set.of("192.168.1.20")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("private LAN");
+        assertThatThrownBy(() -> NotificationServerConfig.forPrivateLan("192.168.1.10", 7444, Set.of("203.0.113.20")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("exact private or loopback");
+    }
 }

@@ -4,98 +4,78 @@ import React from "react";
 import Link from "next/link";
 import { useStockEvents } from "../lib/events/useStockEvents";
 
-export function ConnectionIndicator() {
+interface ConnectionIndicatorProps {
+  compact?: boolean;
+}
+
+export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProps) {
   const {
     sseStatus,
     upstreamNioStatus,
     isLive,
     isRefreshing,
-    lastVersion,
     warningMessage,
-    triggerRefresh,
   } = useStockEvents();
 
   // Determine user-facing text and aria announcements
   let statusText = "Connecting...";
-  let statusBadgeStyle = "bg-slate-100 text-slate-700 border-slate-200";
+  let statusBadgeStyle = "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200";
   let dotStyle = "bg-slate-400";
+  let compactBg = "bg-slate-100 border-slate-200";
 
   if (isRefreshing) {
     statusText = "Refreshing...";
-    statusBadgeStyle = "bg-teal-50 text-teal-800 border-teal-200";
+    statusBadgeStyle = "bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100";
     dotStyle = "bg-teal-600 animate-pulse";
+    compactBg = "bg-teal-50 border-teal-200";
   } else if (isLive) {
-    statusText = lastVersion ? `Live (v${lastVersion})` : "Live Updates";
-    statusBadgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200";
+    statusText = "Live updates";
+    statusBadgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100";
     dotStyle = "bg-emerald-500";
+    compactBg = "bg-emerald-50 border-emerald-200";
   } else if (sseStatus === "CONNECTED" && upstreamNioStatus !== "CONNECTED") {
-    statusText = "Warehouse Paused";
-    statusBadgeStyle = "bg-amber-50 text-amber-800 border-amber-200";
+    statusText = "Warehouse feed interrupted";
+    statusBadgeStyle = "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100";
     dotStyle = "bg-amber-500 animate-pulse";
+    compactBg = "bg-amber-50 border-amber-200";
   } else if (sseStatus === "DISCONNECTED" || sseStatus === "ERROR") {
-    statusText = "Disconnected";
-    statusBadgeStyle = "bg-rose-50 text-rose-800 border-rose-200";
+    statusText = "Live updates disconnected";
+    statusBadgeStyle = "bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100";
     dotStyle = "bg-rose-500 animate-ping";
+    compactBg = "bg-rose-50 border-rose-200";
   }
 
+  // Keep the connection state readable on narrow screens.
+  if (compact) {
+    return (
+      <Link
+        href="/activity"
+        aria-label={`System status: ${statusText}. View diagnostics.`}
+        title={`${statusText}. View diagnostics.`}
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold text-slate-800 ${compactBg} transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600`}
+      >
+        <span className={`inline-block h-2.5 w-2.5 rounded-full ${dotStyle}`} aria-hidden="true" />
+        <span>{isRefreshing ? "Syncing" : isLive ? "Live" : sseStatus === "CONNECTING" ? "Connecting" : "Paused"}</span>
+      </Link>
+    );
+  }
+
+  // Desktop presentation: single consolidated System status utility
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
-      {/* Live accessibility announcement */}
+    <div className="flex items-center text-xs">
       <span className="sr-only" role="status" aria-live="polite">
         Network status: {statusText}. {warningMessage ? warningMessage : ""}
       </span>
 
-      {/* Visual status pill with accessible text */}
       <Link
         href="/activity"
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600 ${statusBadgeStyle}`}
+        aria-label={`System diagnostics: ${statusText}`}
+        className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600 ${statusBadgeStyle}`}
         title={warningMessage || `SSE: ${sseStatus}, Warehouse NIO: ${upstreamNioStatus}`}
       >
-        <span className={`inline-block h-2 w-2 rounded-full ${dotStyle}`} aria-hidden="true" />
-        <span className="font-semibold">{statusText}</span>
+        <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotStyle}`} aria-hidden="true" />
+        <span className="font-semibold">{statusText} ↗</span>
       </Link>
-
-      {/* Manual refresh button for operator reassurance */}
-      <button
-        type="button"
-        onClick={() => void triggerRefresh("MANUAL")}
-        disabled={isRefreshing}
-        aria-label="Refresh authoritative inventory data"
-        className="inline-flex items-center rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-xs hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600 disabled:opacity-50"
-      >
-        <svg
-          className={`mr-1 h-3 w-3 text-slate-500 ${isRefreshing ? "animate-spin text-teal-600" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth="2"
-          stroke="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-          />
-        </svg>
-        Refresh
-      </button>
-
-      {/* Stale data warning banner when disconnected */}
-      {warningMessage && (
-        <div
-          role="alert"
-          className="flex w-full items-center gap-1.5 rounded-md bg-amber-50 px-3 py-1 text-xs text-amber-900 border border-amber-200"
-        >
-          <svg className="h-4 w-4 shrink-0 text-amber-700" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span>{warningMessage} Displayed inventory may be outdated.</span>
-        </div>
-      )}
     </div>
   );
 }

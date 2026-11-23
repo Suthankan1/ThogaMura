@@ -183,7 +183,7 @@ class StockRequestControllerTest {
                         .content("{\"sku\":\"ITEM 007!@#\",\"quantity\":5}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("contains invalid characters")));
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("must contain 1–64")));
     }
 
     @Test
@@ -212,5 +212,46 @@ class StockRequestControllerTest {
 
         mockMvc.perform(get("/api/v1/requests?status=ALL").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldRejectCoercibleOrOverflowingQuantitiesBeforeForwarding() throws Exception {
+        for (String quantity : new String[]{"1.5", "1.0", "\"2\"", "2147483648", "true", "null"}) {
+            mockMvc.perform(post("/api/v1/requests")
+                            .header("Idempotency-Key", "ce49cb0e-b608-4952-85f1-2f49548d9a90")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"sku\":\"ITEM-007\",\"quantity\":" + quantity + "}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        }
+        org.mockito.Mockito.verifyNoInteractions(tcpCommandClient);
+    }
+
+    @Test
+    void shouldReturn404ForUnknownSku() throws Exception {
+        ObjectNode response = OBJECT_MAPPER.createObjectNode().put("status", "ERROR");
+        response.putObject("error").put("code", "NOT_FOUND").put("message", "Product does not exist");
+        given(tcpCommandClient.sendCommand(eq(ProtocolInfo.COMMAND_REQUEST_STOCK), any(), any()))
+                .willReturn(response);
+
+        mockMvc.perform(post("/api/v1/requests")
+                        .header("Idempotency-Key", "ce49cb0e-b608-4952-85f1-2f49548d9a90")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sku":"UNKNOWN-SKU","quantity":1}
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void shouldRejectAnOversizedReservationBody() throws Exception {
+        mockMvc.perform(post("/api/v1/requests")
+                        .header("Idempotency-Key", "ce49cb0e-b608-4952-85f1-2f49548d9a90")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(" ".repeat(9000)))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        org.mockito.Mockito.verifyNoInteractions(tcpCommandClient);
     }
 }

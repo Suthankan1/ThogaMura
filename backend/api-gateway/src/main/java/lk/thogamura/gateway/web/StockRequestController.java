@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 /**
  * REST endpoint for stock reservation requests and queue queries conforming to
@@ -40,7 +39,6 @@ import java.util.regex.Pattern;
 public class StockRequestController {
 
     private static final Logger logger = LoggerFactory.getLogger(StockRequestController.class);
-    private static final Pattern SKU_PATTERN = Pattern.compile("^[A-Za-z0-9_-]{1,64}$");
     private static final Set<String> ALLOWED_STATUS_FILTERS = Set.of("ACCEPTED", "REJECTED", "PICKED", "DISPATCHED");
 
     private final TcpCommandClient tcpCommandClient;
@@ -49,7 +47,7 @@ public class StockRequestController {
         this.tcpCommandClient = Objects.requireNonNull(tcpCommandClient, "tcpCommandClient must not be null");
     }
 
-    public record CreateRequestPayload(String sku, Integer quantity) {}
+    public record CreateRequestPayload(JsonNode sku, JsonNode quantity) {}
 
     @PostMapping("/requests")
     public ResponseEntity<?> submitStockRequest(
@@ -73,7 +71,7 @@ public class StockRequestController {
         }
 
         // 2. Payload validation
-        if (payload == null || payload.sku() == null || payload.sku().isBlank()) {
+        if (payload == null || payload.sku() == null || !payload.sku().isTextual() || payload.sku().textValue().isBlank()) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("code", "VALIDATION_ERROR");
             body.put("message", "Field 'sku' is required and must not be blank");
@@ -81,16 +79,16 @@ public class StockRequestController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
 
-        String trimmedSku = payload.sku().trim();
-        if (!SKU_PATTERN.matcher(trimmedSku).matches()) {
+        String trimmedSku = payload.sku().textValue().trim();
+        if (!ProtocolInfo.isValidSku(trimmedSku)) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("code", "VALIDATION_ERROR");
-            body.put("message", "Field 'sku' contains invalid characters: " + trimmedSku);
+            body.put("message", "Field 'sku' must contain 1–64 letters, digits, underscores or hyphens");
             body.put("requestId", trimmedKey);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
 
-        if (payload.quantity() == null || payload.quantity() <= 0) {
+        if (payload.quantity() == null || !payload.quantity().isInt() || payload.quantity().intValue() <= 0) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("code", "VALIDATION_ERROR");
             body.put("message", "Field 'quantity' must be a positive integer");
@@ -98,11 +96,13 @@ public class StockRequestController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
 
+        int quantity = payload.quantity().intValue();
+
         // 3. Dispatch to central warehouse via Java TCP socket
         try {
             Map<String, Object> commandData = new LinkedHashMap<>();
-            commandData.put("sku", payload.sku().trim());
-            commandData.put("quantity", payload.quantity());
+            commandData.put("sku", trimmedSku);
+            commandData.put("quantity", quantity);
 
             JsonNode response = tcpCommandClient.sendCommand(
                     ProtocolInfo.COMMAND_REQUEST_STOCK,
@@ -117,33 +117,24 @@ public class StockRequestController {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("requestId", trimmedKey);
                 body.put("status", "ACCEPTED");
-                body.put("sku", dataNode.path("sku").asText(payload.sku().trim()));
-                body.put("quantity", dataNode.path("quantity").asInt(payload.quantity()));
+                if (!trimmedSku.equals(dataNode.path("sku").textValue()) ||
+                        !dataNode.path("quantity").isInt() || dataNode.path("quantity").intValue() != quantity) {
+                    return WarehouseHttpErrors.invalidData();
+                }
+                body.put("sku", trimmedSku);
+                body.put("quantity", quantity);
                 return ResponseEntity.status(HttpStatus.CREATED).body(body);
             } else if (ProtocolInfo.STATUS_REJECTED.equals(status)) {
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("code", "INSUFFICIENT_STOCK");
-                String reason = dataNode.path("reason").asText("Requested quantity exceeds available stock");
-                body.put("message", reason);
-                body.put("requestId", trimmedKey);
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-            } else if (ProtocolInfo.STATUS_ERROR.equals(status)) {
-                JsonNode errorNode = response.path("error");
-                String errorCode = errorNode.path("code").asText("INTERNAL_ERROR");
-                String errorMessage = errorNode.path("message").asText("Warehouse rejected reservation request");
-
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("code", errorCode);
-                body.put("message", errorMessage);
-                body.put("requestId", trimmedKey);
-
-                if (ProtocolInfo.ERROR_DUPLICATE_ID_CONFLICT.equals(errorCode)) {
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-                } else if (ProtocolInfo.ERROR_VALIDATION.equals(errorCode)) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-                } else {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+                if (response.has("error")) {
+                    return WarehouseHttpErrors.from(response, "requestId", trimmedKey);
                 }
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                        "code", ProtocolInfo.ERROR_INSUFFICIENT_STOCK,
+                        "message", dataNode.path("reason").asText("Requested quantity exceeds available stock"),
+                        "requestId", trimmedKey
+                ));
+            } else if (ProtocolInfo.STATUS_ERROR.equals(status)) {
+                return WarehouseHttpErrors.from(response, "requestId", trimmedKey);
             } else {
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("code", "UNEXPECTED_STATUS");
@@ -205,16 +196,20 @@ public class StockRequestController {
 
             JsonNode requestsNode = response.path("data").path("requests");
             List<Map<String, Object>> requests = new ArrayList<>();
-            if (requestsNode.isArray()) {
-                for (JsonNode item : requestsNode) {
-                    Map<String, Object> r = new LinkedHashMap<>();
-                    r.put("requestId", item.path("requestId").asText());
-                    r.put("sku", item.path("sku").asText());
-                    r.put("quantity", item.path("quantity").asInt());
-                    r.put("status", item.path("status").asText());
-                    r.put("createdAt", item.path("createdAt").asText());
-                    requests.add(r);
+            if (!requestsNode.isArray()) return WarehouseHttpErrors.invalidData();
+            for (JsonNode item : requestsNode) {
+                String recordStatus = item.path("status").asText();
+                if (!WarehouseHttpErrors.hasText(item, "requestId") || !WarehouseHttpErrors.hasText(item, "sku")
+                        || !item.path("quantity").isInt() || item.path("quantity").intValue() <= 0
+                        || !ALLOWED_STATUS_FILTERS.contains(recordStatus) || "ALL".equals(recordStatus)
+                        || !WarehouseHttpErrors.hasText(item, "createdAt")) {
+                    return WarehouseHttpErrors.invalidData();
                 }
+                requests.add(Map.of(
+                        "requestId", item.path("requestId").textValue(), "sku", item.path("sku").textValue(),
+                        "quantity", item.path("quantity").intValue(), "status", recordStatus,
+                        "createdAt", item.path("createdAt").textValue()
+                ));
             }
             return ResponseEntity.ok(requests);
         } catch (ServerUnavailableException e) {

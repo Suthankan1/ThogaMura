@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { RequestsClient } from "./RequestsClient";
 
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function RequestsPage() {
-  return <RequestsClient />;
+  return <Suspense fallback={<p>Loading request history…</p>}><RequestsClient /></Suspense>;
 }

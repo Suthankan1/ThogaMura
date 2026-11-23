@@ -71,6 +71,10 @@ public record NotificationServerConfig(
                             + "' requires explicit operator approval (allowNonLoopback=true).");
         }
 
+        if (!loopback && !isPrivateLiteral(trimmedHost)) {
+            throw new IllegalArgumentException("NIO must bind to a private LAN IP address");
+        }
+
         if (port < 0 || port > 65535) {
             throw new IllegalArgumentException("port must be between 0 and 65535 (got " + port + ")");
         }
@@ -97,12 +101,38 @@ public record NotificationServerConfig(
                                 "Wildcard entries ('*' or '0.0.0.0') are prohibited in allowed client addresses. "
                                         + "Specify explicit client IP addresses.");
                     }
-                    sanitizedAllowed.add(clean);
+                    if ("localhost".equalsIgnoreCase(clean)) {
+                        sanitizedAllowed.add("localhost");
+                    } else if (isPrivateLiteral(clean)) {
+                        sanitizedAllowed.add(canonicalIp(clean));
+                    } else {
+                        throw new IllegalArgumentException("NIO clients must be listed as exact private or loopback IP addresses");
+                    }
                 }
             }
         }
         allowedClientAddresses = Collections.unmodifiableSet(sanitizedAllowed);
-        host = trimmedHost;
+        host = "localhost".equalsIgnoreCase(trimmedHost) ? "127.0.0.1" : canonicalIp(trimmedHost);
+    }
+
+    private static boolean isPrivateLiteral(String value) {
+        if (!value.matches("[0-9.]+") && !value.contains(":")) return false;
+        try {
+            InetAddress address = InetAddress.getByName(value);
+            byte[] bytes = address.getAddress();
+            boolean uniqueLocalV6 = bytes.length == 16 && (bytes[0] & 0xfe) == 0xfc;
+            return address.isLoopbackAddress() || (bytes.length == 4 && address.isSiteLocalAddress()) || uniqueLocalV6;
+        } catch (UnknownHostException e) {
+            return false;
+        }
+    }
+
+    private static String canonicalIp(String literal) {
+        try {
+            return InetAddress.getByName(literal).getHostAddress();
+        } catch (UnknownHostException e) {
+            throw new IllegalArgumentException("Invalid NIO client IP address", e);
+        }
     }
 
     /**
@@ -191,7 +221,7 @@ public record NotificationServerConfig(
 
         // Also permit loopback if allowlist includes localhost or 127.0.0.1
         if (address.isLoopbackAddress() &&
-                (allowedClientAddresses.contains("127.0.0.1") || allowedClientAddresses.contains("localhost") || allowedClientAddresses.contains("::1"))) {
+                (allowedClientAddresses.contains("127.0.0.1") || allowedClientAddresses.contains("localhost") || allowedClientAddresses.contains("0:0:0:0:0:0:0:1"))) {
             return true;
         }
 

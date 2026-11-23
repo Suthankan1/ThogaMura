@@ -1,0 +1,44 @@
+THOGAMURA | SEGMENTED NETWORK VERIFICATION | 23 NOVEMBER 2026
+
+Environment
+One physical Mac, Docker bridge test networks with four disposable processes:
+  Branch Java API gateway, warehouse Java network server, and independent Java
+  supplier simulator; PostgreSQL on a separate internal network.
+  Warehouse validated command TLS and RFC1918 NIO bound on the private bridge.
+  NIO allowlist admitted only the branch container IP.
+  Development CA and SAN matching the warehouse bridge IP.
+  No host-forwarded warehouse TLS, NIO, PostgreSQL or supplier listener.
+  Gateway alone published a port on host loopback to run the checks.
+  Protected Chromium checks used a loopback Next.js production build.
+
+Extended demonstration profile measurements
+  48/48 TLS-backed HTTP PINGs returned PONG at concurrency 12.
+  p50 109.0 ms and p95 184.6 ms for these HTTP calls, including the gateway/TLS
+  overhead. This is one sample, not a production capacity estimate.
+  12/12 independent SSE streams received a numeric version-only change hint.
+  Two concurrent reservations for eight units produced one 201 and one 409.
+  Twelve concurrent dispatches of the winning request produced one movement.
+  A private peer outside the NIO allowlist was disconnected without data.
+  M2 supplier availability was served by the independent supplier JVM.
+  Removing the warehouse's private bridge link was detected after 16 seconds.
+  On reattachment, the gateway restored the Java NIO feed and TLS commands.
+
+Protected workspace
+  Direct request lookup found the current branch's row. Another branch received
+  404 on lookup and cancellation. Protected mode refused v1 business calls.
+  HTTP sessions, CSRF rejection, same-key replay and role enforcement passed.
+  Cursor traversal returned distinct rows and refused the wrong scope or filter.
+  Cancel/pick racing on the same reservation produced one successful update.
+  Eight identical concurrent receiving submissions wrote one stock movement.
+  Chromium confirmed an HttpOnly session, a deep link after reload, cancellation,
+  cross-branch denial, recovery after a lost receiving reply, one ledger entry,
+  supplier advisory data, and a layout that fit a 390 px viewport.
+
+Reproduction
+  docs/SETUP.md and docs/DEMO_SCRIPT.md
+  scripts/verify-network-load.py and scripts/verify-workspace.py
+  frontend/tests/workspace-browser.mjs
+
+Physical verification pending
+  #27 requires distinct laptops, the actual course LAN, host firewall policy,
+  and named member evidence. These container results do not attest to them.

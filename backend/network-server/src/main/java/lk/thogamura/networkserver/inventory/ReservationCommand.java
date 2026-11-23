@@ -9,8 +9,13 @@ import java.util.UUID;
 public record ReservationCommand(
         UUID requestId,
         String sku,
-        int quantity
+        int quantity,
+        String branchId
 ) {
+    public ReservationCommand(UUID requestId, String sku, int quantity) {
+        this(requestId, sku, quantity, null);
+    }
+
     public ReservationCommand {
         Objects.requireNonNull(requestId, "requestId must not be null");
         Objects.requireNonNull(sku, "sku must not be null");

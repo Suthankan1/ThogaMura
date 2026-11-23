@@ -43,20 +43,35 @@ class SseNotificationBroadcasterTest {
     }
 
     @Test
+    @DisplayName("Should send connected handshake upon emitter registration to flush HTTP response headers")
+    void shouldSendConnectedHandshakeUponRegistration() {
+        CapturingSseEmitter emitter = new CapturingSseEmitter();
+        broadcaster.registerEmitter(emitter);
+
+        assertThat(broadcaster.getActiveEmitterCount()).isEqualTo(1);
+        assertThat(emitter.getSentData()).hasSize(1);
+        String handshake = emitter.getSentData().get(0);
+        assertThat(handshake).contains("event:connected");
+        assertThat(handshake).contains("data:connected");
+    }
+
+    @Test
     @DisplayName("Should broadcast stock-changed event with version-only data to a single connected emitter")
     void shouldBroadcastToSingleEmitter() throws Exception {
         CapturingSseEmitter emitter = new CapturingSseEmitter();
         broadcaster.registerEmitter(emitter);
 
         assertThat(broadcaster.getActiveEmitterCount()).isEqualTo(1);
+        assertThat(emitter.getSentData()).hasSize(1);
+        assertThat(emitter.getSentData().get(0)).contains("event:connected");
 
         broadcaster.onNotification(42L);
 
         await().atMost(2, TimeUnit.SECONDS)
-                .until(() -> !emitter.getSentData().isEmpty());
+                .until(() -> emitter.getSentData().size() >= 2);
 
-        assertThat(emitter.getSentData()).hasSize(1);
-        String eventString = emitter.getSentData().get(0);
+        assertThat(emitter.getSentData()).hasSize(2);
+        String eventString = emitter.getSentData().get(1);
         assertThat(eventString).contains("event:stock-changed");
         assertThat(eventString).contains("data:42");
         // Verify no business fields leaked
@@ -76,16 +91,20 @@ class SseNotificationBroadcasterTest {
 
         emitters.forEach(broadcaster::registerEmitter);
         assertThat(broadcaster.getActiveEmitterCount()).isEqualTo(3);
+        for (CapturingSseEmitter emitter : emitters) {
+            assertThat(emitter.getSentData()).hasSize(1);
+            assertThat(emitter.getSentData().get(0)).contains("event:connected");
+        }
 
         broadcaster.onNotification(105L);
 
         await().atMost(2, TimeUnit.SECONDS)
-                .until(() -> emitters.stream().allMatch(e -> !e.getSentData().isEmpty()));
+                .until(() -> emitters.stream().allMatch(e -> e.getSentData().size() >= 2));
 
         for (CapturingSseEmitter emitter : emitters) {
-            assertThat(emitter.getSentData()).hasSize(1);
-            assertThat(emitter.getSentData().get(0)).contains("event:stock-changed");
-            assertThat(emitter.getSentData().get(0)).contains("data:105");
+            assertThat(emitter.getSentData()).hasSize(2);
+            assertThat(emitter.getSentData().get(1)).contains("event:stock-changed");
+            assertThat(emitter.getSentData().get(1)).contains("data:105");
         }
         assertThat(broadcaster.getBroadcastCount()).isEqualTo(1L);
         assertThat(broadcaster.getLastBroadcastVersion()).isEqualTo(105L);
@@ -95,7 +114,7 @@ class SseNotificationBroadcasterTest {
     @DisplayName("A disconnected/failing client should not break delivery to other clients and must be removed")
     void shouldIsolateDisconnectedClient() throws Exception {
         CapturingSseEmitter healthy1 = new CapturingSseEmitter();
-        FailingSseEmitter failing = new FailingSseEmitter(new IOException("Broken pipe / Client abort"));
+        FailingSseEmitter failing = new FailingSseEmitter(new IOException("Broken pipe / Client abort"), 1);
         CapturingSseEmitter healthy2 = new CapturingSseEmitter();
 
         broadcaster.registerEmitter(healthy1);
@@ -107,10 +126,10 @@ class SseNotificationBroadcasterTest {
         broadcaster.onNotification(200L);
 
         await().atMost(2, TimeUnit.SECONDS)
-                .until(() -> !healthy1.getSentData().isEmpty() && !healthy2.getSentData().isEmpty());
+                .until(() -> healthy1.getSentData().size() >= 2 && healthy2.getSentData().size() >= 2);
 
-        assertThat(healthy1.getSentData().get(0)).contains("data:200");
-        assertThat(healthy2.getSentData().get(0)).contains("data:200");
+        assertThat(healthy1.getSentData().get(1)).contains("data:200");
+        assertThat(healthy2.getSentData().get(1)).contains("data:200");
 
         // Failing client was marked dead and removed
         await().atMost(2, TimeUnit.SECONDS)
@@ -122,10 +141,15 @@ class SseNotificationBroadcasterTest {
     void shouldNotBlockCallerThreadWhenConsumerIsSlow() throws Exception {
         CountDownLatch slowClientStarted = new CountDownLatch(1);
         CountDownLatch allowSlowClientToFinish = new CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicInteger sendCount = new java.util.concurrent.atomic.AtomicInteger(0);
 
         SseEmitter slowEmitter = new SseEmitter(0L) {
             @Override
             public void send(SseEventBuilder builder) throws IOException {
+                if (sendCount.getAndIncrement() == 0) {
+                    // Registration handshake proceeds immediately
+                    return;
+                }
                 slowClientStarted.countDown();
                 try {
                     allowSlowClientToFinish.await(2, TimeUnit.SECONDS);
@@ -136,6 +160,8 @@ class SseNotificationBroadcasterTest {
         };
 
         broadcaster.registerEmitter(slowEmitter);
+        CapturingSseEmitter healthy = new CapturingSseEmitter();
+        broadcaster.registerEmitter(healthy);
 
         long start = System.currentTimeMillis();
         // This onNotification simulates the NIO subscriber thread
@@ -149,8 +175,39 @@ class SseNotificationBroadcasterTest {
         boolean started = slowClientStarted.await(2, TimeUnit.SECONDS);
         assertThat(started).isTrue();
 
-        // Release the slow client
-        allowSlowClientToFinish.countDown();
+        try {
+            broadcaster.onNotification(301L);
+            await().atMost(1, TimeUnit.SECONDS)
+                    .until(() -> healthy.getSentData().stream().anyMatch(event -> event.contains("data:301")));
+        } finally {
+            allowSlowClientToFinish.countDown();
+        }
+    }
+
+    @Test
+    @DisplayName("Should send heartbeat comment to keep idle connections open")
+    void shouldSendHeartbeatComment() throws Exception {
+        CapturingSseEmitter emitter = new CapturingSseEmitter();
+        broadcaster.registerEmitter(emitter);
+        assertThat(emitter.getSentData()).hasSize(1);
+
+        broadcaster.sendHeartbeat();
+
+        await().atMost(1, TimeUnit.SECONDS).until(() -> emitter.getSentData().size() == 2);
+        assertThat(emitter.getSentData()).hasSize(2);
+        assertThat(emitter.getSentData().get(1)).contains(":ping");
+    }
+
+    @Test
+    @DisplayName("Should clean up dead client during heartbeat send")
+    void shouldCleanUpDeadClientDuringHeartbeat() {
+        FailingSseEmitter failing = new FailingSseEmitter(new IOException("Connection reset by peer"), 1);
+        broadcaster.registerEmitter(failing);
+        assertThat(broadcaster.getActiveEmitterCount()).isEqualTo(1);
+
+        broadcaster.sendHeartbeat();
+
+        await().atMost(1, TimeUnit.SECONDS).until(() -> broadcaster.getActiveEmitterCount() == 0);
     }
 
     @Test
@@ -179,7 +236,9 @@ class SseNotificationBroadcasterTest {
         broadcaster.onNotification(-1L);
         broadcaster.onNotification(-50L);
 
-        assertThat(emitter.getSentData()).isEmpty();
+        // Only initial handshake was sent; no stock-changed broadcasts occurred
+        assertThat(emitter.getSentData()).hasSize(1);
+        assertThat(emitter.getSentData().get(0)).contains("event:connected");
         assertThat(broadcaster.getBroadcastCount()).isEqualTo(0L);
     }
 
@@ -255,15 +314,24 @@ class SseNotificationBroadcasterTest {
     /** Helper SseEmitter throwing an IOException on send to simulate broken TCP connection. */
     private static class FailingSseEmitter extends SseEmitter {
         private final IOException exceptionToThrow;
+        private final java.util.concurrent.atomic.AtomicInteger sendCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        private final int failAfterSends;
 
         public FailingSseEmitter(IOException exceptionToThrow) {
+            this(exceptionToThrow, 0);
+        }
+
+        public FailingSseEmitter(IOException exceptionToThrow, int failAfterSends) {
             super(0L);
             this.exceptionToThrow = exceptionToThrow;
+            this.failAfterSends = failAfterSends;
         }
 
         @Override
         public void send(SseEventBuilder builder) throws IOException {
-            throw exceptionToThrow;
+            if (sendCount.getAndIncrement() >= failAfterSends) {
+                throw exceptionToThrow;
+            }
         }
     }
 }

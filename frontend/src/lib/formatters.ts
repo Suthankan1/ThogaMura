@@ -1,0 +1,92 @@
+/**
+ * Unified timestamp and freshness formatters across ThogaMura screens.
+ * Conforms to QA-14 and frontend standards.
+ */
+
+/**
+ * Formats a Date or ISO timestamp string as a standard 24-hour operational time (HH:MM:SS).
+ * Returns fallback if null or invalid.
+ */
+export function formatOperationalTime(
+  dateInput: Date | string | null | undefined,
+  fallback = "—"
+): string {
+  if (!dateInput) return fallback;
+  const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (isNaN(d.getTime())) return fallback;
+
+  return d.toLocaleTimeString("en-GB", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+/**
+ * Formats a Date or ISO timestamp as a complete date and time representation (YYYY-MM-DD HH:MM:SS)
+ * using the operator’s local timezone and an explicit timezone label.
+ */
+export function formatFullDateTime(
+  dateInput: Date | string | null | undefined,
+  fallback = "—"
+): string {
+  if (!dateInput) return fallback;
+  const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (isNaN(d.getTime())) return fallback;
+
+  return d.toLocaleString("en-GB", {
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
+}
+
+/**
+ * Formats a freshness label for operational views (e.g. "as of 03:12:45").
+ */
+export function formatFreshness(
+  dateInput: Date | string | null | undefined,
+  fallback = "Pending fetch"
+): string {
+  if (!dateInput) return fallback;
+  const time = formatOperationalTime(dateInput);
+  return time !== "—" ? `as of ${time}` : fallback;
+}
+
+/**
+ * Formats a unit count with proper English pluralization (e.g. "1 unit", "3 units").
+ */
+export function formatUnits(count: number | string | null | undefined): string {
+  const num = typeof count === "number" ? count : parseInt(String(count ?? 0), 10);
+  const safeNum = isNaN(num) ? 0 : num;
+  return `${safeNum} ${safeNum === 1 ? "unit" : "units"}`;
+}
+
+
+export function formatAge(timestamp?: string) {
+  const elapsed = timestamp ? Date.now() - Date.parse(timestamp) : NaN;
+  if (!Number.isFinite(elapsed)) return "time unavailable";
+  const minutes = Math.max(0, Math.floor(elapsed / 60_000));
+  if (minutes < 1) return "under a minute";
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days) return `${days}d ${hours % 24}h`;
+  return hours ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+}
+
+export function localDateBounds(from: string, through: string) {
+  function boundary(value: string, nextDay: boolean) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+    const date = new Date(`${value}T00:00:00`);
+    if (!Number.isFinite(date.getTime())) return "";
+    if (nextDay) date.setDate(date.getDate() + 1);
+    return date.toISOString();
+  }
+  return { from: boundary(from, false), before: boundary(through, true) };
+}

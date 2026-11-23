@@ -2,8 +2,8 @@
 
 **Branch-to-central-warehouse stock coordination** — Java Network Programming Assignment 02.
 
-> **Status: Integrated Implementation & Verified Network Core (v2 Design).**
-> - **Java Network Server & API Gateway:** All five student technical concepts (M1 TCP framing/retries, M2 Supplier HTTP/URL client & simulator, M3 Java NIO selector invalidation feed, M4 PostgreSQL transactional stock reservations & idempotent command receipts, and M5 JSSE/TLS mutual authentication & hostname verification) are fully implemented and verified via automated integration test suites.
+> **Status: Integrated coursework application on the v2 architecture.**
+> - **Java Network Server & API Gateway:** All five student technical concepts (M1 TCP framing/retries, M2 Supplier HTTP/URL client & simulator, M3 Java NIO selector invalidation feed, M4 PostgreSQL transactional stock reservations & idempotent command receipts, and M5 JSSE server authentication and hostname verification) are fully implemented and verified via automated integration test suites.
 > - **Next.js Frontend:** Interactive client components for products catalog, UUID v4 stock requests, warehouse picker/dispatch queue, and supplier inquiries are connected via Spring Boot API Gateway over real Java sockets and SSE.
 > - **Remaining Delivery Work:** Two-machine physical LAN demonstration (#27), lecturer coursework proposal sign-off (#2), and compilation of final report and Moodle submission bundle (#28).
 
@@ -82,8 +82,11 @@ compose.yaml       # local PostgreSQL development only
 Prerequisites: Java 21, Maven 3.9+, Node.js 22+, Docker Compose.
 
 ```bash
-# Start all components (PostgreSQL, Network Server, Supplier Simulator, API Gateway, Next.js UI):
+# Start the local loopback stack.
 ./start.sh
+
+# Populate an empty synthetic database for a demo.
+./start.sh seed
 
 # Check component status and live health probes:
 ./status.sh
@@ -92,7 +95,7 @@ Prerequisites: Java 21, Maven 3.9+, Node.js 22+, Docker Compose.
 ./stop.sh
 ```
 
-Next.js application opens at http://localhost:3000. Alternatively, start services manually: PostgreSQL (`docker compose up -d db`), Network Server (`mvn -f backend/pom.xml -pl network-server spring-boot:run`), API Gateway (`mvn -f backend/pom.xml -pl api-gateway spring-boot:run`), and Frontend (`npm --prefix frontend run dev`). For complete architecture and validation status, see [Architecture](docs/ARCHITECTURE.md), [Setup Guide](docs/SETUP.md), and [Validation Status](docs/VALIDATION_STATUS.md).
+The local app opens at http://127.0.0.1:3000. For separate branch and warehouse machines, follow the TLS and firewall setup in the [setup guide](docs/SETUP.md). The [implementation plan](docs/IMPLEMENTATION_PLAN.md) records the baseline audit, and [validation status](docs/VALIDATION_STATUS.md) records executed checks.
 
 ## Group rules
 
@@ -104,3 +107,7 @@ Next.js application opens at http://localhost:3000. Alternatively, start service
 6. Changes to contracts need ADR and group review. Avoid giant AI-generated work with unclear member ownership.
 
 Repository: https://github.com/Suthankan1/ThogaMura
+
+### Authenticated branch workspace
+
+Open `/workspace` with the optional TLS-only workspace profile enabled. It provides paginated inventory, branch-scoped requests, direct request URLs, cancellation, and supervisor receiving and movement history. [Configuration and demonstration](docs/SETUP.md#authenticated-branch-workspace) · [Workspace contract](docs/contracts/WORKSPACE_V2.md)

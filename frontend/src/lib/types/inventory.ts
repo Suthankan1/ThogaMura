@@ -4,6 +4,7 @@
  */
 
 export interface Product {
+  followUpId?: string | null;
   sku: string;
   name: string;
   onHand: number;
@@ -35,13 +36,21 @@ export type SupplierStatus =
   | "UNAVAILABLE"
   | "UNKNOWN"
   | "SUPPLIER_UNAVAILABLE"
-  | "WAREHOUSE_UNAVAILABLE";
+  | "WAREHOUSE_UNAVAILABLE"
+  | "WAREHOUSE_TIMEOUT"
+  | "SUPPLIER_TIMEOUT"
+  | "INVALID_SUPPLIER_RESPONSE"
+  | "INVALID_REQUEST"
+  | "GATEWAY_UNAVAILABLE"
+  | "GATEWAY_TIMEOUT"
+  | "INQUIRY_FAILED";
 
 export interface SupplierAvailability {
   sku: string;
   status: SupplierStatus;
   supplier?: string;
   reportedQuantity?: number;
+  estimatedRestockDays?: number;
   source?: string;
   checkedAt?: string;
   message?: string;

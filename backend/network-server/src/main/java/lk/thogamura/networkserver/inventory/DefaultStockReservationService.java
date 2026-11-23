@@ -93,7 +93,9 @@ public class DefaultStockReservationService implements StockReservationService {
             return ReservationResult.validationError(requestId, msg, errorJson);
         }
 
-        String canonicalFingerprint = PayloadFingerprintCalculator.calculateStockRequestFingerprint(sku, quantity);
+        String baseFingerprint = PayloadFingerprintCalculator.calculateStockRequestFingerprint(sku, quantity);
+        String canonicalFingerprint = command.branchId() == null ? baseFingerprint
+                : PayloadFingerprintCalculator.computeSha256Hex(command.branchId() + ":" + baseFingerprint);
 
         // 3. Fast check for existing durable command receipt (outside transaction)
         Optional<CommandReceipt> existingReceipt = commandReceiptRepository.findByCommandRequestId(requestId);
@@ -128,7 +130,7 @@ public class DefaultStockReservationService implements StockReservationService {
 
                     StockRequestRecord requestRecord = StockRequestRecord.accepted(
                             requestId, canonicalFingerprint, sku, quantity
-                    );
+                    ).forBranch(command.branchId());
                     stockRequestRepository.insert(requestRecord);
 
                     ProductStock updatedStock = new ProductStock(
@@ -162,7 +164,7 @@ public class DefaultStockReservationService implements StockReservationService {
                     String reason = "Requested quantity " + quantity + " exceeds available stock " + available;
                     StockRequestRecord requestRecord = StockRequestRecord.rejected(
                             requestId, canonicalFingerprint, sku, quantity, reason
-                    );
+                    ).forBranch(command.branchId());
                     stockRequestRepository.insert(requestRecord);
 
                     String rejectedJson = formatRejectionResponse(

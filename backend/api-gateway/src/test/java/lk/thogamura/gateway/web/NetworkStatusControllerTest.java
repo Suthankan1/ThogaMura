@@ -84,7 +84,7 @@ class NetworkStatusControllerTest {
 
         ObjectNode pong = OBJECT_MAPPER.createObjectNode();
         pong.put("status", "PONG");
-        given(tcpCommandClient.ping()).willReturn(pong);
+        given(tcpCommandClient.pingOnce()).willReturn(pong);
 
         mockMvc.perform(get("/api/v1/network-status")
                         .accept(MediaType.APPLICATION_JSON))
@@ -103,7 +103,7 @@ class NetworkStatusControllerTest {
         given(tlsProperties.isHostnameVerification()).willReturn(true);
         given(tlsProperties.getTruststorePath()).willReturn(mockTruststore.toString());
 
-        given(tcpCommandClient.ping()).willThrow(new ServerUnavailableException("TLS server down", "req-1"));
+        given(tcpCommandClient.pingOnce()).willThrow(new ServerUnavailableException("TLS server down", "req-1"));
 
         mockMvc.perform(get("/api/v1/network-status")
                         .accept(MediaType.APPLICATION_JSON))

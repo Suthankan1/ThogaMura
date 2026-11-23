@@ -1,28 +1,17 @@
 package lk.thogamura.networkserver.persistence;
 
 import lk.thogamura.networkserver.inventory.SyntheticInventoryFixtures;
-import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.postgresql.ds.PGSimpleDataSource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
 
-import javax.sql.DataSource;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,110 +22,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * synthetic inventory seed fixtures, and PostgreSQL constraints on real PostgreSQL 17.
  *
  * <p>Enforces requirements for Issue #8 matching {@code docs/contracts/NETWORK_PROTOCOL_V1.md}.
- * Connects to configured local PostgreSQL (Docker Compose) via environment or root .env,
- * falling back to Testcontainers.</p>
+ * Runs on a disposable PostgreSQL Testcontainers instance.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PostgresSchemaConstraintIntegrationTest {
 
-    private static PostgreSQLContainer<?> postgresContainer;
-    private static DataSource dataSource;
     private static JdbcTemplate jdbcTemplate;
 
     @BeforeAll
     static void setUp() {
-        String jdbcUrl = System.getenv("THOGAMURA_DB_URL");
-        String username = System.getenv("THOGAMURA_DB_USER");
-        String password = System.getenv("THOGAMURA_DB_PASSWORD");
-
-        // Attempt reading root .env if environment variables are not set in the process
-        if (jdbcUrl == null || jdbcUrl.isBlank()) {
-            Path envPath = findDotEnvPath();
-            if (envPath != null && Files.isReadable(envPath)) {
-                Properties props = loadEnvProperties(envPath);
-                jdbcUrl = props.getProperty("THOGAMURA_DB_URL");
-                username = props.getProperty("THOGAMURA_DB_USER");
-                password = props.getProperty("THOGAMURA_DB_PASSWORD");
-            }
-        }
-
-        boolean canConnect = false;
-        if (jdbcUrl != null && !jdbcUrl.isBlank()) {
-            PGSimpleDataSource probeDs = new PGSimpleDataSource();
-            probeDs.setUrl(jdbcUrl);
-            probeDs.setUser(username != null ? username : "thogamura");
-            probeDs.setPassword(password != null ? password : "");
-            try (java.sql.Connection conn = probeDs.getConnection()) {
-                canConnect = true;
-            } catch (Exception ignored) {
-                // Configured DB is unavailable or authentication failed; fall back to Testcontainers
-            }
-        }
-
-        if (!canConnect) {
-            if (System.getProperty("DOCKER_API_VERSION") == null && System.getenv("DOCKER_API_VERSION") == null) {
-                System.setProperty("DOCKER_API_VERSION", "1.44");
-                System.setProperty("api.version", "1.44");
-            }
-            postgresContainer = new PostgreSQLContainer<>("postgres:17-alpine")
-                    .withDatabaseName("thogamura_test")
-                    .withUsername("thogamura")
-                    .withPassword("test_secret");
-            postgresContainer.start();
-
-            jdbcUrl = postgresContainer.getJdbcUrl();
-            username = postgresContainer.getUsername();
-            password = postgresContainer.getPassword();
-        }
-
-        if (username == null) {
-            username = "thogamura";
-        }
-        if (password == null) {
-            password = "";
-        }
-
-        PGSimpleDataSource ds = new PGSimpleDataSource();
-        ds.setUrl(jdbcUrl);
-        ds.setUser(username);
-        ds.setPassword(password);
-        dataSource = ds;
-        jdbcTemplate = new JdbcTemplate(dataSource);
-
-        // Execute Flyway migration against the real database
-        Flyway flyway = Flyway.configure()
-                .dataSource(dataSource)
-                .locations("classpath:db/migration")
-                .cleanDisabled(false)
-                .load();
-        flyway.migrate();
-
-        // Clean tables before running tests
-        clearTables();
+        jdbcTemplate = PostgresTestHelper.getJdbcTemplate();
     }
 
     @org.junit.jupiter.api.BeforeEach
     void setUpEach() {
-        clearTables();
-    }
-
-    @AfterAll
-    static void tearDown() {
-        if (jdbcTemplate != null) {
-            clearTables();
-        }
-        if (postgresContainer != null && postgresContainer.isRunning()) {
-            postgresContainer.stop();
-        }
-    }
-
-    private static void clearTables() {
-        if (jdbcTemplate != null) {
-            jdbcTemplate.update("DELETE FROM stock_movements");
-            jdbcTemplate.update("DELETE FROM stock_requests");
-            jdbcTemplate.update("DELETE FROM command_receipts");
-            jdbcTemplate.update("DELETE FROM product_stock");
-        }
+        PostgresTestHelper.clearAllTables(jdbcTemplate);
     }
 
     @Test
@@ -392,38 +292,35 @@ class PostgresSchemaConstraintIntegrationTest {
         assertThat(((Number) record.get("available")).intValue()).isEqualTo(80);
     }
 
-    private static Path findDotEnvPath() {
-        Path[] candidateLocations = new Path[]{
-                Paths.get(".env"),
-                Paths.get("../../.env"),
-                Paths.get("../../../.env")
-        };
-        for (Path candidate : candidateLocations) {
-            if (Files.isRegularFile(candidate)) {
-                return candidate.toAbsolutePath().normalize();
-            }
-        }
-        return null;
+    @Test
+    void demoSeedPreservesACompletedRequestAndStockBalanceOnRerun() throws java.io.IOException {
+        String fixture = new org.springframework.core.io.ClassPathResource("fixtures/dev-seed-fixtures.sql")
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        jdbcTemplate.execute(fixture);
+        UUID id = UUID.fromString("a0000001-0000-4000-8000-000000000001");
+
+        jdbcTemplate.update("UPDATE stock_requests SET status = 'DISPATCHED' WHERE request_id = ?", id);
+        jdbcTemplate.update("UPDATE product_stock SET on_hand = 8, reserved = 0 WHERE sku = 'ITEM-007'");
+        jdbcTemplate.update("""
+                INSERT INTO stock_movements (stock_request_id, sku, quantity_delta, reason)
+                VALUES (?, 'ITEM-007', -2, 'DISPATCH')
+                """, id);
+
+        jdbcTemplate.execute(fixture);
+
+        assertThat(jdbcTemplate.queryForObject("SELECT status FROM stock_requests WHERE request_id = ?", String.class, id))
+                .isEqualTo("DISPATCHED");
+        assertThat(jdbcTemplate.queryForObject("SELECT on_hand FROM product_stock WHERE sku = 'ITEM-007'", Integer.class))
+                .isEqualTo(8);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM stock_movements WHERE stock_request_id = ?", Integer.class, id))
+                .isEqualTo(1);
     }
 
-    private static Properties loadEnvProperties(Path envPath) {
-        Properties properties = new Properties();
-        try (BufferedReader reader = Files.newBufferedReader(envPath)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-                int eq = line.indexOf('=');
-                if (eq > 0) {
-                    String key = line.substring(0, eq).trim();
-                    String value = line.substring(eq + 1).trim();
-                    properties.setProperty(key, value);
-                }
-            }
-        } catch (IOException ignored) {
-        }
-        return properties;
+    @Test
+    void cleanupRejectsAnExternalDataSourceBeforeOpeningAConnection() {
+        var otherDataSource = new org.postgresql.ds.PGSimpleDataSource();
+        assertThatThrownBy(() -> PostgresTestHelper.clearAllTables(new JdbcTemplate(otherDataSource)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("disposable PostgreSQL container");
     }
 }
