@@ -41,3 +41,13 @@ test("movement filtering uses calendar dates in the same zone as the displayed t
   assert.match(movementCsv([receive]), /"Receiving command"/);
   assert.match(movementCsv([receive]), /"'=external\(\)"/);
 });
+
+test("follow-up confirmations match the target, assignment and status", () => {
+  const assignment = { owner: "picker", sku: "ITEM-008", dueDate: "2026-12-01" };
+  const create = { path: "/supplier-follow-ups", assignment, key, label: "Supplier follow-up" };
+  const result = { ...assignment, id: key, status: "OPEN" };
+  assert.deepEqual(commandResult(create, result), {});
+  assert.throws(() => commandResult(create, { ...result, dueDate: "2026-12-02" }));
+  assert.throws(() => commandResult(create, { ...result, id: "other" }));
+  assert.ok(definitiveCommandFailure(new WorkspaceError("Already open", 409, key, "FOLLOWUP_OPEN")));
+});

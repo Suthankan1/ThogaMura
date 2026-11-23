@@ -11,6 +11,8 @@ spring:
     enabled: true
 
 thogamura:
+  followup:
+    owners: ${THOGAMURA_FOLLOWUP_OWNERS:}
   access:
     enabled: ${THOGAMURA_ACCESS_ENABLED:false}
     signing-key: ${THOGAMURA_ACCESS_SIGNING_KEY:}

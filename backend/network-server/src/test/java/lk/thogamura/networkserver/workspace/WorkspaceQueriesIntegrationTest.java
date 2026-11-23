@@ -63,6 +63,24 @@ class WorkspaceQueriesIntegrationTest {
     }
 
     @Test
+    void overviewSelectsOldestVisibleStageAcrossEveryPage() {
+        jdbc.update("INSERT INTO product_stock(sku,name,on_hand) VALUES ('A','Available',8),('B','Shortage',0)");
+        insertRequest(FIRST, "north", "ACCEPTED");
+        insertRequest(OTHER, "south", "PICKED");
+        jdbc.update("UPDATE stock_requests SET updated_at = now() - interval '2 days' WHERE request_id = ?", FIRST);
+        jdbc.update("UPDATE stock_requests SET updated_at = now() - interval '3 days' WHERE request_id = ?", OTHER);
+        for (int i = 0; i < 25; i++) insertRequest(UUID.randomUUID(), "north", "ACCEPTED");
+        var overview = queries.overview(NORTH);
+        assertThat(((Map<?, ?>) overview.get("waiting")).get("requestId")).isEqualTo(FIRST);
+        assertThat(((Map<?, ?>) overview.get("stockout")).get("sku")).isEqualTo("B");
+        jdbc.update("UPDATE stock_requests SET status='PICKED', updated_at=now() WHERE request_id=?", FIRST);
+        jdbc.update("UPDATE stock_requests SET status='PICKED' WHERE request_id=?", FIRST);
+        var events = (List<?>) queries.request(NORTH, FIRST).get("events");
+        assertThat(events.stream().map(e -> ((Map<?, ?>) e).get("stage").toString()).toList())
+                .containsExactly("REQUESTED", "ACCEPTED", "PICKED");
+    }
+
+    @Test
     void boundsDisplayFieldsOnEachInventoryPage() {
         jdbc.update("INSERT INTO product_stock (sku, name, on_hand) VALUES ('A', ?, 7)", "🍵".repeat(500));
         jdbc.update("INSERT INTO product_stock (sku, name, on_hand) VALUES ('B', 'Other product', 6)");
@@ -115,6 +133,23 @@ class WorkspaceQueriesIntegrationTest {
         assertThat(items(queries.movements(24, "", "DELIVERY", "RECEIVE", dates)))
                 .singleElement().satisfies(row -> assertThat(row).containsEntry("receivingCommandId", command));
         assertThat(items(queries.movements(24, "", "delivery", "DISPATCH", dates))).isEmpty();
+    }
+
+    @Test
+    void backfillsOnlyRecordedWorkspaceStageTimes() {
+        String schema = "event_upgrade_" + UUID.randomUUID().toString().replace("-", "");
+        var migration = Flyway.configure().dataSource(PostgresTestHelper.getDataSource()).schemas(schema);
+        migration.target("3").load().migrate();
+        try {
+            jdbc.update("INSERT INTO " + schema + ".product_stock(sku,name,on_hand) VALUES ('A','Historical',4)");
+            jdbc.update("INSERT INTO " + schema + ".stock_requests(request_id,request_fingerprint,sku,quantity,status,branch_id,created_at,updated_at) "
+                    + "VALUES (?,repeat('0',64),'A',1,'DISPATCHED','north','2026-10-01','2026-10-03')", FIRST);
+            migration.target("latest").load().migrate();
+            assertThat(jdbc.queryForList("SELECT stage FROM " + schema + ".request_events ORDER BY sequence", String.class))
+                    .containsExactly("REQUESTED", "DISPATCHED");
+        } finally {
+            jdbc.execute("DROP SCHEMA " + schema + " CASCADE");
+        }
     }
 
     @Test

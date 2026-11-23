@@ -45,10 +45,22 @@ public class WarehouseWorkspace {
     private static final int VERSION = WorkspaceAccess.VERSION;
     private static final Set<String> STATUSES = Set.of("", "ACCEPTED", "REJECTED", "PICKED", "DISPATCHED", "CANCELLED");
 
+    @Value("${thogamura.followup.owners:}")
+    private String ownerNames = "";
+
+    private java.util.List<String> owners(Actor actor) {
+        var names = java.util.Arrays.stream(ownerNames.split(",")).map(String::strip).filter(n -> !n.isEmpty()).distinct().toList();
+        if (names.size() > 24 || names.stream().anyMatch(n -> !WorkspaceAccess.isIdentifier(n))) {
+            throw new IllegalStateException("Invalid follow-up roster");
+        }
+        return names.isEmpty() && actor.staff() ? java.util.List.of(actor.name()) : names;
+    }
+
     private final WorkspaceAccess access;
     private final JdbcTemplate jdbc;
     private final WorkspaceQueries queries;
     private final TransactionTemplate transaction;
+    private final TransactionTemplate snapshot;
     private final StockRequestRepository requests;
     private final ProductStockRepository stock;
     private final CommandReceiptRepository receipts;
@@ -70,6 +82,9 @@ public class WarehouseWorkspace {
         this.jdbc = jdbc;
         queries = new WorkspaceQueries(jdbc);
         transaction = new TransactionTemplate(manager);
+        snapshot = new TransactionTemplate(manager);
+        snapshot.setReadOnly(true);
+        snapshot.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_REPEATABLE_READ);
         this.requests = requests;
         this.stock = stock;
         this.receipts = receipts;
@@ -100,12 +115,45 @@ public class WarehouseWorkspace {
 
     private String execute(UUID id, String type, Actor actor, JsonNode args) throws JsonProcessingException {
         return switch (type) {
+            case "GET_OVERVIEW" -> accepted(id, snapshot.execute(status -> queries.overview(actor)));
+            case "GET_FOLLOWUP_OWNERS" -> {
+                require(actor.staff());
+                yield accepted(id, Map.of("items", owners(actor)));
+            }
+            case "GET_FOLLOWUP" -> accepted(id, followup(uuid(field(args, "id", 36, false))));
+            case "CREATE_FOLLOWUP", "UPDATE_FOLLOWUP", "CLOSE_FOLLOWUP" -> {
+                require(actor.staff());
+                boolean create = type.equals("CREATE_FOLLOWUP");
+                boolean close = type.equals("CLOSE_FOLLOWUP");
+                UUID target = create ? id : uuid(field(args, "id", 36, false));
+                String sku = create ? sku(args) : "";
+                String owner = close ? "" : field(args, "owner", 40, false);
+                var due = close ? null : java.time.LocalDate.parse(field(args, "dueDate", 10, false));
+                yield mutate(id, type, actor, target + "/" + sku + "/" + owner + "/" + due, () -> {
+                    if (create) stock.findBySkuForUpdate(sku).orElseThrow(() -> new WorkspaceFailure(ProtocolInfo.ERROR_NOT_FOUND, "Unknown SKU"));
+                    return () -> {
+                        if (!close && !owners(actor).contains(owner)) throw new IllegalArgumentException("Unknown owner");
+                        if (create) {
+                            var existing = jdbc.queryForList("SELECT id FROM supplier_followups WHERE sku=? AND closed_at IS NULL", UUID.class, sku);
+                            if (!existing.isEmpty()) return Map.of("code", "FOLLOWUP_OPEN", "message", "This SKU already has an open follow-up.",
+                                    "followUpId", existing.getFirst());
+                            jdbc.update("INSERT INTO supplier_followups(id,sku,owner,due_date,created_by) VALUES (?,?,?,?,?)", target, sku, owner, due, actor.name());
+                        } else {
+                            int changed = close
+                                    ? jdbc.update("UPDATE supplier_followups SET closed_at=now(), closed_by=? WHERE id=? AND closed_at IS NULL", actor.name(), target)
+                                    : jdbc.update("UPDATE supplier_followups SET owner=?, due_date=? WHERE id=? AND closed_at IS NULL", owner, due, target);
+                            if (changed == 0) throw new WorkspaceFailure(ProtocolInfo.ERROR_INVALID_TRANSITION, "Follow-up is missing or closed");
+                        }
+                        return followup(target);
+                    };
+                });
+            }
             case ProtocolInfo.COMMAND_GET_PRODUCTS -> accepted(id, queries.products(size(args), cursor(args), field(args, "search", 100, true),
                     choice(args, "availability", Set.of("", "in_stock", "low_stock", "out_of_stock")), optionalSku(args)));
             case ProtocolInfo.COMMAND_GET_REQUESTS -> accepted(id, queries.requests(actor, size(args), cursor(args), choice(args, "status", STATUSES),
                     field(args, "search", 100, true), dates(args)));
             case WorkspaceAccess.GET_REQUEST -> {
-                Map<String, Object> row = queries.request(actor, requestId(args));
+                Map<String, Object> row = snapshot.execute(status -> queries.request(actor, requestId(args)));
                 if (row == null) throw missingRequest();
                 yield accepted(id, row);
             }
@@ -177,8 +225,13 @@ public class WarehouseWorkspace {
             if (claimed == 0) {
                 return replay(receipts.findByCommandRequestId(id).orElseThrow(), type, fingerprint);
             }
-            String result = accepted(id, change.get());
+            Map<String, Object> data = change.get();
+            boolean rejected = data.containsKey("code");
+            String result = rejected
+                    ? TcpMessageCodec.formatResultResponse(VERSION, id.toString(), ProtocolInfo.STATUS_REJECTED, data)
+                    : accepted(id, data);
             jdbc.update("UPDATE command_receipts SET result_json = ?::jsonb WHERE command_request_id = ?", result, id);
+            if (rejected) return result;
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
@@ -200,6 +253,17 @@ public class WarehouseWorkspace {
             throw new WorkspaceFailure(ProtocolInfo.ERROR_DUPLICATE_ID_CONFLICT, "Command ID already belongs to another action");
         }
         return receipt.resultJson();
+    }
+
+    private Map<String, Object> followup(UUID id) {
+        var rows = jdbc.queryForList("""
+                SELECT id, sku, owner, due_date::text AS "dueDate", created_by AS "createdBy",
+                       created_at::text AS "createdAt", closed_by AS "closedBy", closed_at::text AS "closedAt",
+                       CASE WHEN closed_at IS NULL THEN 'OPEN' ELSE 'CLOSED' END AS status
+                FROM supplier_followups WHERE id=?
+                """, id);
+        if (rows.isEmpty()) throw new WorkspaceFailure(ProtocolInfo.ERROR_NOT_FOUND, "Follow-up was not found");
+        return rows.getFirst();
     }
 
     private Map<String, Object> cancel(StockRequestRecord row, ProductStock product) {

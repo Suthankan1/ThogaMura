@@ -11,6 +11,8 @@ import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
 import type { Submit } from "./WorkspaceClient";
 import { panel, type View } from "./WorkspaceViews";
 
+import { BalanceChange } from "./OperatorDashboard";
+
 export type Draft = { sku: string; quantity: string; note: string };
 export const emptyDraft: Draft = { sku: "", quantity: "", note: "" };
 
@@ -87,6 +89,7 @@ export function StockForm({ receive = false, view, draft, saveDraft, onSubmit, o
     }
     if (units === null) problems.quantity = "Enter a whole number from 1 to 2,147,483,647.";
     else if (receive && selected && selected.onHand + units > 2147483647) problems.quantity = "The resulting on-hand balance would be too large.";
+    if (exceeds) problems.quantity = "Update the quantity to continue.";
     if (receive && (!note || /[\u0000-\u001f\u007f-\u009f]/u.test(note))) problems.note = "Enter a receiving reference with printable characters.";
     setErrors(problems);
     if (problems.sku) skuRef.current?.focus();
@@ -105,17 +108,17 @@ export function StockForm({ receive = false, view, draft, saveDraft, onSubmit, o
       <ProductPicker value={draft.sku} onChange={(value) => change("sku", value)} read={read} inputRef={skuRef} error={errors.sku} />
       {selected && <div className="space-y-2 rounded-lg bg-slate-50 p-3 text-sm">
         <p className="break-words font-semibold">{selected.name}</p>
-        <Availability units={selected.available} />
+        <Availability units={selected.available} /><BalanceChange key={sku} available={selected.available} />
         <p>{selected.onHand} on hand · {selected.reserved} reserved</p>
         <Freshness {...product} />
       </div>}
       {isSku(sku) && product.error && <Warning>{product.error} <button type="button" className={textAction} onClick={refresh}>Refresh product</button></Warning>}
       <Field name="Quantity"><input ref={amountRef} name="quantity" className={field} inputMode="numeric" maxLength={16}
         value={draft.quantity} onChange={(event) => change("quantity", event.target.value)}
-        aria-describedby={errors.quantity ? "quantity-error" : exceeds ? "available-warning" : undefined} aria-invalid={!!errors.quantity} /></Field>
+        aria-describedby={errors.quantity ? "quantity-error" : exceeds ? "available-warning" : undefined} aria-invalid={!!errors.quantity || !!exceeds} /></Field>
       {errors.quantity && <p id="quantity-error" className="text-sm text-rose-800">{errors.quantity}</p>}
       {exceeds && <div id="available-warning" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">
-        <p>Only {formatUnits(selected.available)} available. Adjust the quantity or check the supplier before submitting.</p>
+        <p role="status">Only {formatUnits(selected.available)} {selected.available === 1 ? "is" : "are"} available. Update the quantity to continue.</p>
         {onSupplier && <button type="button" className={textAction} onClick={() => onSupplier(sku)}>Check supplier</button>}
       </div>}
       {receive && <>
@@ -124,7 +127,7 @@ export function StockForm({ receive = false, view, draft, saveDraft, onSubmit, o
           aria-describedby={errors.note ? "note-error" : undefined} aria-invalid={!!errors.note} /></Field>
         {errors.note && <p id="note-error" className="text-sm text-rose-800">{errors.note}</p>}
       </>}
-      <button className={receive ? secondaryAction : primaryAction} type="submit" disabled={disabled}>{receive ? "Review receipt" : title}</button>
+      <button className={receive ? secondaryAction : primaryAction} type="submit" disabled={disabled || !!exceeds}>{receive ? "Review receipt" : title}</button>
     </form>
     {review && !disabled && <ConfirmAction title="Review receiving"
       description={`Add ${formatUnits(review.quantity)} of ${review.name} (${review.sku}) to the warehouse? Last checked on hand was ${review.onHand}. The movement will record “${review.note}”.`}

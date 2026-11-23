@@ -4,6 +4,7 @@
  */
 
 export interface Product {
+  followUpId?: string | null;
   sku: string;
   name: string;
   onHand: number;

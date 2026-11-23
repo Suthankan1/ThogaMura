@@ -67,6 +67,7 @@ public final class PostgresTestHelper {
         if (template.getDataSource() != getDataSource()) {
             throw new IllegalArgumentException("Test cleanup requires the disposable PostgreSQL container");
         }
+        template.update("DELETE FROM supplier_followups");
         template.update("DELETE FROM stock_movements");
         template.update("DELETE FROM stock_requests");
         template.update("DELETE FROM command_receipts");

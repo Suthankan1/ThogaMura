@@ -34,6 +34,8 @@ try {
   assert.equal(await page.getByLabel("Password", { exact: true }).inputValue(), "");
   assert.ok(await error.evaluate((el) => el.parentElement === document.activeElement));
   await signIn("north");
+  await page.getByRole("heading", { name: "First stockout" }).waitFor();
+  await page.getByRole("link", { name: "Inventory", exact: true }).click();
   await page.getByRole("heading", { name: "Warehouse inventory" }).waitFor();
   assert.equal(await page.getByRole("link", { name: "Receiving", exact: true }).count(), 0);
   await page.getByLabel("SKU", { exact: true }).fill("ITEM-010");
@@ -157,6 +159,7 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await page.getByRole("button", { name: "Sign out" }).click();
   await signIn("picker");
+  await page.getByRole("link", { name: "Fulfillment queue", exact: true }).click();
   await page.getByRole("heading", { name: "Fulfillment queue", exact: true }).waitFor();
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.goto("/activity");

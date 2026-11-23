@@ -179,3 +179,5 @@ The implemented command policy is server-authenticated JSSE TLS with SAN verific
 ## Workspace access handoff
 
 Review the gateway's session and assertion path and the warehouse verification boundary. Keep role, branch, clock and key configuration synchronized. The branch still verifies the warehouse SAN in JSSE. The application signs over a trusted gateway perimeter. [Workspace setup](../SETUP.md#authenticated-branch-workspace)
+
+Review the warehouse role checks for supplier task writes and the credential-free owner roster. The protected gateway rehearsal exercises staff writes and branch denial over the existing validated TLS transport.

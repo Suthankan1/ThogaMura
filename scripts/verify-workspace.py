@@ -98,6 +98,33 @@ def main():
     north.request("GET", "/products?cursor=invalid", 400)
     north.request("GET", "/products?limit=25", 400)
 
+    stockout = north.request("GET", "/overview", 200)[1]["stockout"]
+    task_sku = stockout["sku"]
+    owner = picker.request("GET", "/supplier-follow-ups/owners", 200)[1]["items"][0]
+    assignment = {"sku": task_sku, "owner": owner, "dueDate": "2026-12-01"}
+    tasks = "/supplier-follow-ups"
+    north.request("POST", tasks, 403, assignment, str(uuid4()))
+    picker.request("POST", tasks, 400, {**assignment, "owner": "unknown-account"}, str(uuid4()))
+    picker.request("POST", tasks, 400, {**assignment, "dueDate": "2026-11-31"}, str(uuid4()))
+    keys = [str(uuid4()), str(uuid4())]
+    with ThreadPoolExecutor(2) as pool:
+        outcomes = list(pool.map(lambda k: picker.request("POST", tasks, (201, 409), assignment, k), keys))
+    check(sorted(status for status, _ in outcomes) == [201, 409], "Open follow-up must be unique")
+    task = next(body for status, body in outcomes if status == 201)
+    check(next(body for status, body in outcomes if status == 409)["followUpId"] == task["id"], "Conflict link mismatch")
+    check(picker.request("POST", tasks, 201, assignment, task["id"])[1] == task, "Follow-up replay mismatch")
+    path = tasks + "/" + task["id"]
+    check(north.request("GET", path, 200)[1]["owner"] == owner, "Branch status mismatch")
+    check(north.stock(task_sku)["followUpId"] == task["id"], "Missing open task link")
+    picker.request("POST", path + "/update", 200, {**assignment, "dueDate": "2026-12-02"}, str(uuid4()))
+    supervisor.request("POST", path + "/close", 200, key=str(uuid4()))
+    check(north.stock(task_sku)["available"] == 0, "Follow-up changed stock")
+    conflict_key = next(key for key, (status, _) in zip(keys, outcomes) if status == 409)
+    check(picker.request("POST", tasks, 409, assignment, conflict_key)[1]["followUpId"] == task["id"],
+          "Replaying a duplicate after closure must retain the original conflict")
+    new_task = picker.request("POST", tasks, 201, assignment, str(uuid4()))[1]
+    picker.request("POST", tasks + "/" + new_task["id"] + "/close", 200, key=str(uuid4()))
+
     reserve = {"sku": sku, "quantity": 2}
     request_id = str(uuid4())
     north.request("POST", "/requests", 403, reserve, request_id, csrf=False)
@@ -107,6 +134,7 @@ def main():
     path = "/requests/" + request_id
     _, found = north.request("GET", path, 200)
     check(found["branchId"] == "north" and "T" in found["createdAt"], "Direct lookup result is malformed")
+    check([event["stage"] for event in found["events"]] == ["REQUESTED", "ACCEPTED"], "Reservation history mismatch")
     south.request("GET", path, 404)
     north.request("GET", "/requests/a0000001-0000-4000-8000-000000000001", 404)
     south.request("POST", path + "/cancel", 404, key=str(uuid4()))
@@ -150,6 +178,8 @@ def main():
     picker.request("POST", south_path + "/dispatch", 200, key=dispatch)
     supervisor.request("POST", south_path + "/cancel", 409, key=str(uuid4()))
 
+    history = picker.request("GET", south_path, 200)[1]["events"]
+    check([event["stage"] for event in history] == ["REQUESTED", "ACCEPTED", "PICKED", "DISPATCHED"], "Dispatch history or replay mismatch")
     scoped = north.pages("/requests", "requestId")
     check({row["requestId"] for row in scoped} == {request_id, next_id}, "Branch page leaked or skipped a request")
     _, page = north.request("GET", "/requests?limit=1", 200)

@@ -322,3 +322,5 @@ Reservation validation now rejects non-integer JSON values at the gateway, and b
 ## Authenticated workspace handoff
 
 The opt-in v2 envelope carries command-bound gateway assertions with the same TCP frame and correlation rules. Warehouse v1 business commands are denied in this profile. For the individual demonstration, show one protected read and one refused v1 business call alongside the existing TCP framing and retry evidence. [Workspace contract](../contracts/WORKSPACE_V2.md)
+
+Review the signed dashboard commands in docs/contracts/WORKSPACE_V2.md. Supplier task mutations use the existing retry key; a duplicate open task returns a replayable conflict identifying the original task.

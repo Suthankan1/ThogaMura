@@ -13,9 +13,11 @@ import { readTabValue, useTabValue, writeTabValue } from "@/lib/useTabValue";
 import { Inventory, Ledger, Requests, Supplier, type View } from "./WorkspaceViews";
 import { StockForm, emptyDraft, type Draft } from "./StockForm";
 
+import { FollowUp, Overview, followHref } from "./OperatorDashboard";
+
 const roles: Record<Role, string> = { OPERATOR: "Branch operator", PICKER: "Warehouse picker", SUPERVISOR: "Warehouse supervisor" };
 const sections = [
-  ["queue", "Fulfillment queue"], ["inventory", "Inventory"], ["requests", "Requests"],
+  ["overview", "Overview"], ["queue", "Fulfillment queue"], ["inventory", "Inventory"], ["requests", "Requests"],
   ["receiving", "Receiving"], ["movements", "Movements"], ["suppliers", "Suppliers"],
 ] as const;
 type Section = typeof sections[number][0];
@@ -94,7 +96,7 @@ export type Submit = (action: Omit<Command, "key">) => Promise<void>;
 function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: () => void; onExpire: (name: string) => void }) {
   const params = useSearchParams();
   const [revision, setRevision] = useState(0);
-  const [notice, setNotice] = useState<{ text: string; error: boolean; reference?: string; shortage?: Command["body"] }>();
+  const [notice, setNotice] = useState<{ text: string; error: boolean; reference?: string; followUp?: string; shortage?: Command["body"] }>();
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const reserveFocus = useRef<HTMLInputElement>(null);
@@ -117,19 +119,36 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
 
   const allowed = sections.filter(([id]) => id === "queue" ? session.role !== "OPERATOR" :
     id === "receiving" || id === "movements" ? session.role === "SUPERVISOR" : true);
-  const sectionParam = params.get("section") ?? (params.has("request") ? null : readTabValue<string | null>(`${scope}:last-section`, null));
-  const section = allowed.find(([id]) => id === sectionParam)?.[0] ?? (params.has("request") ? "requests" :
-    session.role === "PICKER" ? "queue" : session.role === "SUPERVISOR" ? "movements" : "inventory");
+  const sectionParam = params.get("section");
+  const section = allowed.find(([id]) => id === sectionParam)?.[0] ?? (params.has("request") ? "requests" : "overview");
   const requestId = params.get("request") ?? "";
+  const [origin, setOrigin] = useState<{ section: Section; id: string }>();
+  const restoreFocus = useRef(false);
+  const requestSection = section === "queue" ? "queue" : "requests";
+  const returnSection = origin?.section ?? requestSection;
+  useEffect(() => {
+    if (requestId || !restoreFocus.current || !origin) return;
+    const selector = '[data-request-link="' + CSS.escape(origin.id) + '"]';
+    const focus = () => {
+      const link = document.querySelector<HTMLElement>(selector);
+      if (!link) return false;
+      link.focus({ preventScroll: true });
+      restoreFocus.current = false;
+      return true;
+    };
+    if (focus()) return;
+    const observer = new MutationObserver(() => { if (focus()) observer.disconnect(); });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [requestId, origin]);
   const selectionKey = `${scope}:filters:${section}`;
   const current = params.size ? params : new URLSearchParams(readTabValue(selectionKey, ""));
   const filterKey = current.toString();
   useEffect(() => {
-    writeTabValue(`${scope}:last-section`, section);
     const filters = new URLSearchParams(filterKey);
     filters.delete("request");
     if (filters.size) writeTabValue(selectionKey, filters.toString());
-  }, [filterKey, scope, section, selectionKey]);
+  }, [filterKey, selectionKey]);
 
   function sectionHref(next: Section, overrides: Record<string, string | null> = {}) {
     const nextParams = next === section ? new URLSearchParams(current) :
@@ -166,8 +185,13 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
   const view: View = {
     params: current, scope, read, revision, role: session.role, scrollKey: scrollKey(),
     update: (values) => navigate(section, values),
-    open: (id) => navigate(section === "queue" ? "queue" : "requests", { request: id }),
-    requestHref: (id) => sectionHref(section === "queue" ? "queue" : "requests", { request: id }),
+    open: (id) => {
+      if (id) setOrigin({ section, id });
+      else restoreFocus.current = true;
+      navigate(id ? requestSection : returnSection, { request: id });
+    },
+    returnLabel: returnSection === "queue" ? "fulfillment queue" : returnSection,
+    requestHref: (id) => sectionHref(id ? requestSection : returnSection, { request: id }),
   };
 
   async function submit(action: Omit<Command, "key"> | Command) {
@@ -181,7 +205,7 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
       const result = commandResult(command, await workspaceCall<unknown>(command.path, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Workspace-CSRF": session.csrf, "Idempotency-Key": command.key },
-        body: command.body ? JSON.stringify(command.body) : undefined,
+        body: JSON.stringify(command.assignment ?? command.body),
       }));
       setNotice({ text: command.label + " confirmed.", error: false, reference: result.reference });
       if (command.path === "/requests" || command.path === "/receiving") {
@@ -192,6 +216,7 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
           saveDraft(kind, emptyDraft);
         }
       }
+      if (command.path.startsWith("/supplier-follow-ups")) navigate("suppliers", { sku: null, followUp: command.path.split("/")[2] ?? command.key });
       save(null);
       setRevision((value) => value + 1);
     } catch (error) {
@@ -204,7 +229,7 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
       }
       const shortage = details?.code === "INSUFFICIENT_STOCK" ? command.body : undefined;
       setNotice({ text: `${error instanceof Error ? error.message : "The result is uncertain."}${definitive ? "" : " Retry the saved action to confirm its outcome."}`,
-        error: true, shortage, reference: shortage && details?.reference === command.key ? command.key : undefined });
+        error: true, followUp: details?.code === "FOLLOWUP_OPEN" ? details.reference : undefined, shortage, reference: shortage && details?.reference === command.key ? command.key : undefined });
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -228,6 +253,7 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
 
   return <div className="space-y-5">
     <WorkspaceHeading title="Branch workspace" description={roles[session.role]} />
+    {section === "overview" && <Overview view={view} />}
     <nav aria-label="Workspace sections" className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
       {allowed.map(([id, label]) => <Link key={id} href={sectionHref(id)} aria-current={id === section ? "page" : undefined}
         className={`${secondaryAction} ${id === section ? "border-teal-600 bg-teal-50 text-teal-950" : ""}`}
@@ -236,7 +262,8 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
     {notice && <div role={notice.error ? "alert" : "status"} className={`space-y-2 rounded-lg border p-3 text-sm ${notice.error ? "border-amber-300 bg-amber-50 text-amber-950" : "border-teal-300 bg-teal-50 text-teal-950"}`}>
       <p>{notice.text}</p>
       <div className="flex flex-wrap gap-x-4">
-        {notice.reference && <Link className={textAction} href={view.requestHref(notice.reference)}
+        {notice.followUp && <Link className={textAction} href={followHref(notice.followUp)}>Open follow-up</Link>}
+        {notice.reference && <Link data-request-link={notice.reference} className={textAction} href={sectionHref(section === "queue" ? "queue" : "requests", { request: notice.reference })}
           onNavigate={(event) => { event.preventDefault(); view.open(notice.reference!); }}>Open request</Link>}
         {notice.shortage && <>
           <button type="button" className={textAction} onClick={() => { navigate("inventory"); requestAnimationFrame(() => reserveFocus.current?.focus()); }}>Adjust quantity</button>
@@ -265,7 +292,9 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
     {section === "receiving" && <StockForm receive draft={receiving} saveDraft={(draft) => saveDraft("receiving", draft)} view={view}
       onSubmit={submit} disabled={busy || !!pending} />}
     {section === "movements" && <Ledger view={view} />}
-    {section === "suppliers" && <Supplier view={view} returnToDraft={session.role === "OPERATOR" && !!reserve.sku ? () => navigate("inventory") : undefined} />}
+    {section === "suppliers" && current.get("followUp") && !current.get("sku") ?
+      <FollowUp key={current.get("followUp")} id={current.get("followUp")!} view={view} submit={submit} disabled={busy || !!pending} /> :
+      section === "suppliers" && <Supplier view={view} submit={submit} disabled={busy || !!pending} returnToDraft={session.role === "OPERATOR" && !!reserve.sku ? () => navigate("inventory") : undefined} />}
     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3 text-sm text-slate-700">
       <p className="break-words">{session.name} · {session.branch}</p>
       <button className={secondaryAction} disabled={busy} onClick={signOut}>Sign out</button>

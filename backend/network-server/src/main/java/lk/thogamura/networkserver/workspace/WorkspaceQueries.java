@@ -50,14 +50,44 @@ final class WorkspaceQueries {
         List<Map<String, Object>> rows = actor.staff()
                 ? jdbc.query("SELECT " + REQUEST_FIELDS + REQUEST_SOURCE + " WHERE r.request_id = ? AND r.branch_id IS NOT NULL", WorkspaceQueries::requestRow, id)
                 : jdbc.query("SELECT " + REQUEST_FIELDS + REQUEST_SOURCE + " WHERE r.request_id = ? AND r.branch_id = ?", WorkspaceQueries::requestRow, id, actor.branch());
-        return rows.isEmpty() ? null : rows.getFirst();
+        if (rows.isEmpty()) return null;
+        var row = rows.getFirst();
+        row.put("currentStageSince", row.get("updatedAt"));
+        row.put("events", jdbc.query("""
+                SELECT stage, happened_at FROM request_events WHERE request_id = ? ORDER BY sequence
+                """, (rs, n) -> Map.of("stage", rs.getString(1), "at", rs.getObject(2, OffsetDateTime.class).toString()), id));
+        return row;
+    }
+
+    Map<String, Object> overview(Actor actor) {
+        var result = new LinkedHashMap<String, Object>();
+        var shortages = (List<?>) products(1, "", "", "out_of_stock", "").get("items");
+        result.put("stockout", shortages.isEmpty() ? null : shortages.getFirst());
+        var waiting = jdbc.query("SELECT " + REQUEST_FIELDS + REQUEST_SOURCE + """
+                 WHERE r.branch_id IS NOT NULL AND (? OR r.branch_id = ?) AND r.status IN ('ACCEPTED','PICKED')
+                 ORDER BY r.updated_at, r.request_id LIMIT 1
+                """, WorkspaceQueries::requestRow, actor.staff(), actor.branch());
+        result.put("waiting", waiting.isEmpty() ? null : waiting.getFirst());
+        var counts = jdbc.queryForMap("""
+                SELECT count(*) FILTER (WHERE on_hand = reserved) AS "outOfStock",
+                       count(*) FILTER (WHERE on_hand - reserved BETWEEN 1 AND 3) AS "lowStock"
+                FROM product_stock
+                """);
+        counts.putAll(jdbc.queryForMap("""
+                SELECT count(*) FILTER (WHERE status = 'ACCEPTED') AS "toPick",
+                       count(*) FILTER (WHERE status = 'PICKED') AS "toDispatch"
+                FROM stock_requests WHERE branch_id IS NOT NULL AND (? OR branch_id = ?)
+                """, actor.staff(), actor.branch()));
+        result.put("counts", counts);
+        return result;
     }
 
     Map<String, Object> products(int size, String cursor, String search, String availability, String sku) {
         String scope = scope("products", search, availability, sku);
         String[] seek = decode(cursor, scope, 1);
         List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT sku, left(name, 200) AS name, on_hand AS "onHand", reserved, on_hand - reserved AS available
+                SELECT sku, left(name, 200) AS name, on_hand AS "onHand", reserved, on_hand - reserved AS available,
+                    (SELECT id FROM supplier_followups f WHERE f.sku = product_stock.sku AND closed_at IS NULL) AS "followUpId"
                 FROM product_stock
                 WHERE (? = '' OR strpos(lower(sku), lower(?)) > 0 OR strpos(lower(name), lower(?)) > 0)
                   AND (? = '' OR sku = ?)

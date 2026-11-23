@@ -13,8 +13,11 @@ import { useStockEvents } from "@/lib/events/useStockEvents";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
 import type { Submit } from "./WorkspaceClient";
 
+import { BalanceChange, FollowUp, followHref, StageAge } from "./OperatorDashboard";
+
 export const panel = `${surface} min-w-0 space-y-4 p-4 sm:p-6`;
 export type View = {
+  returnLabel: string;
   params: Pick<URLSearchParams, "get">;
   scope: string; scrollKey: string; read: Read; revision: number; role: Role;
   update: (values: Record<string, string | null>) => void;
@@ -38,10 +41,11 @@ export function Inventory({ view, onReserve, supplierHref, onSupplier }: {
       empty="The warehouse catalogue is empty.">
       {(items) => <ul className="divide-y divide-slate-200">{items.map((item) => <li key={item.sku} className="grid min-w-0 gap-3 py-4 first:pt-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div><p className="break-words font-semibold">{item.name}</p><p className="break-all font-mono text-xs text-slate-600">{item.sku}</p></div>
-        <div className="space-y-2 text-sm"><Availability units={item.available} />
+        <div className="space-y-2 text-sm"><Availability units={item.available} /><BalanceChange available={item.available} />
           <p className="text-slate-700">{item.onHand} on hand · {item.reserved} reserved</p>
         </div>
         <div className="flex flex-wrap gap-x-4 sm:col-span-2">
+          {item.followUpId && <Link className={textAction} href={followHref(item.followUpId)}>Follow-up open</Link>}
           {onReserve && item.available > 0 && <button className={textAction} onClick={() => onReserve(item.sku)}>Reserve <span className="sr-only">{item.sku}</span></button>}
           <Link className={textAction} href={supplierHref(item.sku)} onNavigate={(event) => { event.preventDefault(); onSupplier(item.sku); }}>Check supplier <span className="sr-only">for {item.sku}</span></Link>
         </div>
@@ -76,7 +80,7 @@ export function Requests({ view, target, queue, disabled, onSubmit }: {
   return <div className="space-y-4">
     {target ? <>
       <Link className={secondaryAction} href={view.requestHref(null)} onNavigate={(event) => { event.preventDefault(); view.open(null); }}>
-        {queue ? "Back to fulfillment queue" : "Back to requests"}
+        Back to {view.returnLabel}
       </Link>
       <RequestDetail key={target} {...{ view, target, disabled }} review={(row, action) => setReview({ row, action })} />
     </> : <>
@@ -93,7 +97,7 @@ export function Requests({ view, target, queue, disabled, onSubmit }: {
           const action = row.status === "ACCEPTED" ? "pick" : row.status === "PICKED" ? "dispatch" : null;
           return <li key={row.requestId} className="grid gap-3 py-4 first:pt-0 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]">
             <div className="min-w-0">
-              <Link className={textAction} href={view.requestHref(row.requestId)} aria-label={`Open request ${row.requestId}`}
+              <Link className={textAction} data-request-link={row.requestId} href={view.requestHref(row.requestId)} aria-label={`Open request ${row.requestId}`}
                 onNavigate={(event) => { event.preventDefault(); view.open(row.requestId); }}>{row.productName ?? row.sku}</Link>
               <p className="break-all font-mono text-xs text-slate-600">{row.sku} · {row.requestId.slice(0, 8)}</p>
               <p className="mt-1 break-words text-sm text-slate-700">{row.branchId} · {formatUnits(row.quantity)}</p>
@@ -124,6 +128,15 @@ function RequestDetail({ target, view, disabled, review }: {
   target: string; view: View; disabled: boolean; review: (row: Request, action: Action) => void;
 }) {
   const { read, revision, role } = view;
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [target]);
+  useEffect(() => {
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.querySelector("dialog[open], [role=dialog]")) view.open(null);
+    };
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [view]);
   const valid = UUID_V4.test(target);
   const load = useCallback(() => workspaceRequest(read, target), [read, target]);
   const query = useWarehouseQuery(load, valid);
@@ -133,11 +146,8 @@ function RequestDetail({ target, view, disabled, review }: {
   const row = query.data;
   const actions: Action[] = row?.status === "ACCEPTED" ? (role === "OPERATOR" ? ["cancel"] : ["pick", "cancel"]) :
     row?.status === "PICKED" && role !== "OPERATOR" ? ["dispatch"] : [];
-  const stages: Status[] = row?.status === "REJECTED" ? ["REJECTED"] : row?.status === "CANCELLED" ?
-    ["ACCEPTED", "CANCELLED"] : ["ACCEPTED", "PICKED", "DISPATCHED"];
-
   return <section className={`${panel} border-teal-200`}>
-    <div className="flex flex-wrap items-start justify-between gap-3"><h2 className="text-xl font-semibold">Request details</h2>
+    <div className="flex flex-wrap items-start justify-between gap-3"><h2 ref={heading} tabIndex={-1} className="text-xl font-semibold">Request details</h2>
       {valid && <button className={secondaryAction} onClick={refresh} disabled={query.loading}>Refresh request</button>}</div>
     {!valid ? <Warning>Enter a complete request reference to open the record.</Warning> : <Freshness {...query} />}
     {query.error && <Warning>{query.error}</Warning>}
@@ -162,11 +172,15 @@ function RequestDetail({ target, view, disabled, review }: {
       </dl>
       {row.decisionReason && <p className="break-words text-sm">{row.decisionReason}</p>}
       <ol aria-label="Request lifecycle" className="flex flex-wrap gap-2">
-        {stages.map((stage, index) => <li key={stage} aria-current={stage === row.status ? "step" : undefined}
-          className={`rounded-lg border px-3 py-2 text-sm ${stage === row.status ? "border-teal-600 bg-teal-50 font-semibold" : "border-slate-200 text-slate-700"}`}>
-          {index < stages.indexOf(row.status) && <span aria-label="Complete">✓ </span>}{requestStates[stage].label}
+        {row.events?.map(event => <li key={event.stage} aria-current={event.stage === row.status ? "step" : undefined} className="rounded-lg border p-2 text-sm">
+          <span>{event.stage.charAt(0) + event.stage.slice(1).toLowerCase()}</span> · {formatFullDateTime(event.at)}
         </li>)}
       </ol>
+      {row.events && ["PICKED","DISPATCHED","CANCELLED"].includes(row.status) &&
+        (!row.events.some(e => e.stage === "ACCEPTED") || (row.status === "DISPATCHED" && !row.events.some(e => e.stage === "PICKED"))) &&
+        <p>Earlier stage time unavailable</p>}
+      <p>{row.status === "ACCEPTED" || row.status === "PICKED" ? <>Time in current stage · <StageAge since={row.currentStageSince ?? row.updatedAt} /></> :
+        <>Completed {formatFullDateTime(row.updatedAt)}</>}</p>
       <div className="flex flex-wrap gap-2">
         {actions.map((action) => <button key={action} className={`${secondaryAction} ${action === "cancel" ? "border-rose-300 text-rose-900" : ""}`}
           disabled={disabled || query.loading || !!query.error} onClick={() => review(row, action)}>{actionDetails[action].label}</button>)}
@@ -206,7 +220,7 @@ export function Ledger({ view }: { view: View }) {
   </div>;
 }
 
-export function Supplier({ view, returnToDraft }: { view: View; returnToDraft?: () => void }) {
+export function Supplier({ view, returnToDraft, submit, disabled }: { submit: Submit; disabled: boolean; view: View; returnToDraft?: () => void }) {
   const sku = view.params.get("sku") ?? "";
   const [repeat, setRepeat] = useState(0);
   return <div className="space-y-4">
@@ -221,11 +235,12 @@ export function Supplier({ view, returnToDraft }: { view: View; returnToDraft?: 
       <div className="flex flex-wrap gap-x-4 gap-y-2"><button className={secondaryAction}>Check supplier</button>
         {returnToDraft && <button type="button" className={textAction} onClick={returnToDraft}>Return to reservation draft</button>}</div>
     </form>
-    {sku && <SupplierResult key={sku} sku={sku} read={view.read} repeat={repeat} />}
+    {sku && <SupplierResult key={sku} sku={sku} view={view} repeat={repeat} submit={submit} disabled={disabled} />}
   </div>;
 }
 
-function SupplierResult({ sku, read, repeat }: { sku: string; read: Read; repeat: number }) {
+function SupplierResult({ sku, view, repeat, submit, disabled }: { sku: string; view: View; repeat: number; submit: Submit; disabled: boolean }) {
+  const {read} = view;
   const load = useCallback(() => workspaceSupplier(read, sku), [read, sku]);
   const supplier = useWarehouseQuery(load, true, false);
   const loadStock = useCallback(() => exactProduct(read, sku), [read, sku]);
@@ -236,7 +251,8 @@ function SupplierResult({ sku, read, repeat }: { sku: string; read: Read; repeat
   const item = supplier.data;
   return <section aria-label="Supplier inquiry result" className={`${panel} max-w-2xl border-teal-200`} aria-busy={supplier.loading}>
     <h3 className="text-lg font-semibold">{sku}</h3>
-    {supplier.loading ? <p role="status">Checking supplier…</p> : supplier.error ? <Warning>{supplier.error} Check the SKU or run the inquiry again.</Warning> :
+    {supplier.loading ? <p role="status">Checking supplier…</p> : supplier.error ? <div className="space-y-2"><Warning>Supplier availability unknown. {supplier.error}</Warning>
+      <p>{stock.data && !stock.error ? formatUnits(stock.data.available) + " available in warehouse" : "Warehouse balance unavailable"}</p></div> :
       item && <div className="space-y-4" role="status">
         <dl className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg bg-teal-50 p-4 text-teal-950"><dt className="text-sm">{item.supplier}</dt><dd className="text-xl font-semibold">{formatUnits(item.reportedQuantity)} reported by supplier</dd></div>
@@ -246,6 +262,9 @@ function SupplierResult({ sku, read, repeat }: { sku: string; read: Read; repeat
           {item.estimatedRestockDays !== undefined && <div><dt className="text-sm text-slate-600">Estimated restock</dt><dd>{item.estimatedRestockDays} days</dd></div>}
         </dl>
       </div>}
+    {!supplier.loading && stock.data && !stock.error && (stock.data.followUpId ?
+      <Link className={textAction} href={followHref(stock.data.followUpId)}>Follow-up open</Link> :
+      <FollowUp sku={sku} view={view} submit={submit} disabled={disabled} />)}
   </section>;
 }
 

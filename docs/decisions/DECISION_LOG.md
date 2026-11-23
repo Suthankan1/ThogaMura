@@ -118,3 +118,9 @@ All five members agreed to proceed on 23 November 2026, as confirmed in the impl
 The demo v1 request query now orders its existing bounded result newest-first. Authoritative pagination and exact lookup for legacy records need a separate contract decision and explicit group approval under the [v1 change policy](../contracts/NETWORK_PROTOCOL_V1.md#9-protocol-governance--modification-process). The demo UI states the limit of its search.
 
 [Workspace contract](../contracts/WORKSPACE_V2.md)
+
+### ADR-012 Shared shortage tasks and warehouse request history
+
+Implemented for team review. Warehouse staff coordinate one open supplier follow-up per SKU. PostgreSQL enforces that limit with a partial unique index. Tasks use the existing signed, idempotent workspace mutation path. Owners come from the warehouse roster. Branch staff can see who is handling a shortage. Due dates are calendar dates.
+
+The warehouse records request stages with an insert/status-change trigger so reservation, cancellation, picking and dispatch commit their history atomically. A migration backfills only recorded timestamps. Private version hints invalidate browser reads. A confirmed balance can invalidate a new draft submission while an uncertain submitted command retains its original retry key.

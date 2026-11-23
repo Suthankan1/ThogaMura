@@ -205,3 +205,5 @@ When presenting Member 3's contribution, explain these explicit JDK APIs:
 6. **Slow Subscriber Memory Bounding:**
    - Each client session has a bounded outbound queue (default 50 messages).
    - If a slow client fails to read and exceeds this bound, the server closes its channel and evicts it, isolating slow subscribers so healthy subscribers never suffer latency or memory exhaustion.
+
+The signed-in inventory now compares consecutive confirmed balances. Review the two-session browser rehearsal in frontend/tests/workspace-stock-demo.mjs and the setup instructions under Operator dashboard rehearsal. Feature implementation was AI-assisted and awaits individual source review and physical LAN demonstration.

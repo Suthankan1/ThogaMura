@@ -319,3 +319,5 @@ mvn -f backend/api-gateway/pom.xml spring-boot:run
 ## Stabilization handoff
 
 The supplier form distinguishes warehouse and supplier deadlines, confirmed zero and malformed results. External supplier origins require an explicit HTTPS allowlist. Demonstrate the separate synthetic provider and preserve its read-only scope.
+
+Review the signed-in follow-up workflow with M4. The supplier query still calls the independent HTTP service. The human task records warehouse ownership and a due date in a separate v2 mutation. Use the Red Onions rehearsal in docs/SETUP.md for success, concurrent creation and read-only branch access.

@@ -43,3 +43,10 @@
 
 ## Task and evidence process
 Each issue gets an owner (once known), objective, small slice, tests, failure demo and review. Never merge automatically generated networking code without proving actual socket or HTTP communication.
+
+## Operator dashboard increments for member review
+
+- [ ] Shared UI / M1 / M4 — review scoped overview and desktop/mobile priority rows.
+- [ ] M2 / M4 / M5 — review staff assignment, duplicate prevention, and branch read access.
+- [ ] M4 / M1 — review recorded request stages and historical timestamps.
+- [ ] M3 — rehearse draft preservation and balance correction through two branch gateways.

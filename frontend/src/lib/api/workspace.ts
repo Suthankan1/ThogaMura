@@ -3,12 +3,13 @@ import type { Product, StockRequestStatus, SupplierAvailability } from "../types
 export type Status = StockRequestStatus | "CANCELLED";
 export type Role = "OPERATOR" | "PICKER" | "SUPERVISOR";
 export type Session = { name: string; role: Role; branch: string; csrf: string };
-export type Request = { requestId: string; sku: string; productName: string; branchId: string; quantity: number; status: Status; createdAt: string; updatedAt: string; decisionReason: string | null };
+export type Request = { requestId: string; sku: string; productName: string; branchId: string; quantity: number; status: Status; createdAt: string; updatedAt: string; events?: { stage: Status | "REQUESTED"; at: string }[]; currentStageSince?: string; decisionReason: string | null };
 export type Movement = { id: string; sku: string; reason: "RECEIVE" | "DISPATCH"; quantityDelta: number; occurredAt: string; branchId: string | null; recordedBy: string | null; note: string | null; stockRequestId: string | null; receivingCommandId: string | null };
 export type Page<T> = { items: T[]; nextCursor: string | null };
 export type Command = {
   path: string;
   body?: { sku: string; quantity: number; note?: string };
+  assignment?: { sku: string; owner: string; dueDate: string };
   item?: { sku: string; quantity: number };
   label: string;
   key: string;
@@ -52,7 +53,7 @@ export async function workspaceCall<T>(path: string, init: RequestInit = {}): Pr
       throw new WorkspaceError(
         typeof details.message === "string" ? details.message : "The workspace could not confirm the result.",
         response.status,
-        typeof details.requestId === "string" ? details.requestId : undefined,
+        typeof details.followUpId === "string" ? details.followUpId : typeof details.requestId === "string" ? details.requestId : undefined,
         typeof details.code === "string" ? details.code : undefined,
       );
     }
@@ -79,6 +80,9 @@ const transitions = { cancel: "CANCELLED", pick: "PICKED", dispatch: "DISPATCHED
 
 export function commandResult(command: Command, value: unknown): { reference?: string } {
   if (record(value)) {
+    if (command.path.startsWith("/supplier-follow-ups") && value.id === (command.path.split("/")[2] ?? command.key) &&
+      value.status === (command.path.endsWith("/close") ? "CLOSED" : "OPEN") &&
+      (!command.assignment || (value.owner === command.assignment.owner && value.sku === command.assignment.sku && value.dueDate === command.assignment.dueDate))) return {};
     if (command.path === "/receiving" && command.body && value.status === "RECEIVED" &&
       value.sku === command.body.sku && value.quantity === command.body.quantity && validBalance(value) &&
       (value.onHand as number) >= command.body.quantity) return {};
@@ -98,7 +102,7 @@ export function definitiveCommandFailure(error: WorkspaceError) {
   return (error.status === 400 && error.code === "VALIDATION_ERROR") ||
     (error.status === 403 && error.code === "FORBIDDEN") ||
     (error.status === 404 && error.code === "NOT_FOUND") ||
-    (error.status === 409 && ["INSUFFICIENT_STOCK", "INVALID_TRANSITION", "DUPLICATE_ID_CONFLICT"].includes(error.code ?? ""));
+    (error.status === 409 && ["FOLLOWUP_OPEN", "INSUFFICIENT_STOCK", "INVALID_TRANSITION", "DUPLICATE_ID_CONFLICT"].includes(error.code ?? ""));
 }
 
 export async function workspacePage<T>(read: Read, path: string): Promise<Page<T>> {

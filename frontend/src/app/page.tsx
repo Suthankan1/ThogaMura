@@ -33,22 +33,15 @@ export default function Home() {
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { title: "To pick", rows: picks.data, query: picks, href: "/warehouse?stage=pick" },
-          { title: "Ready to dispatch", rows: dispatches.data, query: dispatches, href: "/warehouse?stage=dispatch" },
-          { title: "Out of stock", rows: shortages, query: products, href: "/products?filter=out_of_stock" },
-          { title: "Low stock", rows: lowStock, query: products, href: "/products?filter=low_stock" },
-        ].map(({ title, rows, query, href }) => (
-          <Link key={title} href={href} className={`${surface} block p-4 hover:border-teal-500 sm:p-5`}>
-            <p className="text-sm font-semibold text-slate-700">{title} · loaded records</p>
-            <p className="my-2 text-3xl font-semibold tabular-nums text-slate-950">{rows?.length ?? "—"}</p>
-            <Freshness {...query} />
-          </Link>
-        ))}
+      <div className="space-y-2 min-[58rem]:hidden">
+        <p className={surface + " p-3"}>{products.error ? "Inventory unavailable" : shortages?.[0] ?
+          <Link className={textAction} href={`/suppliers?returnTo=/&sku=${encodeURIComponent(shortages[0].sku)}`}>{shortages[0].name} · Out of stock · Check supplier</Link> :
+          products.data ? "No stockouts in loaded inventory" : "Checking inventory…"}</p>
+        <p className={surface + " p-3"}>{picks.error || dispatches.error ? "Queue unavailable" : pending[0] ?
+          <Link className={textAction} href={`/warehouse?stage=${pending[0].stage}&requestId=${pending[0].item.requestId}`}>{products.data?.find(p => p.sku === pending[0].item.sku)?.name ?? pending[0].item.sku} · Requested {formatAge(pending[0].item.createdAt)} ago</Link> :
+          picks.data && dispatches.data ? "No waiting requests in loaded queues" : "Checking queue…"}</p>
       </div>
-
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-5 min-[58rem]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <section className={surface} aria-labelledby="pending-heading">
           <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 p-4 sm:p-5">
             <h2 id="pending-heading" className="text-lg font-semibold">Pending fulfillment</h2>
@@ -65,7 +58,7 @@ export default function Home() {
                     </Link>
                     <p className="mt-1 text-xs text-slate-600">{formatUnits(item.quantity)} · Requested {formatFullDateTime(item.createdAt)}</p>
                   </div>
-                  <div className="space-y-2"><RequestBadge status={item.status} /><p className="text-sm font-semibold text-amber-900">Waiting {formatAge(item.createdAt)}</p></div>
+                  <div className="space-y-2"><RequestBadge status={item.status} /><p className="text-sm font-semibold text-amber-900">Requested {formatAge(item.createdAt)} ago</p></div>
                 </li>
               ))}
             </ul>
@@ -98,6 +91,21 @@ export default function Home() {
           )}
         </section>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { title: "To pick", rows: picks.data, query: picks, href: "/warehouse?stage=pick" },
+          { title: "Ready to dispatch", rows: dispatches.data, query: dispatches, href: "/warehouse?stage=dispatch" },
+          { title: "Out of stock", rows: shortages, query: products, href: "/products?filter=out_of_stock" },
+          { title: "Low stock", rows: lowStock, query: products, href: "/products?filter=low_stock" },
+        ].map(({ title, rows, query, href }) => (
+          <Link key={title} href={href} className={`${surface} block p-4 hover:border-teal-500 sm:p-5`}>
+            <p className="text-sm font-semibold text-slate-700">{title} · loaded records</p>
+            <p className="my-2 text-3xl font-semibold tabular-nums text-slate-950">{rows?.length ?? "—"}</p>
+            <Freshness {...query} />
+          </Link>
+        ))}
+      </div>
+
     </div>
   );
 }

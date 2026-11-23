@@ -42,3 +42,18 @@ A mutating request requires an `Idempotency-Key` header with a lowercase UUID v4
 Cancellation changes `ACCEPTED` to `CANCELLED` and releases reserved units in the same transaction. Receiving adds to on-hand units, preserves reservations, and records one positive `RECEIVE` ledger entry with the actor, note and command receipt. Dispatch records one negative movement per request. Stock and ledger changes commit with their receipts. A picked or dispatched request cannot be cancelled by this workflow.
 
 [Deployment and test setup](../SETUP.md#authenticated-branch-workspace) · [Approved decisions](../decisions/DECISION_LOG.md#adr-008-bounded-warehouse-reads-and-request-lookup)
+
+## Operator dashboard
+
+| HTTP under /api/v2 | Signed warehouse command | Result or input |
+| --- | --- | --- |
+| GET /overview | GET_OVERVIEW | Nullable stockout and waiting rows. Stockout uses SKU order. Waiting uses oldest status update among visible accepted and picked requests. |
+| GET /supplier-follow-ups/owners | GET_FOLLOWUP_OWNERS | Staff-only list of assignable account names in items. |
+| POST /supplier-follow-ups | CREATE_FOLLOWUP | SKU, owner and dueDate (YYYY-MM-DD). Returns 201 and the task. The creation key identifies the task. |
+| GET /supplier-follow-ups/{id} | GET_FOLLOWUP | Signed-in users can read the shared warehouse task, including after closure. |
+| POST /supplier-follow-ups/{id}/update | UPDATE_FOLLOWUP | Staff change owner and dueDate on an open task. |
+| POST /supplier-follow-ups/{id}/close | CLOSE_FOLLOWUP | Staff close the task. Returns the closed record. |
+
+Overview counts report lowStock and outOfStock across the warehouse and toPick and toDispatch within the caller’s request scope. Product rows include nullable followUpId. Independent concurrent creates for one SKU return one task and HTTP 409 with code FOLLOWUP_OPEN and followUpId. All task writes use the workspace CSRF and idempotency headers. A task tracks human work and changes no inventory. An inquiry may report unknown.
+
+Exact request details add currentStageSince and ordered events containing stage and at. Older workspace data has its recorded creation and current status timestamps. The overview and exact request detail each use a consistent database snapshot. The private NIO notification frame still contains only a version.

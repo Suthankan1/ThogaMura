@@ -97,6 +97,36 @@ final class WorkspaceController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/overview")
+    ResponseEntity<?> overview(HttpServletRequest request) throws CommandTransportException {
+        return read(request, "GET_OVERVIEW", Map.of());
+    }
+
+    @GetMapping("/supplier-follow-ups/owners")
+    ResponseEntity<?> owners(HttpServletRequest request) throws CommandTransportException {
+        return read(request, "GET_FOLLOWUP_OWNERS", Map.of());
+    }
+
+    @GetMapping("/supplier-follow-ups/{id}")
+    ResponseEntity<?> followup(HttpServletRequest request, @PathVariable String id) throws CommandTransportException {
+        return read(request, "GET_FOLLOWUP", Map.of("id", id));
+    }
+
+    @PostMapping("/supplier-follow-ups")
+    ResponseEntity<?> createFollowup(HttpServletRequest request, @RequestBody JsonNode body) throws CommandTransportException {
+        return write(request, "CREATE_FOLLOWUP", body, HttpStatus.CREATED);
+    }
+
+    @PostMapping("/supplier-follow-ups/{id}/{action:update|close}")
+    ResponseEntity<?> changeFollowup(HttpServletRequest request, @PathVariable String id, @PathVariable String action,
+                                     @RequestBody(required = false) JsonNode body) throws CommandTransportException {
+        if (action.equals("close")) return write(request, "CLOSE_FOLLOWUP", Map.of("id", id), HttpStatus.OK);
+        if (body == null || !body.isObject()) return error(HttpStatus.BAD_REQUEST, ProtocolInfo.ERROR_VALIDATION, "Expected follow-up details");
+        var args = ((com.fasterxml.jackson.databind.node.ObjectNode) body).deepCopy();
+        args.put("id", id);
+        return write(request, "UPDATE_FOLLOWUP", args, HttpStatus.OK);
+    }
+
     @GetMapping("/products")
     ResponseEntity<?> products(HttpServletRequest request, @RequestParam(defaultValue = "16") int limit,
                                @RequestParam(defaultValue = "") String cursor, @RequestParam(defaultValue = "") String search,
@@ -195,7 +225,7 @@ final class WorkspaceController {
             case WorkspaceAccess.ERROR_FORBIDDEN -> HttpStatus.FORBIDDEN;
             case ProtocolInfo.ERROR_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case ProtocolInfo.ERROR_VALIDATION -> HttpStatus.BAD_REQUEST;
-            case ProtocolInfo.ERROR_DUPLICATE_ID_CONFLICT, ProtocolInfo.ERROR_INVALID_TRANSITION,
+            case "FOLLOWUP_OPEN", ProtocolInfo.ERROR_DUPLICATE_ID_CONFLICT, ProtocolInfo.ERROR_INVALID_TRANSITION,
                     ProtocolInfo.ERROR_INSUFFICIENT_STOCK -> HttpStatus.CONFLICT;
             case ProtocolInfo.ERROR_SUPPLIER_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
             case ProtocolInfo.ERROR_SUPPLIER_TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
@@ -206,6 +236,7 @@ final class WorkspaceController {
         body.put("code", code);
         body.put("message", failure.path("message").asText("Warehouse could not confirm the command outcome."));
         body.put("requestId", id);
+        if ("FOLLOWUP_OPEN".equals(code)) body.put("followUpId", failure.path("followUpId").asText());
         return ResponseEntity.status(http).body(body);
     }
 
