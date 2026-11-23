@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Boxes, ClipboardList, LayoutDashboard, Menu, PanelsTopLeft, Truck, Warehouse, X } from "lucide-react";
+import { Activity, Boxes, ClipboardList, LayoutDashboard, Menu, PanelsTopLeft, Truck, Warehouse, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -17,6 +17,7 @@ const demoLinks = [
   { href: "/requests", icon: ClipboardList, label: "Requests" },
   { href: "/warehouse", icon: Warehouse, label: "Fulfillment" },
   { href: "/suppliers", icon: Truck, label: "Suppliers" },
+  { href: "/activity", icon: Activity, label: "Activity" },
 
 ];
 
@@ -226,7 +227,7 @@ export function Header() {
           </Link>
 
           {/* Show desktop links only when the full navigation fits */}
-          <div className="hidden min-[72rem]:flex items-center gap-5">
+          <div className="hidden min-[64rem]:flex items-center gap-4">
             <nav aria-label="Primary navigation">
               <ul className="flex items-center gap-1 text-sm font-semibold text-slate-600">
                 {navLinks.map((link) => {
@@ -256,7 +257,7 @@ export function Header() {
           </div>
 
           {/* Compact navigation controls */}
-          <div className="flex items-center gap-2.5 min-[72rem]:hidden">
+          <div className="flex items-center gap-2.5 min-[64rem]:hidden">
             <ConnectionIndicator compact={true} />
             <button
               ref={triggerRef}
