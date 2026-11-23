@@ -17,8 +17,8 @@ body {
   min-height: 100vh;
   background-color: var(--canvas);
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  letter-spacing: -0.011em;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -0.012em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -71,22 +71,36 @@ body { background: linear-gradient(155deg, #eaf5f2, transparent 580px), var(--ca
   width: min(calc(100% - 2 * var(--gutter)), 1280px);
   margin-inline: auto;
 }
+.brand-intro-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.brand-intro-shell > main {
+  flex: 1 0 auto;
+}
+.site-footer {
+  width: 100%;
+  background: rgb(251 255 254 / 92%);
+  border-top: 1px solid var(--surface-edge);
+  margin-top: auto;
+}
 .floating-header {
   top: max(.5rem, env(safe-area-inset-top));
   margin-top: max(.5rem, env(safe-area-inset-top));
   border: 1px solid var(--surface-edge);
-  border-radius: 20px;
+  border-radius: 16px;
   background: #fbfffe;
   box-shadow: inset 0 1px white, var(--panel-shadow);
 }
 @supports (backdrop-filter: blur(14px)) {
   .floating-header { background: var(--glass-header); backdrop-filter: blur(14px); }
 }
-.work-surface { min-width: 0; border: 1px solid var(--surface-edge); border-radius: 20px; background: white; box-shadow: var(--panel-shadow); }
+.work-surface { min-width: 0; border: 1px solid var(--surface-edge); border-radius: 16px; background: white; box-shadow: var(--panel-shadow); }
 .summary-tile, .overview-heading {
   background: radial-gradient(ellipse at 95% -40%, #bfece2, transparent 66%), linear-gradient(130deg, white, #ebf6f3);
 }
-.overview-heading { border: 1px solid var(--surface-edge); border-radius: 20px; padding: clamp(1rem, 3vw, 2rem); }
+.overview-heading { border: 1px solid var(--surface-edge); border-radius: 16px; padding: clamp(1.25rem, 3vw, 2rem); }
 @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
   .floating-header { background: Canvas; backdrop-filter: none; }
   .summary-tile, .overview-heading { background: Canvas; }
