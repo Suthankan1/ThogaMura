@@ -1,0 +1,59 @@
+.brand-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 65% 84%, #135058 0%, transparent 49%),
+    radial-gradient(ellipse at 44% 42%, #17435a, #0b253c 54%, #061525);
+  animation: intro-screen var(--intro-duration) linear both;
+}
+.brand-intro-lockup { display: grid; justify-items: center; gap: clamp(6px, 1.5vh, 16px); }
+.brand-intro-fox { width: min(66vw, 49svh, 360px); overflow: visible; animation: intro-settle 1.8s ease-out both; }
+.brand-intro-word {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.055em;
+  color: #fff2da;
+  animation: intro-word .58s .95s both;
+}
+.brand-intro-word span { color: #16bfb4; }
+.brand-intro-mask { transform-origin: 326px 315px; animation: intro-uncover .85s .25s cubic-bezier(.4,0,.2,1) both; }
+.brand-intro-spark { animation: intro-spark 1.15s both; }
+.brand-intro-cable { stroke-dasharray: .18 1.2; animation: intro-trace .85s .25s ease-in-out both; }
+.brand-intro-ring { stroke-width: 2; animation: intro-ring 1s .85s ease-out both; }
+@keyframes intro-screen {
+  0%, 76% { opacity: 1; visibility: visible; }
+  99.99% { visibility: visible; }
+  100% { opacity: 0; visibility: hidden; }
+}
+@keyframes intro-settle { from { transform: translateY(4px) scale(.975); } to { transform: none; } }
+@keyframes intro-uncover { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes intro-word { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@keyframes intro-spark { 0%, 100% { opacity: 0; } 30%, 65% { opacity: 1; } }
+@keyframes intro-trace {
+  0% { stroke-dashoffset: .18; opacity: 0; }
+  15%, 75% { opacity: 1; }
+  100% { stroke-dashoffset: -1; opacity: 0; }
+}
+@keyframes intro-ring {
+  0% { transform: scale(.8); opacity: 0; }
+  12% { opacity: .75; }
+  100% { transform: scale(18); opacity: 0; stroke-width: .3; }
+}
+/* Also shield keyboard navigation before hydration. The shell unlocks in CSS if scripts fail. */
+.brand-intro + .brand-intro-shell { animation: intro-lock var(--intro-duration) steps(1,end) both; }
+@keyframes intro-lock { from { interactivity: inert; } to { interactivity: auto; } }
+
+.brand-intro, .brand-intro-shell { --intro-duration: 2400ms; }
+.brand-intro-lockup { position: relative; }
+.intro-reflection { position: absolute; inset: 0; width: 100%; height: 100%; animation: reflection-light 1.2s .85s both; }
+@keyframes reflection-light { 0%, 100% { opacity: .55; } 48% { opacity: 1; } }
+.intro-skip { position: absolute; z-index: 1; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); min-height: 44px; padding: 0 18px; color: white; background: #102c48; border: 1px solid #638997; border-radius: 24px; }
+@media (prefers-reduced-motion: reduce) {
+  .brand-intro, .brand-intro + .brand-intro-shell { animation-duration: 160ms !important; }
+  .brand-intro-mask, .brand-intro-word, .brand-intro-fox, .intro-reflection { animation: none; }
+  .brand-intro-spark, .brand-intro-cable, .brand-intro-ring { display: none; }
+}

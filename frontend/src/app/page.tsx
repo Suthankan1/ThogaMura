@@ -1,11 +1,12 @@
 "use client";
 
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { fetchProducts, fetchStockRequests } from "@/lib/api/inventory";
 import { formatAge, formatFullDateTime, formatUnits } from "@/lib/formatters";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
 import { useStockEvents } from "@/lib/events/useStockEvents";
-import { Freshness, primaryAction, RequestBadge, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
+import { Freshness, primaryAction, secondaryAction, RequestBadge, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
 
 const readPicks = () => fetchStockRequests("ACCEPTED");
 const readDispatches = () => fetchStockRequests("PICKED");
@@ -24,14 +25,30 @@ export default function Home() {
 
   return (
     <div className="space-y-7">
-      <WorkspaceHeading title="Warehouse overview" description={["Central warehouse", picks.data && `${picks.data.length} request${picks.data.length === 1 ? "" : "s"} to pick`, shortages && `${shortages.length} item${shortages.length === 1 ? "" : "s"} out of stock`].filter(Boolean).join(" · ")}
-        action={<Link href="/requests/new?returnTo=/" className={primaryAction}>New request</Link>} />
+      <div className="overview-heading"><WorkspaceHeading title="Warehouse overview" description={["Central warehouse", picks.data && `${picks.data.length} request${picks.data.length === 1 ? "" : "s"} to pick`, shortages && `${shortages.length} item${shortages.length === 1 ? "" : "s"} out of stock`].filter(Boolean).join(" · ")}
+        action={<Link href="/requests/new?returnTo=/" className={primaryAction}>New request</Link>} /></div>
 
       {warningMessage && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           {warningMessage} <Link className="font-semibold underline" href="/activity">View diagnostics</Link>
         </p>
       )}
+
+      <nav aria-label="Warehouse totals" className="overview-totals">
+        {[
+          { title: "To pick", rows: picks.data, href: "/warehouse?stage=pick" },
+          { title: "Ready to dispatch", rows: dispatches.data, href: "/warehouse?stage=dispatch" },
+          { title: "Out of stock", rows: shortages, href: "/products?filter=out_of_stock" },
+          { title: "Low stock", rows: lowStock, href: "/products?filter=low_stock" },
+        ].map(({ title, rows, href }) => (
+          <Link key={title} href={href} className="metric-card work-surface summary-tile">
+            <span className="flex items-start justify-between gap-2 text-sm font-semibold text-slate-700">{title}
+              <ArrowUpRight size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-teal-800" />
+            </span>
+            <strong className="text-3xl leading-none font-semibold tabular-nums">{rows?.length ?? "—"}</strong>
+          </Link>
+        ))}
+      </nav>
 
       <div className="space-y-2 min-[58rem]:hidden">
         <p className={surface + " p-3"}>{products.error ? "Inventory unavailable" : shortages?.[0] ?
@@ -43,14 +60,14 @@ export default function Home() {
       </div>
       <div className="grid items-start gap-5 min-[58rem]:grid-cols-2 xl:grid-cols-[5fr_7fr]">
         <section className={surface} aria-labelledby="pending-heading">
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-2">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
             <h2 id="pending-heading" className="text-lg font-semibold">Fulfillment queue</h2>
             <Link href="/warehouse" className={textAction}>View queue</Link>
           </header>
           {pending.length > 0 ? (
             <ul className="divide-y divide-slate-100">
               {pending.map(({ item, stage }) => (
-                <li key={item.requestId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2">
+                <li key={item.requestId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                   <div>
                     <Link className={textAction} aria-label={`Open ${stage === "pick" ? "picking" : "dispatch"} request for ${products.data?.find((product) => product.sku === item.sku)?.name ?? item.sku}`}
                       href={`/warehouse?stage=${stage}&requestId=${encodeURIComponent(item.requestId)}`}>
@@ -70,18 +87,23 @@ export default function Home() {
           )}
         </section>
 
-        <section className={surface} aria-labelledby="shortages-heading">
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-2">
+        <section className={surface + " stock-exceptions"} aria-labelledby="shortages-heading">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
             <h2 id="shortages-heading" className="text-lg font-semibold">Stock exceptions</h2>
             <Link href="/products" className={textAction}>View inventory</Link>
           </header>
           {(shortages?.length || lowStock?.length) ? (
             <ul className="divide-y divide-slate-100">
               {[...(shortages ?? []).slice(0, 3), ...[...(lowStock ?? [])].sort((a, b) => a.available - b.available).slice(0, 3)].map((item) => (
-                <li key={item.sku} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2 min-[28rem]:grid-cols-[minmax(0,1fr)_6rem_6rem]">
-                  <div><p className="text-sm font-semibold">{item.name}</p><p className="text-xs text-slate-600">{item.sku}</p></div>
-                  <span className={`text-right text-sm tabular-nums ${item.available === 0 ? "font-semibold text-rose-900" : "text-amber-900"}`}>{item.available === 0 ? "0 · Out of stock" : `${item.available} available`}</span>
-                  <Link className={textAction} aria-label={`Check supplier for ${item.name}`} href={`/suppliers?returnTo=/&sku=${encodeURIComponent(item.sku)}`}>Check supplier</Link>
+                <li key={item.sku} className="exception-row">
+                  <div className="exception-product">
+                    <p className="text-sm font-semibold">{item.name}</p>
+                    <p className="mt-1 font-mono text-xs text-slate-600">{item.sku}</p>
+                  </div>
+                  <span className={`stock-level rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${item.available === 0 ? "bg-rose-50 text-rose-900" : "bg-amber-50 text-amber-900"}`}>
+                    {item.available === 0 ? <><span className="sr-only">0 available · </span>Out of stock</> : `${item.available} available`}
+                  </span>
+                  <Link className={secondaryAction} aria-label={`Check supplier for ${item.name}`} href={`/suppliers?returnTo=/&sku=${encodeURIComponent(item.sku)}`}>Check supplier</Link>
                 </li>
               ))}
             </ul>
@@ -92,21 +114,6 @@ export default function Home() {
           )}
         </section>
       </div>
-      <div className="grid grid-cols-2 gap-px rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-4">
-        {[
-          { title: "To pick", rows: picks.data, href: "/warehouse?stage=pick" },
-          { title: "Ready to dispatch", rows: dispatches.data, href: "/warehouse?stage=dispatch" },
-          { title: "Out of stock", rows: shortages, href: "/products?filter=out_of_stock" },
-          { title: "Low stock", rows: lowStock, href: "/products?filter=low_stock" },
-        ].map(({ title, rows, href }) => (
-          <Link key={title} href={href} className="group rounded-lg bg-white px-4 py-3 hover:bg-teal-50 focus-visible:bg-teal-50">
-            <p className="text-sm font-semibold text-slate-700">{title} <span aria-hidden="true" className="inline-block text-teal-800 motion-safe:transition-transform group-hover:translate-x-0.5">→</span></p>
-            <p className="my-2 text-3xl font-semibold tabular-nums text-slate-950">{rows?.length ?? "—"}</p>
-
-          </Link>
-        ))}
-      </div>
-
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-600">
         <div>Loaded picking requests<Freshness {...picks} /></div><div>Loaded dispatch requests<Freshness {...dispatches} /></div><div>Inventory{products.data && ` · ${products.data.length} loaded items`}<Freshness {...products} /></div>
       </div>

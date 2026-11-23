@@ -105,7 +105,7 @@ try {
   for (const [path, width] of [["/products", 320], ["/products", 375], ["/requests", 375]]) {
     await page.setViewportSize({ width, height: 812 });
     await page.goto(path);
-    await page.getByRole("button", { name: "Apply filters" }).waitFor();
+    await page.getByRole("button", { name: "Refresh" }).waitFor();
     const controls = await page.locator("form").first().locator("input, select, button").evaluateAll((nodes) =>
       nodes.map((node) => node.getBoundingClientRect().toJSON()));
     for (const [index, a] of controls.entries()) {

@@ -60,7 +60,7 @@ export function Overview({ view }: { view: View }) {
     </section>
     {query.data?.counts && <dl className="grid grid-cols-2 gap-3 text-sm sm:col-span-2 sm:grid-cols-4">
       {([["To pick", "toPick"], ["Ready to dispatch", "toDispatch"], ["Out of stock", "outOfStock"], ["Low stock", "lowStock"]] as const).map(([label, key]) =>
-        <div key={key} className={surface + " p-3"}><dt>{label}</dt><dd className="text-xl font-semibold">{query.data!.counts[key]}</dd></div>)}
+        <div key={key} className={surface + " summary-tile flex flex-col justify-between gap-3 p-4"}><dt>{label}</dt><dd className="text-2xl tabular-nums font-semibold">{query.data!.counts[key]}</dd></div>)}
     </dl>}
     <Freshness {...query} />
     {query.error && <button className={secondaryAction} onClick={query.refresh}>Retry overview</button>}

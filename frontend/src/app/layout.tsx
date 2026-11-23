@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { StockEventsProvider } from "@/lib/events/StockEventsContext";
+import { BrandIntro } from "@/components/BrandIntro";
 import { Header } from "@/components/Header";
 
 export const metadata: Metadata = {
@@ -15,16 +16,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body>
-        <a href="#main" className="skip-link">Skip to main content</a>
-        <StockEventsProvider>
-          <Header />
-          <main id="main" tabIndex={-1} className="mx-auto max-w-[1360px] px-4 py-8 sm:px-6">
-            {children}
-          </main>
-          <footer className="mx-auto max-w-[1360px] px-4 py-4 text-xs text-slate-600 sm:px-6 border-t border-slate-200/60 flex items-center justify-between gap-2">
-            <p>ThogaMura · Branch and warehouse coordination.</p>
-          </footer>
-        </StockEventsProvider>
+        <BrandIntro>
+          <a href="#main" className="skip-link">Skip to main content</a>
+          <StockEventsProvider>
+            <Header />
+            <main id="main" tabIndex={-1} className="page-frame py-8">
+              {children}
+            </main>
+            <footer className="page-frame py-4 text-xs text-slate-600 sm:px-6 border-t border-slate-200/60 flex items-center justify-between gap-2">
+              <p>ThogaMura · Branch and warehouse coordination.</p>
+            </footer>
+          </StockEventsProvider>
+        </BrandIntro>
       </body>
     </html>
   );

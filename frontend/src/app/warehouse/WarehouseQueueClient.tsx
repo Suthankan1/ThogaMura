@@ -10,7 +10,7 @@ import { formatAge, formatFullDateTime, formatUnits } from "@/lib/formatters";
 import type { StockRequest } from "@/lib/types/inventory";
 import { downloadCsv, filterMovements, movementCsv } from "@/lib/movementReport";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
-import { Freshness, primaryAction, RequestBadge, secondaryAction, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
+import { field, Freshness, primaryAction, RequestBadge, secondaryAction, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
 
 const readPicks = () => fetchStockRequests("ACCEPTED");
 const readDispatches = () => fetchStockRequests("PICKED");
@@ -132,13 +132,13 @@ export function WarehouseQueueClient() {
           {movements.data && (
             <div className="flex flex-wrap items-end gap-3 border-b border-slate-200 p-4 text-sm">
               <label className="font-semibold">SKU
-                <input value={movementSku} onChange={(event) => { setMovementSku(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className="mt-1 block min-h-11 max-w-48 rounded-lg border border-slate-300 px-3 font-normal" />
+                <input value={movementSku} onChange={(event) => { setMovementSku(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className={field + " mt-1 max-w-48"} />
               </label>
               <label className="font-semibold">From date
-                <input type="date" value={movementFrom} onChange={(event) => { setMovementFrom(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className="mt-1 block min-h-11 rounded-lg border border-slate-300 px-3 font-normal" />
+                <input type="date" value={movementFrom} onChange={(event) => { setMovementFrom(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className={field + " mt-1"} />
               </label>
               <label className="font-semibold">Through date
-                <input type="date" min={movementFrom || undefined} value={movementThrough} onChange={(event) => { setMovementThrough(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className="mt-1 block min-h-11 rounded-lg border border-slate-300 px-3 font-normal" />
+                <input type="date" min={movementFrom || undefined} value={movementThrough} onChange={(event) => { setMovementThrough(event.target.value); if (params.has("page")) updateListParams({ page: null }); }} className={field + " mt-1"} />
               </label>
               <button type="button" className={secondaryAction} disabled={filteredMovements.length === 0} onClick={() => downloadCsv("thogamura-movements.csv", movementCsv(filteredMovements))}>Export loaded rows</button>
             </div>
@@ -175,7 +175,7 @@ export function WarehouseQueueClient() {
               updateListParams({ q: String(data.get("q")).trim(), page: null, requestId: null });
             }}>
               <label className="min-w-0 text-sm font-semibold">Product, SKU, or reference
-                <input key={search} name="q" type="search" defaultValue={search} className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 px-3 font-normal" />
+                <input key={search} name="q" type="search" defaultValue={search} className={field + " mt-1"} />
               </label>
               <button className={`${secondaryAction} justify-self-start`}>Search queue</button>
             </form>

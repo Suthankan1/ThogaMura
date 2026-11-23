@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import type { Status } from "@/lib/api/workspace";
 import { formatOperationalTime } from "@/lib/formatters";
 
-export const primaryAction = "inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-800 motion-safe:transition-colors duration-120 active:bg-teal-950 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 disabled:opacity-50";
-export const secondaryAction = "inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50";
-export const destructiveAction = "inline-flex min-h-11 items-center justify-center rounded-lg bg-rose-800 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-900 disabled:opacity-50";
+export const primaryAction = "inline-flex min-h-11 items-center justify-center text-center leading-5 gap-2 rounded-xl bg-teal-800 motion-safe:transition-colors duration-120 active:bg-teal-950 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 disabled:opacity-50";
+export const secondaryAction = "inline-flex min-h-11 items-center justify-center text-center leading-5 gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50";
+export const destructiveAction = "inline-flex min-h-11 items-center justify-center text-center leading-5 gap-2 rounded-xl bg-rose-800 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-900 disabled:opacity-50";
 export const textAction = "inline-flex min-h-11 items-center text-sm font-semibold text-teal-800 underline underline-offset-4 hover:text-teal-950";
-export const field = "block min-h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-950";
-export const surface = "rounded-xl border border-slate-200 bg-white shadow-xs";
+export const field = "block min-h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-950";
+export const surface = "work-surface";
 
 export function WorkspaceHeading({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return (
@@ -50,7 +50,7 @@ export function Field({ children, name, className = "" }: { children: ReactNode;
 }
 
 export function Warning({ children }: { children: ReactNode }) {
-  return <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{children}</div>;
+  return <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{children}</div>;
 }
 
 export const stockFilters = [
@@ -62,7 +62,7 @@ export const stockFilters = [
 
 export function Availability({ units }: { units: number }) {
   const tone = units === 0 ? "bg-rose-50 text-rose-900" : units <= 3 ? "bg-amber-50 text-amber-950" : "bg-teal-50 text-teal-950";
-  return <span className={`inline-flex rounded-lg px-2.5 py-1 font-semibold tabular-nums ${tone}`}>
+  return <span className={`inline-flex rounded-xl px-2.5 py-1 font-semibold tabular-nums ${tone}`}>
     {new Intl.NumberFormat("en").format(units)} available{units === 0 ? " · Out of stock" : units <= 3 ? " · Low stock" : ""}
   </span>;
 }

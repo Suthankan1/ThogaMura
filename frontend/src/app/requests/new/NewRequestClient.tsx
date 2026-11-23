@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useId, type FormEvent, useCallback, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
+import { LoaderCircle, PackageCheck } from "lucide-react";
 import Link from "next/link";
 import { createStockRequest, fetchProducts, ApiError } from "@/lib/api/inventory";
 import type { StockRequest, Product } from "@/lib/types/inventory";
@@ -215,13 +216,13 @@ export function NewRequestClient() {
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition-colors"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition-colors"
             >
               Submit Another Request
             </button>
             <Link
               href={`/requests?ref=${encodeURIComponent(successResult.requestId)}`}
-              className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50 transition-colors"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50 transition-colors"
             >
               View request →
             </Link>
@@ -293,7 +294,7 @@ export function NewRequestClient() {
               type="button"
               onClick={handleRetryFrozenAttempt}
               disabled={submitting}
-              className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-amber-800 px-4 py-2 text-xs font-bold text-white hover:bg-amber-900 focus:outline-hidden focus:ring-2 focus:ring-amber-600 disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-800 px-4 py-2 text-xs font-bold text-white hover:bg-amber-900 focus:outline-hidden focus:ring-2 focus:ring-amber-600 disabled:opacity-50"
             >
               {submitting ? "Retrying..." : "Retry same request"}
             </button>
@@ -336,7 +337,7 @@ export function NewRequestClient() {
               onChange={(e) => {
                 handleSkuChange(e.target.value);
               }}
-              className="block min-h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-800 focus:border-teal-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-teal-600"
+              className="block min-h-11 w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-800 focus:border-teal-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-teal-600"
             >
               <option value="">
                 {catalogLoading
@@ -370,7 +371,7 @@ export function NewRequestClient() {
               placeholder="e.g. ITEM-007"
               aria-describedby={fieldErrors.sku ? skuErrorId : undefined}
               aria-invalid={!!fieldErrors.sku}
-              className={`mt-1 block min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
+              className={`mt-1 block min-h-11 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
                 fieldErrors.sku ? "border-rose-500 bg-rose-50/30" : "border-slate-300"
               }`}
             />
@@ -433,7 +434,7 @@ export function NewRequestClient() {
             placeholder="e.g. 5"
             aria-describedby={`${qtyHelpId} ${fieldErrors.quantity ? qtyErrorId : ""} ${exceedsStock ? shortageWarningId : ""}`}
             aria-invalid={!!fieldErrors.quantity}
-            className={`mt-2 block w-32 min-h-11 rounded-lg border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
+            className={`mt-2 block w-32 min-h-11 rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
               fieldErrors.quantity || exceedsStock
                 ? "border-rose-500 bg-rose-50/30"
                 : "border-slate-300"
@@ -464,7 +465,7 @@ export function NewRequestClient() {
                   disabled={matchingProduct.available === 0}
                   type="button"
                   onClick={() => handleQtyChange(String(matchingProduct.available))}
-                  className="rounded-lg bg-amber-800 px-2.5 py-1 text-xs font-bold text-white hover:bg-amber-900 transition-colors"
+                  className="min-h-11 rounded-xl bg-amber-800 px-2.5 py-1 text-xs font-bold text-white hover:bg-amber-900 transition-colors"
                 >
                   Adjust to {matchingProduct.available}
                 </button>
@@ -480,24 +481,20 @@ export function NewRequestClient() {
         </div>
 
         {/* Submit Actions (F09: Cancel returns to originating view) */}
-        <div className="flex items-center justify-between border-t border-slate-100 pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
           <Link
             href={returnTo}
-            className="text-xs font-semibold text-slate-600 hover:text-slate-900"
+            className="inline-flex min-h-11 items-center text-sm font-semibold text-slate-600 hover:text-slate-900"
           >
             ← Cancel
           </Link>
           <button
             type="submit"
             disabled={submitting || !!lastAttempt || !!successResult}
-            className={primaryAction}
+            className={primaryAction + " min-w-52"}
           >
-            {submitting && (
-              <svg className="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            )}
+            {submitting ? <LoaderCircle size={20} className="motion-safe:animate-spin" aria-hidden="true" /> :
+              <PackageCheck size={20} aria-hidden="true" />}
             {submitting ? "Reserving stock…" : rejectionNotice ? "Submit revised request" : "Reserve stock"}
           </button>
         </div>

@@ -9,7 +9,7 @@ import { safeReturnTo } from "@/lib/returnTo";
 import type { SupplierAvailability, SupplierStatus } from "@/lib/types/inventory";
 import { isSku } from "@/lib/reservationAttempt";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
-import { Freshness, primaryAction, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
+import { field, Freshness, primaryAction, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
 
 const outcomes: Record<SupplierStatus, string> = {
   AVAILABLE: "Availability reported",
@@ -86,7 +86,7 @@ function SupplierInquiry({ initialSku, back }: { initialSku: string; back: strin
         <form onSubmit={submit} className={`${surface} space-y-4 p-5 sm:col-span-2`}>
           <label htmlFor="supplier-sku" className="block text-sm font-semibold">Product SKU</label>
           <input id="supplier-sku" type="search" list="supplier-products" value={sku} onChange={(event) => edit(event.target.value)}
-            className="min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm"
+            className={field + " mt-1"}
             aria-describedby={validation ? "supplier-error" : "supplier-help"} aria-invalid={validation} />
           <datalist id="supplier-products">
             {products.data?.map((item) => <option key={item.sku} value={item.sku}>{item.name}</option>)}

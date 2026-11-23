@@ -2,28 +2,31 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { Boxes, ClipboardList, LayoutDashboard, Menu, PanelsTopLeft, Truck, Warehouse, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useBrandIntro } from "./BrandIntro";
 import { ConnectionIndicator } from "./ConnectionIndicator";
 import { useStockEvents } from "@/lib/events/useStockEvents";
 
 const workspaceEnabled = process.env.NEXT_PUBLIC_WORKSPACE_ENABLED === "true";
 const demoLinks = [
-  { href: "/", label: "Overview" },
-  { href: "/products", label: "Inventory" },
-  { href: "/requests", label: "Requests" },
-  { href: "/warehouse", label: "Fulfillment" },
-  { href: "/suppliers", label: "Suppliers" },
+  { href: "/", icon: LayoutDashboard, label: "Overview" },
+  { href: "/products", icon: Boxes, label: "Inventory" },
+  { href: "/requests", icon: ClipboardList, label: "Requests" },
+  { href: "/warehouse", icon: Warehouse, label: "Fulfillment" },
+  { href: "/suppliers", icon: Truck, label: "Suppliers" },
 
 ];
 
-const workspaceLink = { href: "/workspace", label: "Branch Workspace" };
+const workspaceLink = { href: "/workspace", icon: PanelsTopLeft, label: "Branch Workspace" };
 const navLinks = workspaceEnabled
   ? [workspaceLink]
   : demoLinks;
 
 export function Header() {
+  const startIntro = useBrandIntro();
   const pathname = usePathname();
   const [openPath, setOpenPath] = useState<string | null>(null);
   const menuOpen = openPath !== null && openPath === pathname;
@@ -111,7 +114,7 @@ export function Header() {
         <div className="relative z-10 flex h-dvh w-4/5 max-w-xs flex-col overflow-hidden bg-white shadow-2xl">
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-2">
-              <div className="flex items-center gap-2">
+              <Link href={workspaceEnabled ? "/workspace" : "/"} onNavigate={() => { setOpenPath(null); startIntro(); }} className="flex items-center gap-2">
                 <Image
                   src="/images/ThogaMura-logo.svg"
                   alt="ThogaMura logo"
@@ -122,7 +125,7 @@ export function Header() {
                 <span className="text-base font-extrabold text-slate-900">
                   Thoga<span className="text-teal-700">Mura</span>
                 </span>
-              </div>
+              </Link>
               <button
                 ref={closeBtnRef}
                 type="button"
@@ -130,9 +133,7 @@ export function Header() {
                 aria-label="Close navigation menu"
                 className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
@@ -149,12 +150,13 @@ export function Header() {
                         href={link.href}
                         onClick={() => setOpenPath(null)}
                         aria-current={isActive ? "page" : undefined}
-                        className={`flex min-h-[44px] items-center rounded-xl px-3.5 text-sm font-semibold transition-colors ${
+                        className={`flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition-colors ${
                           isActive
                             ? "bg-teal-700 text-white shadow-xs"
                             : "text-slate-700 hover:bg-slate-50 hover:text-teal-800"
                         }`}
                       >
+                        <link.icon size={20} strokeWidth={1.75} aria-hidden="true" />
                         {link.label}
                       </Link>
                     </li>
@@ -201,11 +203,12 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-xs">
-        <div className="mx-auto flex h-14 max-w-[1360px] items-center justify-between px-4 sm:px-6">
+      <header className="floating-header sticky z-40">
+        <div className="flex min-h-14 items-center justify-between px-3 sm:px-4">
           {/* Brand - Keep intrinsic width without colliding (F03) */}
           <Link
             href={workspaceEnabled ? "/workspace" : "/"}
+            onNavigate={startIntro}
             aria-label={workspaceEnabled ? "ThogaMura workspace" : "ThogaMura overview"}
             className="flex min-h-11 shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-slate-900 group"
           >
@@ -223,7 +226,7 @@ export function Header() {
           </Link>
 
           {/* Show desktop links only when the full navigation fits */}
-          <div className="hidden min-[60rem]:flex items-center gap-5">
+          <div className="hidden min-[72rem]:flex items-center gap-5">
             <nav aria-label="Primary navigation">
               <ul className="flex items-center gap-1 text-sm font-semibold text-slate-600">
                 {navLinks.map((link) => {
@@ -234,12 +237,13 @@ export function Header() {
                       <Link
                         href={link.href}
                         aria-current={isActive ? "page" : undefined}
-                        className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap ${
+                        className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-1.5 transition-colors whitespace-nowrap ${
                           isActive
                             ? "bg-teal-50 text-teal-800 font-bold"
                             : "hover:bg-slate-50 hover:text-teal-700"
                         }`}
                       >
+                        <link.icon size={20} strokeWidth={1.75} aria-hidden="true" />
                         {link.label}
                       </Link>
                     </li>
@@ -252,7 +256,7 @@ export function Header() {
           </div>
 
           {/* Compact navigation controls */}
-          <div className="flex items-center gap-2.5 min-[60rem]:hidden">
+          <div className="flex items-center gap-2.5 min-[72rem]:hidden">
             <ConnectionIndicator compact={true} />
             <button
               ref={triggerRef}
@@ -264,13 +268,9 @@ export function Header() {
               className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
             >
               {menuOpen ? (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X size={20} aria-hidden="true" />
               ) : (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
+                <Menu size={20} aria-hidden="true" />
               )}
             </button>
           </div>
