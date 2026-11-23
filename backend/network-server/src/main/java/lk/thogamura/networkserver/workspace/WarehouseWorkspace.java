@@ -100,8 +100,10 @@ public class WarehouseWorkspace {
 
     private String execute(UUID id, String type, Actor actor, JsonNode args) throws JsonProcessingException {
         return switch (type) {
-            case ProtocolInfo.COMMAND_GET_PRODUCTS -> accepted(id, queries.products(size(args), cursor(args), search(args)));
-            case ProtocolInfo.COMMAND_GET_REQUESTS -> accepted(id, queries.requests(actor, size(args), cursor(args), status(args)));
+            case ProtocolInfo.COMMAND_GET_PRODUCTS -> accepted(id, queries.products(size(args), cursor(args), field(args, "search", 100, true),
+                    choice(args, "availability", Set.of("", "in_stock", "low_stock", "out_of_stock")), optionalSku(args)));
+            case ProtocolInfo.COMMAND_GET_REQUESTS -> accepted(id, queries.requests(actor, size(args), cursor(args), choice(args, "status", STATUSES),
+                    field(args, "search", 100, true), dates(args)));
             case WorkspaceAccess.GET_REQUEST -> {
                 Map<String, Object> row = queries.request(actor, requestId(args));
                 if (row == null) throw missingRequest();
@@ -146,7 +148,8 @@ public class WarehouseWorkspace {
             }
             case ProtocolInfo.COMMAND_GET_MOVEMENTS -> {
                 require(actor.role() == Role.SUPERVISOR);
-                yield accepted(id, queries.movements(size(args), cursor(args)));
+                yield accepted(id, queries.movements(size(args), cursor(args), field(args, "search", 100, true),
+                        choice(args, "reason", Set.of("", "RECEIVE", "DISPATCH")), dates(args)));
             }
             case ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK -> {
                 SupplierCommandHandler handler = supplier.orElseThrow(
@@ -232,16 +235,23 @@ public class WarehouseWorkspace {
         return args.path("limit").asInt();
     }
 
-    private static String status(JsonNode args) {
-        String status = field(args, "status", 12, true);
-        if (!STATUSES.contains(status)) throw new IllegalArgumentException("Invalid status filter");
-        return status;
+    private static String choice(JsonNode args, String name, Set<String> values) {
+        String value = field(args, name, 16, true);
+        if (!values.contains(value)) throw new IllegalArgumentException("Invalid filter");
+        return value;
     }
 
-    private static String search(JsonNode args) {
-        String prefix = field(args, "search", 64, true);
-        if (!prefix.isEmpty() && !ProtocolInfo.isValidSku(prefix)) throw new IllegalArgumentException("Invalid SKU prefix");
-        return prefix;
+    private static String optionalSku(JsonNode args) {
+        String value = field(args, "sku", 64, true);
+        return value.isEmpty() ? value : sku(args);
+    }
+
+    private static WorkspaceQueries.DateRange dates(JsonNode args) {
+        String from = field(args, "from", 40, true);
+        String before = field(args, "before", 40, true);
+        return new WorkspaceQueries.DateRange(
+                from.isEmpty() ? null : java.time.OffsetDateTime.parse(from),
+                before.isEmpty() ? null : java.time.OffsetDateTime.parse(before));
     }
 
     private static String cursor(JsonNode args) {

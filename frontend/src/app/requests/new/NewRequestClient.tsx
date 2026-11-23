@@ -466,43 +466,6 @@ export function NewRequestClient() {
           )}
         </div>
 
-        {/* Idempotency Key & Scenarios Disclosure */}
-        <details className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs group">
-          <summary className="font-semibold text-slate-700 cursor-pointer select-none hover:text-teal-700 flex items-center justify-between">
-            <span>Evaluator Demo Scenarios &amp; Idempotency Key (M1 / M4)</span>
-            <span className="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
-          </summary>
-          <div className="mt-3 space-y-3 pt-2 border-t border-slate-200 text-slate-600">
-            <div>
-              <span className="font-semibold text-slate-700 block mb-1">Demo Quick-Fill:</span>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleSkuChange("ITEM-007")}
-                  className="rounded bg-white border border-slate-200 px-2 py-1 font-mono text-teal-800 hover:bg-slate-100"
-                >
-                  ITEM-007 (Carrots - Stocked)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSkuChange("ITEM-009")}
-                  className="rounded bg-white border border-slate-200 px-2 py-1 font-mono text-amber-800 hover:bg-slate-100"
-                >
-                  ITEM-009 (Potatoes - Low Stock)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSkuChange("ITEM-008")}
-                  className="rounded bg-white border border-slate-200 px-2 py-1 font-mono text-rose-800 hover:bg-slate-100"
-                >
-                  ITEM-008 (Onions - Out of Stock)
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </details>
-
         {/* Submit Actions (F09: Cancel returns to originating view) */}
         <div className="flex items-center justify-between border-t border-slate-100 pt-5">
           <Link

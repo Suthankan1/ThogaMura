@@ -13,17 +13,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body>
         <a href="#main" className="skip-link">Skip to main content</a>
         <StockEventsProvider>
           <Header />
-          <main id="main" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
             {children}
           </main>
           <footer className="mx-auto max-w-6xl px-4 pb-12 pt-6 text-xs text-slate-500 sm:px-6 border-t border-slate-200/60 mt-12 flex flex-col sm:flex-row items-center justify-between gap-2">
             <p>ThogaMura Logistics Platform · Branch-to-Warehouse Stock Coordination</p>
-            <p className="text-slate-400">Java Network Programming — Assignment 02</p>
           </footer>
         </StockEventsProvider>
       </body>

@@ -11,7 +11,7 @@ interface QueryState<T> {
   loading: boolean;
 }
 
-export function useWarehouseQuery<T>(read: () => Promise<T>, enabled = true) {
+export function useWarehouseQuery<T>(read: () => Promise<T>, enabled = true, live = true) {
   const [state, setState] = useState<QueryState<T>>({ data: null, checkedAt: null, latencyMs: null, error: null, loading: enabled });
   const sequence = useRef(0);
   const invalidate = useCallback(() => { sequence.current++; }, []);
@@ -41,13 +41,13 @@ export function useWarehouseQuery<T>(read: () => Promise<T>, enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     const timer = setTimeout(() => void refresh(), 0);
-    const unsubscribe = subscribeInvalidation(() => refresh());
+    const unsubscribe = live ? subscribeInvalidation(() => refresh()) : undefined;
     return () => {
       clearTimeout(timer);
-      unsubscribe();
+      unsubscribe?.();
       invalidate();
     };
-  }, [enabled, invalidate, refresh, subscribeInvalidation]);
+  }, [enabled, invalidate, live, refresh, subscribeInvalidation]);
 
   return { ...state, refresh };
 }

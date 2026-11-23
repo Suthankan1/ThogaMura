@@ -71,7 +71,7 @@ try {
   await row.getByRole("button", { name: "Review dispatch" }).click();
   const dialog = page.getByRole("dialog", { name: "Confirm dispatch" });
   await dialog.waitFor();
-  assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Cancel");
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), "Back");
   await page.keyboard.press("Escape");
   await dialog.waitFor({ state: "hidden" });
   await row.getByRole("button", { name: "Review dispatch" }).click();
@@ -102,6 +102,29 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${path} overflows at 375 px`);
   }
 
+  for (const [path, width] of [["/products", 320], ["/products", 375], ["/requests", 375]]) {
+    await page.setViewportSize({ width, height: 812 });
+    await page.goto(path);
+    await page.getByRole("button", { name: "Apply filters" }).waitFor();
+    const controls = await page.locator("form").first().locator("input, select, button").evaluateAll((nodes) =>
+      nodes.map((node) => node.getBoundingClientRect().toJSON()));
+    for (const [index, a] of controls.entries()) {
+      for (const b of controls.slice(index + 1)) {
+        assert.ok(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top, `${path} filters overlap at ${width}px`);
+      }
+    }
+  }
+  await page.setViewportSize({ width: 740, height: 360 });
+  await page.getByRole("button", { name: "Open navigation menu" }).click();
+  const drawer = page.getByRole("dialog", { name: "Navigation Menu" });
+  const lastLink = drawer.getByRole("link", { name: /View System Diagnostics/ });
+  assert.equal(await drawer.getByRole("link", { name: "Branch Workspace" }).count(), 0);
+  await lastLink.scrollIntoViewIfNeeded();
+  assert.ok((await lastLink.boundingBox()).y < 360);
+  await lastLink.click();
+  await page.getByRole("heading", { name: "Network diagnostics" }).waitFor();
+  await page.goto("/invalid-warehouse-url");
+  await page.getByRole("heading", { name: "Page not found" }).waitFor();
   assert.deepEqual(pageErrors, []);
   console.log("Browser smoke passed: reservation reply loss and reload, SSE, pick and dispatch, supplier failure and mobile layout.");
 } finally {

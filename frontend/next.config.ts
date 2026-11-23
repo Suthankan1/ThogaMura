@@ -29,11 +29,13 @@ const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_WORKSPACE_ENABLED: String(workspaceEnabled) },
   async redirects() {
     if (!workspaceEnabled) return [];
-    return ["/", "/products", "/requests/:path*", "/warehouse", "/suppliers"].map((source) => ({
-      source,
-      destination: "/workspace",
-      permanent: false,
-    }));
+    return [
+      { source: "/", destination: "/workspace", permanent: false },
+      { source: "/products", destination: "/workspace?section=inventory", permanent: false },
+      { source: "/requests/:path*", destination: "/workspace?section=requests", permanent: false },
+      { source: "/warehouse", destination: "/workspace?section=queue", permanent: false },
+      { source: "/suppliers", destination: "/workspace?section=suppliers", permanent: false },
+    ];
   },
   reactStrictMode: true,
   turbopack: {

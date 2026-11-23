@@ -109,3 +109,12 @@ All five members agreed to proceed on 23 November 2026, as confirmed in the impl
 **Accepted.** M5 and the shared integration use locally provisioned operator, picker and supervisor accounts. The gateway issues an HttpOnly session and signs short-lived, command-bound identity assertions over validated TLS. The warehouse enforces role and branch rules. An enabled workspace rejects v1 business commands. An unassigned legacy request stays in the v1 demonstration dataset. NIO signals retain the version-only shape.
 
 [Workspace wire and HTTP contract](../contracts/WORKSPACE_V2.md)
+
+
+### ADR-011 Warehouse workspace UI filters
+
+**Implemented for team review on 23 November 2026.** Add optional filters to the opted-in workspace v2 reads, bind cursor scopes to the complete query and branch scope, and include the product display name in request results. Support exact product selection through the existing v2 products command. Apply date ranges as inclusive start and exclusive end instants. Existing callers can omit every new filter. Previously issued workspace cursors expire with this query change. Warehouse authorization and database ownership stay with the network server.
+
+The demo v1 request query now orders its existing bounded result newest-first. Authoritative pagination and exact lookup for legacy records need a separate contract decision and explicit group approval under the [v1 change policy](../contracts/NETWORK_PROTOCOL_V1.md#9-protocol-governance--modification-process). The demo UI states the limit of its search.
+
+[Workspace contract](../contracts/WORKSPACE_V2.md)

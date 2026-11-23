@@ -21,7 +21,7 @@ const demoLinks = [
 const workspaceLink = { href: "/workspace", label: "Branch Workspace" };
 const navLinks = workspaceEnabled
   ? [workspaceLink, { href: "/activity", label: "Diagnostics" }]
-  : [...demoLinks, workspaceLink];
+  : demoLinks;
 
 export function Header() {
   const pathname = usePathname();
@@ -33,7 +33,7 @@ export function Header() {
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
-  const { isLive, sseStatus, upstreamNioStatus, lastVersion } = useStockEvents();
+  const { isLive, sseStatus, upstreamNioStatus } = useStockEvents();
 
   // Manage modal focus trapping and escape handling (F01, F02)
   useEffect(() => {
@@ -108,9 +108,9 @@ export function Header() {
         />
 
         {/* Viewport-height Opaque Sheet */}
-        <div className="relative z-10 flex h-full w-4/5 max-w-xs flex-col justify-between bg-white p-5 shadow-2xl transition-transform duration-200">
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="relative z-10 flex h-dvh w-4/5 max-w-xs flex-col overflow-hidden bg-white shadow-2xl">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-2">
               <div className="flex items-center gap-2">
                 <Image
                   src="/images/ThogaMura-logo.svg"
@@ -128,7 +128,7 @@ export function Header() {
                 type="button"
                 onClick={() => setOpenPath(null)}
                 aria-label="Close navigation menu"
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -137,7 +137,8 @@ export function Header() {
             </div>
 
             {/* Mobile Navigation Links */}
-            <nav aria-label="Mobile primary navigation" className="mt-4">
+            <div className="min-h-0 overflow-y-auto overscroll-contain px-5 py-3">
+            <nav aria-label="Mobile primary navigation">
               <ul className="flex flex-col gap-1.5">
                 {navLinks.map((link) => {
                   const isActive =
@@ -176,9 +177,7 @@ export function Header() {
                 />
                 <span className="text-xs font-semibold text-slate-800">
                   {isLive
-                    ? lastVersion
-                      ? `Live updates active (v${lastVersion})`
-                      : "Live updates active"
+                    ? "Live updates active"
                     : sseStatus === "CONNECTED" && upstreamNioStatus !== "CONNECTED"
                     ? "Warehouse feed interrupted"
                     : "Live updates disconnected"}
@@ -187,17 +186,12 @@ export function Header() {
               <Link
                 href="/activity"
                 onClick={() => setOpenPath(null)}
-                className="mt-2 text-xs font-bold text-teal-700 hover:text-teal-900 block"
+                className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-teal-800 underline"
               >
                 View System Diagnostics →
               </Link>
             </div>
-          </div>
-
-          {/* Drawer Footer */}
-          <div className="border-t border-slate-100 pt-4 text-xs text-slate-500">
-            <p className="font-semibold text-slate-700">LAN Logistics Coordination</p>
-            <p className="mt-0.5 text-slate-400">Java Network Programming Assignment 02</p>
+            </div>
           </div>
         </div>
       </div>,
@@ -212,7 +206,7 @@ export function Header() {
           {/* Brand - Keep intrinsic width without colliding (F03) */}
           <Link
             href={workspaceEnabled ? "/workspace" : "/"}
-            className="flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900 group"
+            className="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-slate-900 group"
           >
             <Image
               src="/images/ThogaMura-logo.svg"
@@ -239,7 +233,7 @@ export function Header() {
                       <Link
                         href={link.href}
                         aria-current={isActive ? "page" : undefined}
-                        className={`inline-flex items-center rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap ${
+                        className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap ${
                           isActive
                             ? "bg-teal-50 text-teal-800 font-bold"
                             : "hover:bg-slate-50 hover:text-teal-700"
@@ -266,7 +260,7 @@ export function Header() {
               aria-expanded={menuOpen}
               aria-controls="mobile-navigation-drawer"
               aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-teal-600"
             >
               {menuOpen ? (
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
