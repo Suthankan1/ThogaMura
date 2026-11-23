@@ -29,7 +29,7 @@ export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProp
     dotStyle = "bg-teal-600 animate-pulse";
     compactBg = "bg-teal-50 border-teal-200";
   } else if (isLive) {
-    statusText = "Live updates active";
+    statusText = "Live updates";
     statusBadgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100";
     dotStyle = "bg-emerald-500";
     compactBg = "bg-emerald-50 border-emerald-200";
@@ -74,7 +74,7 @@ export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProp
         title={warningMessage || `SSE: ${sseStatus}, Warehouse NIO: ${upstreamNioStatus}`}
       >
         <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${dotStyle}`} aria-hidden="true" />
-        <span className="font-semibold">{statusText}</span>
+        <span className="font-semibold">{statusText} ↗</span>
       </Link>
     </div>
   );

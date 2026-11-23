@@ -80,10 +80,10 @@ function SupplierInquiry({ initialSku, back }: { initialSku: string; back: strin
   return (
     <div className="space-y-6">
       <WorkspaceHeading title="Supplier availability" description="Check what the supplier reports for an item before following up manually."
-        action={<Link href={back} className={secondaryAction}>Back to inventory</Link>} />
+        action={<Link href={back} className={secondaryAction}>{back === "/" ? "Back to overview" : back.startsWith("/products") ? "Back to inventory" : "Back"}</Link>} />
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-        <form onSubmit={submit} className={`${surface} space-y-4 p-5`}>
+      <div className="grid items-start gap-5 sm:grid-cols-2">
+        <form onSubmit={submit} className={`${surface} space-y-4 p-5 sm:col-span-2`}>
           <label htmlFor="supplier-sku" className="block text-sm font-semibold">Product SKU</label>
           <input id="supplier-sku" type="search" list="supplier-products" value={sku} onChange={(event) => edit(event.target.value)}
             className="min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm"
@@ -106,25 +106,24 @@ function SupplierInquiry({ initialSku, back }: { initialSku: string; back: strin
         </form>
 
         <section className={`${surface} space-y-2 p-5`} aria-label="Warehouse stock">
-          <h2 className="font-semibold">Warehouse stock</h2>
+          <h2 className="font-semibold">Warehouse available</h2>
           {product ? (
             <><p className="text-2xl font-semibold tabular-nums">{formatUnits(product.available)} available</p><p className="text-sm text-slate-700">{product.name} · {product.sku}</p></>
           ) : <p className="text-sm text-slate-600">{sku.trim() ? "No balance for this SKU in the loaded catalog." : "Choose a SKU to see its warehouse balance."}</p>}
           <Freshness {...products} />
         </section>
-      </div>
 
-      <section className={`${surface} space-y-2 p-5`} aria-label="Supplier result" aria-live="polite">
-        <h2 className="text-lg font-semibold">Supplier result</h2>
-        {lookup && <p className="text-sm text-slate-600">Checking {lookup}…</p>}
+      <section className={`${surface} min-h-40 space-y-2 p-5`} aria-label="Supplier result" aria-live="polite">
+        <h2 className="text-lg font-semibold">Supplier reported</h2>
+        {lookup && <p className="text-sm text-slate-600">Checking supplier for {lookup}…</p>}
         {!result && !lookup && <p className="text-sm text-slate-600">Run an inquiry to see the supplier’s reported stock.</p>}
         {result && (
           <>
-            <p className="text-sm font-semibold text-slate-700">{result.sku} · {outcomes[result.status]}</p>
+            <p className="text-sm font-semibold text-slate-700">{result.status === "UNKNOWN" ? `Supplier has no listing for ${result.sku}` : `${result.sku} · ${outcomes[result.status]}`}</p>
             {result.status === "AVAILABLE" ? (
               <>
                 <p className="text-2xl font-semibold tabular-nums text-slate-950">{formatUnits(result.reportedQuantity)} reported</p>
-                <p className="text-sm text-slate-700">{result.supplier} · {result.source === "MOCK_SUPPLIER" ? "Demo supplier" : result.source} · Checked {formatFullDateTime(result.checkedAt)}</p>
+                <p className="text-sm text-slate-700">{result.supplier || (result.source === "MOCK_SUPPLIER" ? "Demo supplier" : result.source)} · Checked {formatFullDateTime(result.checkedAt)}</p>
                 {result.estimatedRestockDays !== undefined && <p className="text-sm text-slate-600">Supplier restock estimate {result.estimatedRestockDays} days</p>}
               </>
             ) : (
@@ -136,6 +135,7 @@ function SupplierInquiry({ initialSku, back }: { initialSku: string; back: strin
           </>
         )}
       </section>
+      </div>
     </div>
   );
 }

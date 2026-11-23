@@ -9,6 +9,7 @@ import { useStockEvents } from "@/lib/events/useStockEvents";
 import { formatOperationalTime, formatUnits } from "@/lib/formatters";
 import { clearAttempt, getStoredAttempt, isSku, newRequestId, parseQuantity, parseReservationAttempt,
   storeAttempt, subscribeToStoredAttempt, type ReservationAttempt } from "@/lib/reservationAttempt";
+import { primaryAction } from "@/components/Workspace";
 import { safeReturnTo } from "@/lib/returnTo";
 
 const getServerAttempt = () => null;
@@ -19,6 +20,8 @@ export function NewRequestClient() {
 
   const returnTo = safeReturnTo(searchParams.get("returnTo"));
 
+  const [manual, setManual] = useState(Boolean(searchParams.get("sku")));
+  const pickerRef = useRef<HTMLSelectElement>(null);
   const skuInputRef = useRef<HTMLInputElement | null>(null);
   const qtyInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -83,7 +86,7 @@ export function NewRequestClient() {
 
   function handleSkuChange(value: string) {
     setSku(value);
-    setFieldErrors((previous) => ({ ...previous, sku: undefined }));
+    setFieldErrors({});
     setRejectionNotice(null);
   }
 
@@ -125,10 +128,13 @@ export function NewRequestClient() {
 
     const trimmedSku = sku.trim();
     const errors: typeof fieldErrors = {};
-    if (!isSku(trimmedSku)) errors.sku = "Enter a SKU with 1–64 letters, digits, hyphens or underscores.";
-    if (parsedQty === null) errors.quantity = "Enter a whole number from 1 to 2,147,483,647.";
+    if (!trimmedSku) errors.sku = "Choose a product or enter its SKU.";
+    else if (!isSku(trimmedSku)) errors.sku = "Enter a SKU with 1–64 letters, digits, hyphens or underscores.";
+    if (parsedQty === null || exceedsStock) errors.quantity = matchingProduct
+      ? matchingProduct.available === 0 ? "This product is out of stock." : `Enter a quantity from 1 to ${matchingProduct.available}.`
+      : "Enter a positive whole number within the supported range (1–2,147,483,647).";
     setFieldErrors(errors);
-    if (errors.sku) skuInputRef.current?.focus();
+    if (errors.sku) (manual ? skuInputRef : pickerRef).current?.focus();
     else if (errors.quantity) qtyInputRef.current?.focus();
     else if (parsedQty !== null) {
       void executeSubmit({ sku: trimmedSku, quantity: parsedQty, idempotencyKey: newRequestId() });
@@ -145,7 +151,7 @@ export function NewRequestClient() {
     setFieldErrors({});
     setSuccessResult(null);
     setRejectionNotice(null);
-    skuInputRef.current?.focus();
+    (manual ? skuInputRef : pickerRef).current?.focus();
   }
 
   return (
@@ -153,7 +159,7 @@ export function NewRequestClient() {
       {/* Page Header */}
       <div>
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          New Stock Request
+          New stock request
         </h1>
         <p className="mt-1.5 text-xs text-slate-600 sm:text-sm">
           Choose an item and quantity to request from the warehouse.
@@ -244,6 +250,7 @@ export function NewRequestClient() {
             <div className="pt-2 flex flex-wrap items-center gap-3 border-t border-rose-200">
               {matchingProduct && matchingProduct.available > 0 && (
                 <button
+                  disabled={matchingProduct.available === 0}
                   type="button"
                   onClick={() => handleQtyChange(String(matchingProduct.available))}
                   className="rounded-lg bg-rose-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-800 transition-colors"
@@ -305,29 +312,31 @@ export function NewRequestClient() {
       >
         {/* Step 1: Catalog Selector (F13: Accessible name for catalog picker) */}
         <div>
+          {!manual && <>
           <label
             htmlFor="catalog-picker"
             className="block text-sm font-semibold text-slate-900"
           >
-            Select Product from Catalog <span className="text-rose-600">*</span>
+            Product <span className="text-rose-600">*</span>
           </label>
           {catalogFetchedAt && <p className="text-xs text-slate-600">Stock checked {formatOperationalTime(catalogFetchedAt)}{catalogError ? " · refresh failed" : ""}</p>}
           <p id={skuHelpId} className="text-xs text-slate-500 mt-0.5">
-            Choose a stocked item from the warehouse catalog or type an exact SKU below.
+            Choose an item from the warehouse catalog.
           </p>
 
           <div className="mt-2">
             <select
+              ref={pickerRef}
+              aria-invalid={!!fieldErrors.sku}
+              aria-describedby={fieldErrors.sku ? skuErrorId : skuHelpId}
               id="catalog-picker"
               aria-label="Select product from warehouse catalog"
-              disabled={catalogLoading}
+              aria-busy={catalogLoading}
               value={catalog.some((p) => p.sku === sku) ? sku : ""}
               onChange={(e) => {
-                if (e.target.value) {
-                  handleSkuChange(e.target.value);
-                }
+                handleSkuChange(e.target.value);
               }}
-              className="block w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-800 focus:border-teal-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-teal-600"
+              className="block min-h-11 w-full rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-800 focus:border-teal-600 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-teal-600"
             >
               <option value="">
                 {catalogLoading
@@ -344,10 +353,12 @@ export function NewRequestClient() {
             </select>
           </div>
 
-          {/* Manual SKU input fallback */}
+          </>}
+          <button type="button" className="min-h-11 text-sm text-teal-800 underline" onClick={() => { setManual(!manual); handleSkuChange(""); }}>{manual ? "Choose from catalog" : "Enter SKU instead"}</button>
+          {manual && (
           <div className="mt-3">
             <label htmlFor={skuId} className="block text-xs font-semibold text-slate-600">
-              Or Enter Product SKU Manually
+              Product SKU
             </label>
             <input
               ref={skuInputRef}
@@ -357,14 +368,15 @@ export function NewRequestClient() {
               value={sku}
               onChange={(e) => handleSkuChange(e.target.value)}
               placeholder="e.g. ITEM-007"
-              aria-describedby={`${skuHelpId} ${fieldErrors.sku ? skuErrorId : ""}`}
+              aria-describedby={fieldErrors.sku ? skuErrorId : undefined}
               aria-invalid={!!fieldErrors.sku}
-              className={`mt-1 block w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
+              className={`mt-1 block min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
                 fieldErrors.sku ? "border-rose-500 bg-rose-50/30" : "border-slate-300"
               }`}
             />
           </div>
 
+          )}
           {fieldErrors.sku && (
             <p id={skuErrorId} role="alert" className="mt-1 text-xs font-semibold text-rose-600">
               {fieldErrors.sku}
@@ -395,7 +407,7 @@ export function NewRequestClient() {
         <div>
           <div className="flex items-center justify-between">
             <label htmlFor={qtyId} className="block text-sm font-semibold text-slate-900">
-              Quantity to Reserve <span className="text-rose-600">*</span>
+              Quantity <span className="text-rose-600">*</span>
             </label>
             {matchingProduct && (
               <span className="text-xs font-semibold text-slate-600">
@@ -421,7 +433,7 @@ export function NewRequestClient() {
             placeholder="e.g. 5"
             aria-describedby={`${qtyHelpId} ${fieldErrors.quantity ? qtyErrorId : ""} ${exceedsStock ? shortageWarningId : ""}`}
             aria-invalid={!!fieldErrors.quantity}
-            className={`mt-2 block w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
+            className={`mt-2 block w-32 min-h-11 rounded-lg border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
               fieldErrors.quantity || exceedsStock
                 ? "border-rose-500 bg-rose-50/30"
                 : "border-slate-300"
@@ -449,6 +461,7 @@ export function NewRequestClient() {
               </p>
               <div className="pt-1 flex items-center gap-3">
                 <button
+                  disabled={matchingProduct.available === 0}
                   type="button"
                   onClick={() => handleQtyChange(String(matchingProduct.available))}
                   className="rounded-lg bg-amber-800 px-2.5 py-1 text-xs font-bold text-white hover:bg-amber-900 transition-colors"
@@ -472,12 +485,12 @@ export function NewRequestClient() {
             href={returnTo}
             className="text-xs font-semibold text-slate-600 hover:text-slate-900"
           >
-            ← Cancel and Return
+            ← Cancel
           </Link>
           <button
             type="submit"
             disabled={submitting || !!lastAttempt || !!successResult}
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-teal-700 px-6 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-teal-800 focus:outline-hidden focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+            className={primaryAction}
           >
             {submitting && (
               <svg className="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
@@ -485,7 +498,7 @@ export function NewRequestClient() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
             )}
-            {submitting ? "Reserving Stock..." : rejectionNotice ? "Submit Revised Request" : "Reserve Stock"}
+            {submitting ? "Reserving stock…" : rejectionNotice ? "Submit revised request" : "Reserve stock"}
           </button>
         </div>
       </form>

@@ -13,14 +13,14 @@ const demoLinks = [
   { href: "/", label: "Overview" },
   { href: "/products", label: "Inventory" },
   { href: "/requests", label: "Requests" },
-  { href: "/warehouse", label: "Warehouse" },
+  { href: "/warehouse", label: "Fulfillment" },
   { href: "/suppliers", label: "Suppliers" },
-  { href: "/activity", label: "Diagnostics" },
+
 ];
 
 const workspaceLink = { href: "/workspace", label: "Branch Workspace" };
 const navLinks = workspaceEnabled
-  ? [workspaceLink, { href: "/activity", label: "Diagnostics" }]
+  ? [workspaceLink]
   : demoLinks;
 
 export function Header() {
@@ -202,11 +202,12 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-xs">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-[1360px] items-center justify-between px-4 sm:px-6">
           {/* Brand - Keep intrinsic width without colliding (F03) */}
           <Link
             href={workspaceEnabled ? "/workspace" : "/"}
-            className="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-slate-900 group"
+            aria-label={workspaceEnabled ? "ThogaMura workspace" : "ThogaMura overview"}
+            className="flex min-h-11 shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-slate-900 group"
           >
             <Image
               src="/images/ThogaMura-logo.svg"
@@ -222,7 +223,7 @@ export function Header() {
           </Link>
 
           {/* Show desktop links only when the full navigation fits */}
-          <div className="hidden xl:flex items-center gap-5">
+          <div className="hidden min-[60rem]:flex items-center gap-5">
             <nav aria-label="Primary navigation">
               <ul className="flex items-center gap-1 text-sm font-semibold text-slate-600">
                 {navLinks.map((link) => {
@@ -251,7 +252,7 @@ export function Header() {
           </div>
 
           {/* Compact navigation controls */}
-          <div className="flex items-center gap-2.5 xl:hidden">
+          <div className="flex items-center gap-2.5 min-[60rem]:hidden">
             <ConnectionIndicator compact={true} />
             <button
               ref={triggerRef}

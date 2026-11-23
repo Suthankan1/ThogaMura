@@ -1,7 +1,7 @@
 "use client";
 
 import { listPage, ListPages, updateListParams } from "@/components/ListPages";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { fetchProducts, fetchStockRequests } from "@/lib/api/inventory";
@@ -16,6 +16,7 @@ const statuses = [
 ];
 
 export function RequestsClient() {
+  const [copyNotice, setCopyNotice] = useState("");
   const params = useSearchParams();
   const filter = statuses.find((option) => option.key === params.get("status"))?.key ?? "ALL";
   const search = params.get("q") ?? "";
@@ -50,6 +51,15 @@ export function RequestsClient() {
             <div>
               <h2 id="request-detail-heading" className="text-lg font-semibold">{nameFor(selected.sku)}</h2>
               <p className="mt-1 break-all font-mono text-xs text-slate-600">{selected.requestId}</p>
+              <button type="button" className={textAction} onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(selected.requestId);
+                  setCopyNotice("Reference copied.");
+                } catch {
+                  setCopyNotice("Select the full reference above to copy it.");
+                }
+              }}>Copy full reference</button>
+              <span role="status" className="ml-2 text-xs">{copyNotice}</span>
             </div>
             <RequestBadge status={selected.status} />
           </div>
@@ -105,7 +115,7 @@ export function RequestsClient() {
                 <li key={request.requestId} className="grid items-center gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:p-5">
                   <div className="min-w-0 flex-1">
                     <Link className={textAction} href={`/requests?${detail}`}>{nameFor(request.sku)}</Link>
-                    <p className="break-all font-mono text-xs text-slate-600">{request.sku} · {request.requestId}</p>
+                    <p className="break-all font-mono text-xs text-slate-600">{request.sku} · {loaded.some((row) => row.requestId !== request.requestId && row.requestId.endsWith(request.requestId.slice(-8))) ? request.requestId : request.requestId.slice(-8)}</p>
                     <p className="mt-1 text-xs text-slate-600">{formatFullDateTime(request.createdAt)}</p>
                   </div>
                   <p className="text-sm font-semibold tabular-nums">{formatUnits(request.quantity)}</p>

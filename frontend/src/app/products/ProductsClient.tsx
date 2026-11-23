@@ -26,7 +26,7 @@ export function ProductsClient() {
   return (
     <div className="space-y-6">
       <WorkspaceHeading title="Inventory" description="Find warehouse items and see what is available to reserve."
-        action={<Link className={primaryAction} href="/requests/new?returnTo=/products">New request</Link>} />
+        action={<Link className={primaryAction} href={`/requests/new?returnTo=${encodeURIComponent(returnTo)}`}>New request</Link>} />
       <section className={surface} aria-labelledby="catalog-title">
         <header className="space-y-4 border-b border-slate-200 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">

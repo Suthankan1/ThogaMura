@@ -40,7 +40,7 @@ try {
   };
   await page.route("**/api/v1/requests", suspendReply);
   await page.getByLabel(/Quantity/).fill("1");
-  await page.getByRole("button", { name: "Reserve Stock", exact: true }).click();
+  await page.getByRole("button", { name: "Reserve stock", exact: true }).click();
   await page.getByRole("heading", { name: "Request outcome unconfirmed" }).waitFor();
   assert.ok(committedReference);
   await page.unroute("**/api/v1/requests", suspendReply);
@@ -96,7 +96,7 @@ try {
   await page.getByText("ITEM-OUTAGE · Supplier unavailable", { exact: true }).waitFor();
 
   await page.setViewportSize({ width: 375, height: 812 });
-  for (const [path, heading] of [["/", "Operations overview"], ["/products", "Inventory"], ["/requests", "Stock requests"], ["/warehouse", "Warehouse queue"], ["/suppliers", "Supplier availability"]]) {
+  for (const [path, heading] of [["/", "Warehouse overview"], ["/products", "Inventory"], ["/requests", "Stock requests"], ["/warehouse", "Warehouse queue"], ["/suppliers", "Supplier availability"]]) {
     await page.goto(path);
     await page.getByRole("heading", { name: heading, exact: true }).waitFor();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${path} overflows at 375 px`);

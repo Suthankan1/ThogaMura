@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { Status } from "@/lib/api/workspace";
 import { formatOperationalTime } from "@/lib/formatters";
 
-export const primaryAction = "inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 disabled:opacity-50";
+export const primaryAction = "inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-800 motion-safe:transition-colors duration-120 active:bg-teal-950 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 disabled:opacity-50";
 export const secondaryAction = "inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50";
 export const destructiveAction = "inline-flex min-h-11 items-center justify-center rounded-lg bg-rose-800 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-900 disabled:opacity-50";
 export const textAction = "inline-flex min-h-11 items-center text-sm font-semibold text-teal-800 underline underline-offset-4 hover:text-teal-950";

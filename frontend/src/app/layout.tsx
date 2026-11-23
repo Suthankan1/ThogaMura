@@ -18,11 +18,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <a href="#main" className="skip-link">Skip to main content</a>
         <StockEventsProvider>
           <Header />
-          <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <main id="main" tabIndex={-1} className="mx-auto max-w-[1360px] px-4 py-8 sm:px-6">
             {children}
           </main>
-          <footer className="mx-auto max-w-6xl px-4 pb-12 pt-6 text-xs text-slate-500 sm:px-6 border-t border-slate-200/60 mt-12 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p>ThogaMura Logistics Platform · Branch-to-Warehouse Stock Coordination</p>
+          <footer className="mx-auto max-w-[1360px] px-4 py-4 text-xs text-slate-600 sm:px-6 border-t border-slate-200/60 flex items-center justify-between gap-2">
+            <p>ThogaMura · Branch and warehouse coordination.</p>
           </footer>
         </StockEventsProvider>
       </body>

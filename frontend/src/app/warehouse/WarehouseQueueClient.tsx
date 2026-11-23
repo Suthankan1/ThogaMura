@@ -213,7 +213,7 @@ export function WarehouseQueueClient() {
                 </li>
               ))}
             </ol>
-          ) : query.data && <p className="p-5 text-sm text-slate-600">{search ? "No loaded requests match this search." : "No requests in this stage."}</p>}
+          ) : query.data && <p className="p-5 text-sm text-slate-600">{search ? "No loaded requests match this search." : stage === "dispatch" ? "No requests ready to dispatch." : "No requests waiting to pick."}</p>}
           <ListPages {...queuePage} onChange={(next) => updateListParams({ page: String(next) })} />
           {loaded.length === 500 && <p className="border-t border-slate-200 p-4 text-sm text-slate-600">Showing the first 500 requests in this stage.</p>}
         </section>
