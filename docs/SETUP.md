@@ -44,7 +44,37 @@ THOGAMURA_VERIFY_DISPOSABLE=1 npm --prefix frontend run test:browser
 
 The browser test drives the app at `THOGAMURA_BROWSER_ORIGIN` when set and defaults to localhost port 3000. It consumes one synthetic unit. The HTTP verifier uses `THOGAMURA_GATEWAY_URL` when set.
 
-## Two-machine TLS demo
+The orchestration script supports explicit TLS mode configuration:
+
+```bash
+# Loopback development only
+THOGAMURA_TLS_ENABLED=false
+THOGAMURA_TLS_SERVER_ENABLED=false
+THOGAMURA_TLS_CLIENT_ENABLED=false
+
+# Validated LAN/TLS demo
+THOGAMURA_TLS_ENABLED=true
+THOGAMURA_TLS_SERVER_ENABLED=true
+THOGAMURA_TLS_CLIENT_ENABLED=true
+THOGAMURA_TLS_HOSTNAME_VERIFICATION=true
+THOGAMURA_WAREHOUSE_HOST=192.168.8.100
+THOGAMURA_TLS_KEYSTORE_PATH=.certs/server-keystore.p12
+THOGAMURA_TLS_KEYSTORE_PASSWORD=<keystore password>
+THOGAMURA_TLS_TRUSTSTORE_PATH=.certs/gateway-truststore.p12
+THOGAMURA_TLS_TRUSTSTORE_PASSWORD=<truststore password>
+```
+
+The startup and status commands fail closed when TLS is enabled without the required
+certificate material or password. A non-loopback warehouse host cannot use plaintext
+command transport. Do not print or commit the passwords.
+
+Verify the runtime TLS configuration without starting Docker or Java processes:
+
+```bash
+./scripts/verify-tls-runtime.sh
+```
+
+## Two-machine LAN demo
 
 Package the two JVMs using the Maven reactor and run them separately. Generate the warehouse keystore and branch truststore with the actual warehouse IP or DNS name in the certificate SAN. [Certificate setup](TLS_CERTIFICATES.md)
 

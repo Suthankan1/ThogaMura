@@ -3,7 +3,7 @@
 - **Owner:** Member 5 (@vibhathkalsara99 — Vibhath Kalsara)
 - **Role:** Java TLS Networking (JSSE `SSLContext`, `SSLSocket`, `SSLServerSocket`, Keystores, Truststores, and SAN Hostname Verification)
 - **Module:** `backend/network-server` (`lk.thogamura.networkserver.security`) and `backend/api-gateway` (`lk.thogamura.gateway.network.security`)
-- **Status:** Complete (Verified with automated unit, socket integration, separate-JVM process tests, and fail-closed certificate rejection suites)
+- **Status:** Implementation and local verification complete; physical two-device LAN rehearsal pending
 - **Reference Issue:** [#24 — [M5][W4] Verify certificate rejection and secure LAN demo](https://github.com/Suthankan1/ThogaMura/issues/24)
 - **Governing Contracts:** [ADR-004 (TLS Identity Policy)](../decisions/DECISION_LOG.md#adr-004--tls-identity-policy-accepted), [ADR-006 (Topology & Transport)](../decisions/DECISION_LOG.md#adr-006--remove-udp-discovery-and-define-practical-network-features-2026-11-17-accepted-as-v2-design), [ADR-007 (Contracts Freeze)](../decisions/DECISION_LOG.md#adr-007--shared-network-protocol-v1-http-api-v1-and-security-contracts-freeze-2026-11-18-accepted), [NETWORK_PROTOCOL_V1.md](../contracts/NETWORK_PROTOCOL_V1.md#8-tls--transport-security-specification-port-7443), [SECURITY_AND_LIMITATIONS.md](../SECURITY_AND_LIMITATIONS.md), [DEMO_SCRIPT.md](../DEMO_SCRIPT.md), [TEST_PLAN.md](../TEST_PLAN.md)
 
@@ -15,7 +15,7 @@ Issue #24 completes and verifies the second slice of Member 5's TLS transport de
 1. **Verified TLS Certificate Rejection (T13):** Rigorous automated verification that untrusted CAs, hostname/SAN mismatches, plaintext probe attempts, and missing/corrupted truststores fail closed without fallback.
 2. **Validated TLS Operation (T12):** End-to-end verification that trusted CAs with valid SAN matching (including LAN IP addresses and internal hostnames) succeed and process framed business commands.
 3. **Multi-Process / Separate-JVM Demonstration:** Validation that the gateway client and warehouse listener exchange framed commands across separate JVM processes strictly via TLS on port 7443.
-4. **Physical LAN Demonstration Preparedness:** Scripts, configuration, and verification tests enabling seamless execution on two separate physical laptops over a local Wi-Fi / Ethernet LAN, accompanied by an honest record marking live multi-laptop execution as pending lab rehearsal.
+4. **Physical LAN Demonstration Preparedness:** Scripts, configuration, and verification tests enable execution on two separate physical laptops over a local Wi-Fi / Ethernet LAN. Live multi-laptop execution remains pending lab rehearsal.
 5. **NIO and HTTP Boundary Demarcation:** Formal verification that unencrypted feeds (Java NIO port 7444) carry only version metadata without sensitive stock or customer data, and documentation of browser-to-gateway local HTTP limitations.
 
 ---
@@ -86,6 +86,8 @@ This embeds:
 
 ### 4.2 Automated LAN SAN Verification Test
 In `TlsTcpCommandClientIntegrationTest#testLanSanMatchingSucceeds`, a certificate bundle was dynamically provisioned with `ip:192.168.8.100` and `dns:warehouse.thogamura.internal` in the SAN extension. The client connected to the TLS server matching the SAN identity, completing the handshake and successfully executing framed commands (`PING`/`PONG` and `REQUEST_STOCK`).
+
+This is automated certificate/SAN evidence, not proof of a connection between two physical laptops.
 
 ### 4.3 Safe LAN Interface Binding
 In `TcpCommandServerTest#shouldPermitNonLoopbackBindingWhenTlsIsEnabled`, the server binding safety rule was verified:
@@ -167,3 +169,15 @@ For the final physical presentation on two student laptops:
 - `backend/api-gateway/src/test/java/lk/thogamura/gateway/network/security/TlsTcpCommandClientIntegrationTest.java`: Added `testLanSanMatchingSucceeds` to verify LAN IP/DNS SAN matching over TLS.
 - `backend/network-server/src/test/java/lk/thogamura/networkserver/transport/tcp/TcpCommandServerTest.java`: Added `shouldPermitNonLoopbackBindingWhenTlsIsEnabled` to verify server binding policy.
 - `docs/handoffs/M5_CERTIFICATE_REJECTION_AND_LAN_DEMO.md`: This comprehensive verification report and handoff.
+
+## 8. Observed Local Runtime Evidence
+
+The following evidence was collected on one laptop using separate JVM processes and loopback networking:
+
+- With the official certificate configuration, `GET /api/v1/ping` returned `PONG`.
+- The warehouse log recorded `Dispatching command 'PING'`, proving that the command crossed the gateway-to-warehouse TLS/TCP boundary.
+- With the rogue gateway truststore, the request failed with the intentionally generic `INTERNAL_TRANSPORT_ERROR`; gateway logs recorded a PKIX certificate validation failure.
+- Earlier `Remote host terminated the handshake` messages were produced by the negative certificate/plaintext attempts and were expected.
+- The real TLS stock integration test also covered reservation, replay, picking, dispatch, balances, and movement history against PostgreSQL.
+
+This evidence proves trusted and rejected TLS behavior across separate local JVMs. It does not replace the pending two-device LAN rehearsal.

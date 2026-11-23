@@ -121,6 +121,27 @@ wait_for_http() {
 load_environment() {
     # Read .env if present using portable parser compatible with macOS bash 3.2
     if [ -f .env ]; then
+        local shell_tls_enabled_set="${THOGAMURA_TLS_ENABLED+x}"
+        local shell_tls_enabled="${THOGAMURA_TLS_ENABLED:-}"
+        local shell_tls_server_set="${THOGAMURA_TLS_SERVER_ENABLED+x}"
+        local shell_tls_server="${THOGAMURA_TLS_SERVER_ENABLED:-}"
+        local shell_tls_client_set="${THOGAMURA_TLS_CLIENT_ENABLED+x}"
+        local shell_tls_client="${THOGAMURA_TLS_CLIENT_ENABLED:-}"
+        local shell_hostname_set="${THOGAMURA_TLS_HOSTNAME_VERIFICATION+x}"
+        local shell_hostname="${THOGAMURA_TLS_HOSTNAME_VERIFICATION:-}"
+        local shell_warehouse_set="${THOGAMURA_WAREHOUSE_HOST+x}"
+        local shell_warehouse="${THOGAMURA_WAREHOUSE_HOST:-}"
+        local shell_command_host_set="${THOGAMURA_COMMAND_HOST+x}"
+        local shell_command_host="${THOGAMURA_COMMAND_HOST:-}"
+        local shell_keystore_path_set="${THOGAMURA_TLS_KEYSTORE_PATH+x}"
+        local shell_keystore_path="${THOGAMURA_TLS_KEYSTORE_PATH:-}"
+        local shell_keystore_password_set="${THOGAMURA_TLS_KEYSTORE_PASSWORD+x}"
+        local shell_keystore_password="${THOGAMURA_TLS_KEYSTORE_PASSWORD:-}"
+        local shell_truststore_path_set="${THOGAMURA_TLS_TRUSTSTORE_PATH+x}"
+        local shell_truststore_path="${THOGAMURA_TLS_TRUSTSTORE_PATH:-}"
+        local shell_truststore_password_set="${THOGAMURA_TLS_TRUSTSTORE_PASSWORD+x}"
+        local shell_truststore_password="${THOGAMURA_TLS_TRUSTSTORE_PASSWORD:-}"
+
         while IFS= read -r line || [ -n "$line" ]; do
             local trimmed
             trimmed=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
@@ -137,6 +158,17 @@ load_environment() {
                     ;;
             esac
         done < .env
+
+        [ -n "$shell_tls_enabled_set" ] && export THOGAMURA_TLS_ENABLED="$shell_tls_enabled"
+        [ -n "$shell_tls_server_set" ] && export THOGAMURA_TLS_SERVER_ENABLED="$shell_tls_server"
+        [ -n "$shell_tls_client_set" ] && export THOGAMURA_TLS_CLIENT_ENABLED="$shell_tls_client"
+        [ -n "$shell_hostname_set" ] && export THOGAMURA_TLS_HOSTNAME_VERIFICATION="$shell_hostname"
+        [ -n "$shell_warehouse_set" ] && export THOGAMURA_WAREHOUSE_HOST="$shell_warehouse"
+        [ -n "$shell_command_host_set" ] && export THOGAMURA_COMMAND_HOST="$shell_command_host"
+        [ -n "$shell_keystore_path_set" ] && export THOGAMURA_TLS_KEYSTORE_PATH="$shell_keystore_path"
+        [ -n "$shell_keystore_password_set" ] && export THOGAMURA_TLS_KEYSTORE_PASSWORD="$shell_keystore_password"
+        [ -n "$shell_truststore_path_set" ] && export THOGAMURA_TLS_TRUSTSTORE_PATH="$shell_truststore_path"
+        [ -n "$shell_truststore_password_set" ] && export THOGAMURA_TLS_TRUSTSTORE_PASSWORD="$shell_truststore_password"
     fi
 
     export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
@@ -146,6 +178,78 @@ load_environment() {
     PORT_SIMULATOR="${THOGAMURA_SUPPLIER_SIMULATOR_PORT:-8090}"
     PORT_GATEWAY="${THOGAMURA_GATEWAY_PORT:-8080}"
     PORT_FRONTEND="${THOGAMURA_FRONTEND_PORT:-3000}"
+}
+
+is_loopback_host() {
+    local host="${1:-}"
+    case "$host" in
+        localhost|127.*|::1|0:0:0:0:0:0:0:1) return 0 ;;
+    esac
+    return 1
+}
+
+is_true_value() {
+    case "${1:-false}" in
+        1|true|TRUE|yes|YES|on|ON) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+validate_tls_runtime() {
+    local tls_enabled="${THOGAMURA_TLS_ENABLED:-false}"
+    local tls_server_enabled="${THOGAMURA_TLS_SERVER_ENABLED:-$tls_enabled}"
+    local tls_client_enabled="${THOGAMURA_TLS_CLIENT_ENABLED:-$tls_enabled}"
+    local warehouse_host="${THOGAMURA_WAREHOUSE_HOST:-${THOGAMURA_COMMAND_HOST:-127.0.0.1}}"
+    local hostname_verification="${THOGAMURA_TLS_HOSTNAME_VERIFICATION:-true}"
+
+    export RUNTIME_TLS_SERVER_ENABLED="$tls_server_enabled"
+    export RUNTIME_TLS_CLIENT_ENABLED="$tls_client_enabled"
+    export RUNTIME_WAREHOUSE_HOST="$warehouse_host"
+
+    if ! is_true_value "$hostname_verification"; then
+        echo -e "${RED}[ERROR] THOGAMURA_TLS_HOSTNAME_VERIFICATION must remain true.${NC}"
+        return 1
+    fi
+
+    if is_true_value "$tls_server_enabled"; then
+        local keystore_path="${THOGAMURA_TLS_KEYSTORE_PATH:-.certs/server-keystore.p12}"
+        local keystore_password="${THOGAMURA_TLS_KEYSTORE_PASSWORD:-}"
+        if [ ! -f "$keystore_path" ]; then
+            echo -e "${RED}[ERROR] TLS is enabled but the warehouse keystore is missing: $keystore_path${NC}"
+            return 1
+        fi
+        if [ -z "$keystore_password" ] || [ "$keystore_password" = "change-this-keystore-password" ]; then
+            echo -e "${RED}[ERROR] TLS is enabled but THOGAMURA_TLS_KEYSTORE_PASSWORD is missing.${NC}"
+            return 1
+        fi
+        export RUNTIME_TLS_SERVER_ENABLED="true"
+    else
+        export RUNTIME_TLS_SERVER_ENABLED="false"
+    fi
+
+    if is_true_value "$tls_client_enabled"; then
+        local truststore_path="${THOGAMURA_TLS_TRUSTSTORE_PATH:-.certs/gateway-truststore.p12}"
+        local truststore_password="${THOGAMURA_TLS_TRUSTSTORE_PASSWORD:-}"
+        if [ ! -f "$truststore_path" ]; then
+            echo -e "${RED}[ERROR] TLS is enabled but the gateway truststore is missing: $truststore_path${NC}"
+            return 1
+        fi
+        if [ -z "$truststore_password" ] || [ "$truststore_password" = "change-this-truststore-password" ]; then
+            echo -e "${RED}[ERROR] TLS is enabled but THOGAMURA_TLS_TRUSTSTORE_PASSWORD is missing.${NC}"
+            return 1
+        fi
+        export RUNTIME_TLS_CLIENT_ENABLED="true"
+    else
+        export RUNTIME_TLS_CLIENT_ENABLED="false"
+    fi
+
+    if ! is_loopback_host "$warehouse_host" && ! is_true_value "$RUNTIME_TLS_CLIENT_ENABLED"; then
+        echo -e "${RED}[ERROR] Remote warehouse host '$warehouse_host' requires TLS client mode.${NC}"
+        echo -e "${RED}[ERROR] Set THOGAMURA_TLS_CLIENT_ENABLED=true or THOGAMURA_TLS_ENABLED=true.${NC}"
+        return 1
+    fi
+
+    return 0
 }
 
 # ------------------------------------------------------------------------------
@@ -161,6 +265,17 @@ do_start() {
         cp .env.example .env
     fi
     load_environment
+    if ! validate_tls_runtime; then
+        exit 1
+    fi
+
+    if [ "$RUNTIME_TLS_SERVER_ENABLED" = "true" ] && [ "$RUNTIME_TLS_CLIENT_ENABLED" = "true" ]; then
+        echo -e "${GREEN}[TLS] Validated TLS command transport enabled for both warehouse server and gateway.${NC}"
+    elif [ "$RUNTIME_TLS_SERVER_ENABLED" = "true" ] || [ "$RUNTIME_TLS_CLIENT_ENABLED" = "true" ]; then
+        echo -e "${YELLOW}[TLS] TLS is enabled only on one process; verify warehouse and gateway modes intentionally.${NC}"
+    elif is_loopback_host "$RUNTIME_WAREHOUSE_HOST"; then
+        echo -e "${YELLOW}[TLS] Loopback plaintext development mode explicitly enabled; not for remote LAN use.${NC}"
+    fi
     check_port_owner "$PID_SERVER" "$PORT_COMMAND"
     check_port_owner "$PID_SERVER" "$PORT_NIO"
     check_port_owner "$PID_SIMULATOR" "$PORT_SIMULATOR"
@@ -228,9 +343,13 @@ do_start() {
         echo -e "${YELLOW}Network Server is already running (PID: $(head -n 1 "$PID_SERVER"))${NC}"
     else
         THOGAMURA_COMMAND_SERVER_ENABLED=true \
-        THOGAMURA_COMMAND_SERVER_HOST=127.0.0.1 \
+        THOGAMURA_COMMAND_SERVER_HOST="${THOGAMURA_COMMAND_SERVER_HOST:-127.0.0.1}" \
         THOGAMURA_COMMAND_SERVER_PORT="$PORT_COMMAND" \
         THOGAMURA_NOTIFICATIONS_ENABLED=true \
+        THOGAMURA_TLS_SERVER_ENABLED="$RUNTIME_TLS_SERVER_ENABLED" \
+        THOGAMURA_TLS_KEYSTORE_PATH="${THOGAMURA_TLS_KEYSTORE_PATH:-.certs/server-keystore.p12}" \
+        THOGAMURA_TLS_KEYSTORE_PASSWORD="${THOGAMURA_TLS_KEYSTORE_PASSWORD:-}" \
+        THOGAMURA_TLS_KEYSTORE_TYPE="${THOGAMURA_TLS_KEYSTORE_TYPE:-PKCS12}" \
         THOGAMURA_NOTIFICATIONS_HOST=127.0.0.1 \
         THOGAMURA_NOTIFICATIONS_PORT="$PORT_NIO" \
         THOGAMURA_SUPPLIER_BASE_URL="${THOGAMURA_SUPPLIER_BASE_URL:-http://127.0.0.1:$PORT_SIMULATOR}" \
@@ -280,9 +399,15 @@ do_start() {
         echo -e "${YELLOW}API Gateway is already running (PID: $(head -n 1 "$PID_GATEWAY"))${NC}"
     else
         THOGAMURA_NOTIFICATIONS_SUBSCRIBER_ENABLED=true \
-        THOGAMURA_WAREHOUSE_HOST=127.0.0.1 \
+        THOGAMURA_WAREHOUSE_HOST="$RUNTIME_WAREHOUSE_HOST" \
+        THOGAMURA_COMMAND_HOST="$RUNTIME_WAREHOUSE_HOST" \
         THOGAMURA_COMMAND_PORT="${PORT_COMMAND}" \
-        THOGAMURA_NOTIFICATIONS_HOST=127.0.0.1 \
+        THOGAMURA_TLS_CLIENT_ENABLED="$RUNTIME_TLS_CLIENT_ENABLED" \
+        THOGAMURA_TLS_TRUSTSTORE_PATH="${THOGAMURA_TLS_TRUSTSTORE_PATH:-.certs/gateway-truststore.p12}" \
+        THOGAMURA_TLS_TRUSTSTORE_PASSWORD="${THOGAMURA_TLS_TRUSTSTORE_PASSWORD:-}" \
+        THOGAMURA_TLS_TRUSTSTORE_TYPE="${THOGAMURA_TLS_TRUSTSTORE_TYPE:-PKCS12}" \
+        THOGAMURA_TLS_HOSTNAME_VERIFICATION=true \
+        THOGAMURA_NOTIFICATIONS_HOST="${THOGAMURA_NOTIFICATIONS_HOST:-127.0.0.1}" \
         THOGAMURA_NOTIFICATIONS_PORT="${PORT_NIO}" \
         THOGAMURA_GATEWAY_BIND=127.0.0.1 \
         THOGAMURA_GATEWAY_PORT="$PORT_GATEWAY" \
@@ -378,6 +503,10 @@ PYTHON
 
 do_status() {
     load_environment
+    if ! validate_tls_runtime; then
+        echo -e "${RED}[TLS] Runtime TLS configuration is invalid.${NC}"
+        return 1
+    fi
 
     echo -e "${BOLD}${BLUE}==================================================================${NC}"
     echo -e "${BOLD}${BLUE}  ThogaMura Component Status                                      ${NC}"
@@ -433,6 +562,14 @@ do_status() {
         fi
     fi
     printf "%-26s %-10s %-16s %-20b\n" "Spring API Gateway" "$gw_pid" "HTTP:$PORT_GATEWAY" "$gw_status"
+
+    local transport_mode="${YELLOW}PLAINTEXT LOOPBACK${NC}"
+    if [ "$RUNTIME_TLS_SERVER_ENABLED" = "true" ] && [ "$RUNTIME_TLS_CLIENT_ENABLED" = "true" ]; then
+        transport_mode="${GREEN}VALIDATED TLS${NC}"
+    elif [ "$RUNTIME_TLS_SERVER_ENABLED" = "true" ] || [ "$RUNTIME_TLS_CLIENT_ENABLED" = "true" ]; then
+        transport_mode="${YELLOW}PARTIAL TLS CONFIGURATION${NC}"
+    fi
+    printf "%-26s %-10s %-16s %-20b\n" "TLS command transport" "-" "$RUNTIME_WAREHOUSE_HOST:$PORT_COMMAND" "$transport_mode"
 
     # 5. Next.js Frontend
     local ui_status="${RED}STOPPED${NC}"
@@ -541,7 +678,8 @@ do_logs() {
 # Entrypoint Dispatcher
 # ------------------------------------------------------------------------------
 
-ACTION="${1:-start}"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    ACTION="${1:-start}"
 
 case "$ACTION" in
     start)
@@ -582,3 +720,4 @@ case "$ACTION" in
         exit 1
         ;;
 esac
+fi

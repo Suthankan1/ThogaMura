@@ -1,6 +1,8 @@
 # Group demo — v2 (target 8–10 minutes)
 
-**Set-up:** Branch laptop runs Next.js + gateway; warehouse laptop runs central Java network server + PostgreSQL. Supplier mock runs independently on a specified demo port. Synthetic ITEM-007=10 and ITEM-008=0; configured warehouse host, no auto-discovery. No real API credentials or private keys in screenshots.
+**Set-up:** The target demonstration uses a branch laptop running Next.js + gateway and a warehouse laptop running the central Java network server + PostgreSQL. The supplier mock runs independently on a specified demo port. Synthetic ITEM-007=10 and ITEM-008=0; configured warehouse host, no auto-discovery. No real API credentials or private keys in screenshots.
+
+**Current evidence status:** Trusted TLS, certificate rejection, separate-JVM transport, and the stock flow have been verified locally on one laptop using loopback. The physical two-laptop LAN rehearsal is still pending and must not be presented as completed.
 
 | Sequence | Presenter | Demo | Lecture concept and business value |
 | --- | --- | --- | --- |
@@ -14,3 +16,5 @@
 Each presenter must show their own source, a real network call, and a failing case they understand. NIO is not proof of durable notifications; supplier mock is not a real supplier service. All UI states come from authoritative data, never fake demo values.
 
 **Fallback:** For demo network issues, use a known private hotspot and manually configured host; do not weaken TLS verification. Pre-recorded logs may support explanations but cannot be presented as a live successful test.
+
+**Before claiming the live LAN demo:** Complete the two-device setup, verify the warehouse certificate SAN contains the warehouse LAN IP/DNS name, confirm the gateway trusts the public CA bundle, and capture both a successful TLS command and a rejected wrong-name or rogue-CA attempt. Until then, describe the evidence as local separate-JVM verification only.
