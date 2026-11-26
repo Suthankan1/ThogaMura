@@ -21,10 +21,12 @@ interface Props {
   label: string;
   options: { key: string; label: string }[];
   query: { loading: boolean; error: string | null; checkedAt: Date | null; refresh: () => Promise<void> };
+  sortControl?: ReactNode;
+  banner?: ReactNode;
   children: ReactNode;
 }
 
-export function RecordList({ title, noun, count, loaded, returnTo, search, prompt, filter, filterKey, label, options, query, children }: Props) {
+export function RecordList({ title, noun, count, loaded, returnTo, search, prompt, filter, filterKey, label, options, query, sortControl, banner, children }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
@@ -45,7 +47,8 @@ export function RecordList({ title, noun, count, loaded, returnTo, search, promp
     <header className="records-heading">
       <h1 id="records-title" tabIndex={-1}>{title}</h1>
       {loaded !== undefined && <span>{count} {loaded >= 500 ? "loaded " : ""}{noun}{count !== 1 && "s"}</span>}
-      <Link className={primaryAction} href={'/requests/new?returnTo=' + encodeURIComponent(returnTo)}>New request</Link>
+      {sortControl && <div className="ml-auto flex items-center">{sortControl}</div>}
+      <Link className={`${primaryAction}${sortControl ? " !ml-0" : ""}`} href={'/requests/new?returnTo=' + encodeURIComponent(returnTo)}>New request</Link>
     </header>
     <section className="work-surface" aria-labelledby="records-title">
       <form className="records-tools" onSubmit={event => { event.preventDefault(); apply(); }}>
@@ -62,6 +65,7 @@ export function RecordList({ title, noun, count, loaded, returnTo, search, promp
         <span id="records-fresh" className="sr-only">{query.checkedAt ? "Last successful refresh " + formatOperationalTime(query.checkedAt) : "Awaiting first refresh"}</span>
       </form>
       {query.error && <p role="alert" className="records-message text-rose-900">{query.error} {query.checkedAt && "Showing last confirmed data."}</p>}
+      {banner}
       {loaded === undefined && query.loading && <p role="status" className="records-message">Loading {noun}s…</p>}
       {loaded !== undefined && count === 0 && !query.loading && <div className="records-message">
         {filtered ? <>No matching {noun}s. <button className={textAction} onClick={() => {

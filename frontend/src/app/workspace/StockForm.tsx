@@ -21,31 +21,56 @@ export function ProductPicker({ value, onChange, read, inputRef, error }: {
   inputRef: RefObject<HTMLInputElement | null>; error?: string;
 }) {
   const [focused, setFocused] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [term, setTerm] = useState(value.trim());
   useEffect(() => {
-    const timer = setTimeout(() => setTerm(value.trim()), 220);
+    const timer = setTimeout(() => { setTerm(value.trim()); setActiveIndex(-1); }, 180);
     return () => clearTimeout(timer);
   }, [value]);
   const load = useCallback(() => workspacePage<Product>(read, `/products?limit=6&search=${encodeURIComponent(term)}`)
     .then((page) => ({ term, items: page.items })), [read, term]);
-  const results = useWarehouseQuery(load, focused && !!term);
+  const results = useWarehouseQuery(load, focused);
   const options = results.data?.term === value.trim() && !results.error && !results.loading ? results.data.items : [];
+  const showOptions = focused && options.length > 0 && !(options.length === 1 && options[0].sku === value);
 
   return <div className="min-w-0 space-y-2" onFocus={() => setFocused(true)} onBlur={(event) => {
     if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) setFocused(false);
   }}>
     <Field name="SKU">
-      <input ref={inputRef} className={field} value={value} onChange={(event) => onChange(event.target.value)}
+      <input ref={inputRef} className={field} value={value}
+        role="combobox" aria-autocomplete="list" aria-expanded={showOptions} aria-controls="workspace-product-options"
+        aria-activedescendant={showOptions && activeIndex >= 0 ? `product-option-${activeIndex}` : undefined}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (!showOptions) return;
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setActiveIndex((prev) => (prev + 1) % options.length);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setActiveIndex((prev) => (prev <= 0 ? options.length - 1 : prev - 1));
+          } else if (event.key === "Enter" && activeIndex >= 0 && options[activeIndex]) {
+            event.preventDefault();
+            onChange(options[activeIndex].sku);
+            setFocused(false);
+          } else if (event.key === "Escape") {
+            setFocused(false);
+          }
+        }}
         maxLength={100} autoComplete="off" placeholder="Search by product name or SKU"
         aria-invalid={!!error} aria-describedby={error ? "product-error" : undefined} />
     </Field>
     {error && <p id="product-error" className="text-sm text-rose-800">{error}</p>}
-    {focused && options.length > 0 && !(options.length === 1 && options[0].sku === value) && (
-      <ul aria-label="Matching products" className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-        {options.map((item) => <li key={item.sku}>
+    {showOptions && (
+      <ul id="workspace-product-options" role="listbox" aria-label="Matching products" className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm">
+        {options.map((item, idx) => <li key={item.sku} id={`product-option-${idx}`} role="option" aria-selected={idx === activeIndex}>
           <button type="button" onClick={() => { onChange(item.sku); inputRef.current?.focus(); setFocused(false); }}
-            className="min-h-11 w-full px-3 py-2 text-left text-sm hover:bg-teal-50">
-            <span className="block break-words font-semibold">{item.name}</span><span className="break-all font-mono text-xs">{item.sku}</span>
+            className={`flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-teal-50 ${idx === activeIndex ? "bg-teal-50" : ""}`}>
+            <span className="min-w-0">
+              <span className="block break-words font-semibold">{item.name}</span>
+              <span className="break-all font-mono text-xs text-slate-600">{item.sku}</span>
+            </span>
+            <Availability units={item.available} />
           </button>
         </li>)}
       </ul>
@@ -113,9 +138,24 @@ export function StockForm({ receive = false, view, draft, saveDraft, onSubmit, o
         <Freshness {...product} />
       </div>}
       {isSku(sku) && product.error && <Warning>{product.error} <button type="button" className={textAction} onClick={refresh}>Refresh product</button></Warning>}
-      <Field name="Quantity"><input ref={amountRef} name="quantity" className={field} inputMode="numeric" maxLength={16}
-        value={draft.quantity} onChange={(event) => change("quantity", event.target.value)}
-        aria-describedby={errors.quantity ? "quantity-error" : exceeds ? "available-warning" : undefined} aria-invalid={!!errors.quantity || !!exceeds} /></Field>
+      <div className="space-y-1">
+        <Field name="Quantity"><input ref={amountRef} name="quantity" className={field} inputMode="numeric" maxLength={16}
+          value={draft.quantity} onChange={(event) => change("quantity", event.target.value)}
+          aria-describedby={errors.quantity ? "quantity-error" : exceeds ? "available-warning" : undefined} aria-invalid={!!errors.quantity || !!exceeds} /></Field>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button type="button" aria-label="Subtract one unit" className={secondaryAction + " !min-h-9 !px-3 font-mono"}
+            onClick={() => change("quantity", String(Math.max(1, (units ?? 1) - 1)))}>−</button>
+          <button type="button" aria-label="Add one unit" className={secondaryAction + " !min-h-9 !px-3 font-mono"}
+            onClick={() => change("quantity", String((units ?? 0) + 1))}>+</button>
+          {!receive && selected && selected.available > 0 && (
+            <button type="button" className={secondaryAction + " !min-h-9 text-xs"}
+              onClick={() => change("quantity", String(selected.available))}>Max ({selected.available})</button>
+          )}
+        </div>
+      </div>
+      {receive && selected && units !== null && (
+        <p className="text-xs font-semibold text-teal-800">Projected total: {selected.onHand + units} units ({selected.available + units} available)</p>
+      )}
       {errors.quantity && <p id="quantity-error" className="text-sm text-rose-800">{errors.quantity}</p>}
       {exceeds && <div id="available-warning" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">
         <p role="status">Only {formatUnits(selected.available)} {selected.available === 1 ? "is" : "are"} available. Update the quantity to continue.</p>

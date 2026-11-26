@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Field, field, Freshness, secondaryAction, surface, textAction, Warning } from "@/components/Workspace";
 import { formatAge, formatUnits } from "@/lib/formatters";
 import type { Request } from "@/lib/api/workspace";
@@ -20,18 +20,21 @@ export function StageAge({ since }: { since: string }) {
 }
 
 export function BalanceChange({ available }: { available: number }) {
-  const [previous, setPrevious] = useState(available);
+  const previousRef = useRef(available);
   const [change, setChange] = useState("");
-  if (previous !== available) {
-    setPrevious(available);
-    setChange(previous + " → " + available + " available");
-  }
   useEffect(() => {
-    if (!change) return;
-    const timer = setTimeout(() => setChange(""), 4500);
-    return () => clearTimeout(timer);
-  }, [change]);
-  return <span role="status" className="ml-2 text-sm font-semibold text-teal-800">{change}</span>;
+    if (previousRef.current === available) return;
+    const prev = previousRef.current;
+    previousRef.current = available;
+    const timer = setTimeout(() => setChange(`${prev} → ${available} available`), 0);
+    const clear = setTimeout(() => setChange(""), 4500);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(clear);
+    };
+  }, [available]);
+  if (!change) return null;
+  return <span role="status" className="row-flash ml-2 inline-block rounded-md px-1.5 py-0.5 text-sm font-semibold text-teal-800">{change}</span>;
 }
 
 export const followHref = (id: string) => "/workspace?section=suppliers&followUp=" + encodeURIComponent(id);
@@ -48,7 +51,13 @@ export function Overview({ view }: { view: View }) {
         <Link className={textAction} href={"/workspace?section=suppliers&sku=" + encodeURIComponent(stockout.sku)}>Check supplier</Link>
         {stockout.followUpId && <p><Link className={textAction} href={followHref(stockout.followUpId)}>Follow-up open</Link></p>}</> : "No items out of stock.")}
     </section>
-    <section className={surface + " space-y-2 p-4"}><h2 className="font-semibold">Longest waiting request</h2>
+    <section className={surface + " space-y-2 p-4"}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">Longest waiting request</h2>
+        {view.role !== "OPERATOR" && (
+          <Link className={textAction + " !min-h-8 text-xs"} href="/workspace?section=queue">Open fulfillment queue</Link>
+        )}
+      </div>
       {pending || (waiting === undefined ? "The request queue could not be checked." : waiting ?
         <Link className="block space-y-2" data-request-link={waiting.requestId} href={view.requestHref(waiting.requestId)}
           aria-label="View request" aria-describedby="overview-waiting-product"
@@ -79,7 +88,12 @@ export function FollowUp({ id, sku, view, submit, disabled }: {
   const owners = useWarehouseQuery(roster, staff, false);
   const [editing, edit] = useState(false);
   const refresh = task.refresh;
-  useEffect(() => { if (revision && id) void refresh(); }, [revision, id, refresh]);
+  useEffect(() => {
+    if (!revision) return;
+    const reset = setTimeout(() => edit(false), 0);
+    if (id) void refresh();
+    return () => clearTimeout(reset);
+  }, [revision, id, refresh]);
   const row = task.data;
   if (!staff && !id) return null;
   return <section className={surface + " max-w-2xl space-y-3 p-4"}>
@@ -99,7 +113,10 @@ export function FollowUp({ id, sku, view, submit, disabled }: {
         <Field name="Owner"><select className={field} name="owner" required defaultValue={row?.owner ?? ""}>
           <option value="">Select owner</option>{owners.data?.items.map(name => <option key={name}>{name}</option>)}</select></Field>
         <Field name="Due date"><input className={field} name="dueDate" required type="date" defaultValue={row?.dueDate} /></Field>
-        <button className={secondaryAction} disabled={disabled || !owners.data?.items.length}>Save follow-up</button>
+        <div className="flex flex-wrap gap-2">
+          <button className={secondaryAction} disabled={disabled || !owners.data?.items.length}>Save follow-up</button>
+          <button type="button" className={textAction} onClick={() => edit(false)}>Cancel</button>
+        </div>
       </form>}
       {id && <button className={secondaryAction} disabled={disabled} onClick={() => void submit({ path: "/supplier-follow-ups/" + id + "/close", label: "Close follow-up" })}>Close follow-up</button>}
     </>}

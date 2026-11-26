@@ -4,7 +4,7 @@ export type Status = StockRequestStatus | "CANCELLED";
 export type Role = "OPERATOR" | "PICKER" | "SUPERVISOR";
 export type Session = { name: string; role: Role; branch: string; csrf: string };
 export type Request = { requestId: string; sku: string; productName: string; branchId: string; quantity: number; status: Status; createdAt: string; updatedAt: string; events?: { stage: Status | "REQUESTED"; at: string }[]; currentStageSince?: string; decisionReason: string | null };
-export type Movement = { id: string; sku: string; reason: "RECEIVE" | "DISPATCH"; quantityDelta: number; occurredAt: string; branchId: string | null; recordedBy: string | null; note: string | null; stockRequestId: string | null; receivingCommandId: string | null };
+export type Movement = { id: string; sku: string; productName?: string | null; reason: "RECEIVE" | "DISPATCH"; quantityDelta: number; occurredAt: string; branchId: string | null; recordedBy: string | null; note: string | null; stockRequestId: string | null; receivingCommandId: string | null };
 export type Page<T> = { items: T[]; nextCursor: string | null };
 export type Command = {
   path: string;
@@ -134,8 +134,29 @@ export async function exactProduct(read: Read, sku: string): Promise<Product | n
   return item ?? null;
 }
 
+export function classifyWorkspaceSupplierError(error: unknown): WorkspaceError {
+  if (error instanceof WorkspaceError) {
+    if (error.status === 404) {
+      return new WorkspaceError("Supplier has no catalog listing for this SKU.", 404, error.reference, "SUPPLIER_UNKNOWN");
+    }
+    if (error.status === 504) {
+      return new WorkspaceError("Supplier inquiry timed out before confirming stock.", 504, error.reference, "SUPPLIER_TIMEOUT");
+    }
+    if (error.status === 503) {
+      return new WorkspaceError("Supplier service is temporarily unavailable.", 503, error.reference, "SUPPLIER_UNAVAILABLE");
+    }
+    return error;
+  }
+  return new WorkspaceError(error instanceof Error ? error.message : "The supplier response could not be verified.", 502);
+}
+
 export async function workspaceSupplier(read: Read, sku: string) {
-  const result: unknown = await read<SupplierAvailability>(`/suppliers/availability?sku=${encodeURIComponent(sku)}`);
+  let result: unknown;
+  try {
+    result = await read<SupplierAvailability>(`/suppliers/availability?sku=${encodeURIComponent(sku)}`);
+  } catch (error) {
+    throw classifyWorkspaceSupplierError(error);
+  }
   if (!record(result) || result.sku !== sku || result.status !== "AVAILABLE" || !validUnits(result.reportedQuantity) ||
     typeof result.supplier !== "string" || !result.supplier || typeof result.source !== "string" || !result.source ||
     typeof result.checkedAt !== "string" || !Number.isFinite(Date.parse(result.checkedAt))) {

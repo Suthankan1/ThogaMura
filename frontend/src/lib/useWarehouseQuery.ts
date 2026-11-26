@@ -11,11 +11,18 @@ interface QueryState<T> {
   loading: boolean;
 }
 
-export function useWarehouseQuery<T>(read: () => Promise<T>, enabled = true, live = true) {
-  const [state, setState] = useState<QueryState<T>>({ data: null, checkedAt: null, latencyMs: null, error: null, loading: enabled });
+export function useWarehouseQuery<T>(read: () => Promise<T>, enabled = true, live = true, cacheKey?: string) {
+  const { subscribeInvalidation, readCache, writeCache } = useStockEvents();
+  const cached = cacheKey ? readCache<T>(cacheKey) : undefined;
+  const [state, setState] = useState<QueryState<T>>({
+    data: cached?.data ?? null,
+    checkedAt: cached?.checkedAt ?? null,
+    latencyMs: cached?.latencyMs ?? null,
+    error: null,
+    loading: enabled,
+  });
   const sequence = useRef(0);
   const invalidate = useCallback(() => { sequence.current++; }, []);
-  const { subscribeInvalidation } = useStockEvents();
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
@@ -24,8 +31,11 @@ export function useWarehouseQuery<T>(read: () => Promise<T>, enabled = true, liv
     const started = performance.now();
     try {
       const data = await read();
+      const latencyMs = Math.round(performance.now() - started);
+      const checkedAt = new Date();
+      if (cacheKey) writeCache(cacheKey, { data, checkedAt, latencyMs });
       if (request === sequence.current) {
-        setState({ data, checkedAt: new Date(), latencyMs: Math.round(performance.now() - started), error: null, loading: false });
+        setState({ data, checkedAt, latencyMs, error: null, loading: false });
       }
     } catch (error) {
       if (request === sequence.current) {
@@ -36,7 +46,7 @@ export function useWarehouseQuery<T>(read: () => Promise<T>, enabled = true, liv
         }));
       }
     }
-  }, [enabled, read]);
+  }, [cacheKey, enabled, read, writeCache]);
 
   useEffect(() => {
     if (!enabled) return;

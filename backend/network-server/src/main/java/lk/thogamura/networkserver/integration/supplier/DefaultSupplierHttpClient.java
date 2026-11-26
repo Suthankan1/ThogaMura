@@ -207,21 +207,25 @@ public class DefaultSupplierHttpClient implements SupplierHttpClient {
                     );
                 }
 
-                // 4. Validate 'estimatedRestockDays'
-                if (!root.hasNonNull("estimatedRestockDays") || !root.get("estimatedRestockDays").isInt()) {
-                    return SupplierStockResponse.unknown(
-                            sku,
-                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
-                            "Missing or invalid integer field 'estimatedRestockDays' in supplier response"
-                    );
-                }
-                int restockDays = root.get("estimatedRestockDays").asInt();
-                if (restockDays < 0) {
-                    return SupplierStockResponse.unknown(
-                            sku,
-                            ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
-                            "Negative 'estimatedRestockDays' reported by supplier: " + restockDays
-                    );
+                // 4. Validate optional 'estimatedRestockDays' (non-negative integer when supplied)
+                Integer restockDays = null;
+                if (root.has("estimatedRestockDays") && !root.get("estimatedRestockDays").isNull()) {
+                    if (!root.get("estimatedRestockDays").isInt()) {
+                        return SupplierStockResponse.unknown(
+                                sku,
+                                ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                                "Invalid integer field 'estimatedRestockDays' in supplier response"
+                        );
+                    }
+                    int parsedRestock = root.get("estimatedRestockDays").asInt();
+                    if (parsedRestock < 0) {
+                        return SupplierStockResponse.unknown(
+                                sku,
+                                ProtocolInfo.ERROR_SUPPLIER_UNKNOWN,
+                                "Negative 'estimatedRestockDays' reported by supplier: " + parsedRestock
+                        );
+                    }
+                    restockDays = parsedRestock;
                 }
 
                 // 5. Validate 'checkedAt' as ISO-8601 timestamp

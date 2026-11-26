@@ -131,8 +131,28 @@ class WorkspaceQueriesIntegrationTest {
         var dates = new WorkspaceQueries.DateRange(OffsetDateTime.parse("2026-11-02T00:00:00+05:30"),
                 OffsetDateTime.parse("2026-11-03T00:00:00+05:30"));
         assertThat(items(queries.movements(24, "", "DELIVERY", "RECEIVE", dates)))
+                .singleElement().satisfies(row -> assertThat(row)
+                        .containsEntry("receivingCommandId", command)
+                        .containsEntry("productName", "Organic Carrots"));
+        assertThat(items(queries.movements(24, "", "carrots", "RECEIVE", dates)))
                 .singleElement().satisfies(row -> assertThat(row).containsEntry("receivingCommandId", command));
         assertThat(items(queries.movements(24, "", "delivery", "DISPATCH", dates))).isEmpty();
+
+        UUID firstDispatch = UUID.randomUUID();
+        UUID secondDispatch = UUID.randomUUID();
+        insertRequest(firstDispatch, null, "DISPATCHED");
+        insertRequest(secondDispatch, null, "DISPATCHED");
+        jdbc.update("""
+                INSERT INTO stock_movements (stock_request_id, sku, quantity_delta, reason, occurred_at)
+                VALUES (?, 'A', -1, 'DISPATCH', '2026-11-01T10:00:00Z')
+                """, firstDispatch);
+        jdbc.update("""
+                INSERT INTO stock_movements (stock_request_id, sku, quantity_delta, reason, occurred_at)
+                VALUES (?, 'A', -2, 'DISPATCH', '2026-11-02T10:00:00Z')
+                """, secondDispatch);
+        var legacyMovements = new lk.thogamura.networkserver.persistence.JdbcStockMovementRepository(jdbc).findAll();
+        assertThat(legacyMovements).hasSize(2)
+                .first().satisfies(row -> assertThat(row.stockRequestId()).isEqualTo(secondDispatch));
     }
 
     @Test

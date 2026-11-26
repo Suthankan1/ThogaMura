@@ -258,4 +258,39 @@ class DefaultSupplierHttpClientTest {
         testConfig.validate();
 
     }
+
+    @Test
+    @DisplayName("Should accept AVAILABLE 200 JSON when optional estimatedRestockDays is omitted")
+    void shouldAcceptAvailableResponseWhenRestockDaysOmitted() throws Exception {
+        com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+                new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/stock", exchange -> {
+            byte[] payload = """
+                    {"sku":"ITEM-008","supplier":"Demo Supplier","availableUnits":12,"checkedAt":"2026-11-19T00:00:00Z"}
+                    """.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, payload.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(payload);
+            }
+        });
+        server.start();
+        try {
+            SupplierClientConfig customConfig = new SupplierClientConfig(
+                    "http://127.0.0.1:" + server.getAddress().getPort(),
+                    3000,
+                    5000,
+                    16384,
+                    java.util.Set.of()
+            );
+            DefaultSupplierHttpClient customClient = new DefaultSupplierHttpClient(customConfig);
+            SupplierStockResponse response = customClient.checkAvailability("ITEM-008");
+
+            assertThat(response.status()).isEqualTo(ProtocolInfo.STATUS_AVAILABLE);
+            assertThat(response.reportedQuantity()).isEqualTo(12);
+            assertThat(response.estimatedRestockDays()).isNull();
+        } finally {
+            server.stop(0);
+        }
+    }
 }

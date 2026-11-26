@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThogaMura — Full-Stack UX, Stakeholder &amp; Java Network Audit</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --ink-soft: #334155;
+    --muted: #64748b;
+    --canvas: #f8fafc;
+    --surface: #ffffff;
+    --edge: #cfdfdf;
+    --edge-soft: #e2e8f0;
+    --teal: #0f766e;
+    --teal-dark: #115e59;
+    --teal-soft: #ecfdf5;
+    --teal-tint: #f0fdfa;
+    --amber: #b45309;
+    --amber-bg: #fffbeb;
+    --amber-edge: #fde68a;
+    --rose: #be123c;
+    --rose-bg: #fff1f2;
+    --rose-edge: #fecdd3;
+    --blue: #1d4ed8;
+    --blue-bg: #eff6ff;
+    --blue-edge: #bfdbfe;
+    --shadow: 0 2px 4px #143e420e, 0 10px 28px -16px #123a4745;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(155deg, #eaf5f2 0%, transparent 520px), var(--canvas);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.86em;
+  }
+  code {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: 0.12em 0.38em;
+    border-radius: 6px;
+    color: #0f172a;
+    word-break: break-word;
+  }
+
+  .wrap {
+    width: min(calc(100% - 2rem), 1260px);
+    margin: 0 auto;
+    padding: 1.25rem 0 3.5rem;
+  }
+
+  /* Header */
+  .hero {
+    background: radial-gradient(ellipse at 95% -40%, #bfece2, transparent 66%), linear-gradient(130deg, #ffffff, #ebf6f3);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    box-shadow: var(--shadow);
+  }
+  .hero-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .brand-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.32rem 0.75rem;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1px solid var(--edge);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--teal-dark);
+  }
+  .dot-live {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #10b981;
+    display: inline-block;
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+    70% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+  }
+  .hero h1 {
+    margin: 0.65rem 0 0.4rem;
+    font-size: clamp(1.6rem, 3.3vw, 2.35rem);
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+  }
+  .hero p {
+    margin: 0;
+    max-width: 74ch;
+    color: var(--ink-soft);
+    font-size: 0.96rem;
+  }
+  .meta-row {
+    margin-top: 1.1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.25rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .meta-row strong { color: var(--ink); }
+
+  /* KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+    gap: 0.85rem;
+    margin-top: 1.25rem;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    box-shadow: var(--shadow);
+  }
+  .kpi-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+  .kpi-val {
+    margin-top: 0.35rem;
+    font-size: 1.85rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .kpi-sub {
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+
+  /* Navigation Tabs & Search */
+  .toolbar {
+    position: sticky;
+    top: 0.65rem;
+    z-index: 30;
+    margin-top: 1.25rem;
+    background: rgba(251, 255, 254, 0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--edge);
+    border-radius: 16px;
+    padding: 0.65rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .tab-btn {
+    min-height: 40px;
+    padding: 0.45rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+  }
+  .tab-btn:hover { background: #f1f5f9; color: var(--teal-dark); }
+  .tab-btn[aria-selected="true"] {
+    background: var(--teal);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(15, 118, 110, 0.28);
+  }
+  .search-box {
+    flex: 1 1 230px;
+    max-width: 320px;
+    min-height: 40px;
+    padding: 0.45rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    font-size: 0.86rem;
+    color: var(--ink);
+  }
+  .search-box:focus-visible, .tab-btn:focus-visible, .chip:focus-visible, button:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+  }
+
+  /* Sections */
+  .panel-section {
+    display: none;
+    margin-top: 1.25rem;
+    animation: fade-slide 220ms ease-out;
+  }
+  .panel-section.active { display: block; }
+  @keyframes fade-slide {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.4rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+  }
+  .card h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.22rem;
+    letter-spacing: -0.02em;
+  }
+  .card-sub {
+    margin: 0 0 1rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  /* Filter Chips */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 1rem;
+  }
+  .chip {
+    min-height: 34px;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+  .chip.active {
+    background: var(--teal-tint);
+    border-color: var(--teal);
+    color: var(--teal-dark);
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .b-crit { background: var(--rose-bg); color: var(--rose); border-color: var(--rose-edge); }
+  .b-high { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-edge); }
+  .b-med  { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-edge); }
+  .b-ok   { background: var(--teal-soft); color: var(--teal-dark); border-color: #99f6e4; }
+  .b-slate { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+
+  /* Findings List */
+  .finding-grid {
+    display: grid;
+    gap: 0.85rem;
+  }
+  .finding {
+    border: 1px solid var(--edge-soft);
+    border-left: 4px solid var(--teal);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    background: #ffffff;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+  }
+  .finding[data-sev="critical"] { border-left-color: var(--rose); }
+  .finding[data-sev="high"] { border-left-color: #d97706; }
+  .finding[data-sev="medium"] { border-left-color: var(--blue); }
+  .finding:hover { box-shadow: 0 6px 18px -12px rgba(15, 118, 110, 0.35); }
+  .finding-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+  }
+  .finding-title {
+    font-weight: 700;
+    font-size: 0.98rem;
+  }
+  .finding-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .finding-body {
+    font-size: 0.89rem;
+    color: var(--ink-soft);
+    display: grid;
+    gap: 0.4rem;
+  }
+  .fix-box {
+    margin-top: 0.35rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    background: var(--teal-tint);
+    border: 1px solid #ccfbf1;
+    color: #134e4a;
+    font-size: 0.86rem;
+  }
+
+  /* Stakeholders */
+  .stakeholder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+  }
+  .persona {
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    padding: 1.15rem;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .persona-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .persona-name { font-weight: 800; font-size: 1.02rem; }
+  .quote {
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    border-left: 3px solid var(--teal);
+    background: #f8fafc;
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+    font-size: 0.87rem;
+    color: var(--ink);
+  }
+  .persona ul {
+    margin: 0;
+    padding-left: 1.15rem;
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+  }
+  .persona li + li { margin-top: 0.25rem; }
+
+  /* Motion Comparison Lab */
+  .lab-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+  }
+  .demo-stage {
+    border: 1px solid var(--edge-soft);
+    border-radius: 12px;
+    padding: 1rem;
+    background: #f8fafc;
+  }
+  .demo-row {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.8rem;
+    margin-top: 0.65rem;
+    transition: background-color 600ms ease, border-color 300ms ease;
+  }
+  .demo-row.pulse {
+    animation: row-flash 1.4s ease-out;
+  }
+  @keyframes row-flash {
+    0% { background-color: #ccfbf1; border-color: #0f766e; }
+    100% { background-color: #ffffff; border-color: #e2e8f0; }
+  }
+  .alloc-track {
+    height: 7px;
+    width: 100%;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+    display: flex;
+    margin-top: 0.5rem;
+  }
+  .alloc-avail { background: #0f766e; transition: width 320ms ease; }
+  .alloc-res { background: #f59e0b; transition: width 320ms ease; }
+  .skeleton {
+    height: 14px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .btn-demo {
+    min-height: 36px;
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid var(--teal);
+    background: var(--teal);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-demo.secondary {
+    background: #fff;
+    color: var(--ink);
+    border-color: #cbd5e1;
+  }
+  .toast-preview {
+    margin-top: 0.65rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 10px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 0.82rem;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    animation: fade-slide 180ms ease-out;
+  }
+  .toast-preview.show { display: flex; }
+
+  /* Validity Checklist */
+  .gate-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.75rem;
+  }
+  .gate-item {
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    background: var(--teal-tint);
+  }
+  .gate-item label {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    cursor: pointer;
+    font-size: 0.87rem;
+  }
+  .gate-item input { margin-top: 0.25rem; accent-color: var(--teal); width: 16px; height: 16px; }
+
+  /* Architecture Diagram */
+  .arch-box {
+    overflow-x: auto;
+    padding: 0.5rem 0;
+  }
+
+  .empty-state {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--muted);
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  @media print {
+    .toolbar, .chips, .btn-demo { display: none !important; }
+    .panel-section { display: block !important; page-break-inside: avoid; }
+    body { background: #fff; }
+    .card, .finding, .persona { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="hero-top">
+      <div>
+        <span class="brand-pill"><span class="dot-live" aria-hidden="true"></span> ThogaMura Comprehensive Audit · Baseline <code>f44ddb1</code></span>
+        <h1>Full-Stack UX, Stakeholder &amp; Java Network Architecture Report</h1>
+        <p>Inch-by-inch review of all 8 Next.js routes, authenticated workspace (v2), modern UI &amp; motion design, 6 stakeholder perspectives, Java 21 socket/NIO/TLS/HTTP/concurrency backend, and contract-validated enhancements.</p>
+      </div>
+    </div>
+    <div class="meta-row">
+      <span><strong>Reviewed:</strong> 25 Nov 2026</span>
+      <span><strong>Frontend Unit Tests:</strong> 49/49 passing (<code>npm test</code>)</span>
+      <span><strong>Tracks Covered:</strong> M1 TCP · M2 Supplier HTTP · M3 Java NIO · M4 Concurrency/SQL · M5 JSSE TLS</span>
+    </div>
+  </header>
+
+  <section class="kpi-grid" aria-label="Audit summary metrics">
+    <div class="kpi">
+      <div class="kpi-label">Frontend Findings</div>
+      <div class="kpi-val" style="color: var(--teal-dark);">17</div>
+      <div class="kpi-sub">Routes, forms, state &amp; motion gaps</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Backend Bugs / Risks</div>
+      <div class="kpi-val" style="color: var(--rose);">9</div>
+      <div class="kpi-sub">SQL sort, 64 KB frame bomb, NIO &amp; pooling</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Validated Enhancements</div>
+      <div class="kpi-val" style="color: var(--blue);">8</div>
+      <div class="kpi-sub">Passed 6-point ADR &amp; contract gate</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Rejected Anti-Patterns</div>
+      <div class="kpi-val" style="color: var(--amber);">6</div>
+      <div class="kpi-sub">Blocked by scope, SSRF or socket rules</div>
+    </div>
+  </section>
+
+  <div class="toolbar" role="region" aria-label="Report navigation and search">
+    <div class="tabs" role="tablist" aria-label="Audit sections">
+      <button class="tab-btn" role="tab" aria-selected="true" data-tab="overview">Overview &amp; Topology</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="frontend">Frontend Audit</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="motion">Modern UI &amp; Motion</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="stakeholders">Stakeholders</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="backend">Backend &amp; Java Net</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="enhancements">Enhancements &amp; Gate</button>
+    </div>
+    <input id="global-search" class="search-box" type="search" placeholder="Search findings, files, M1–M5…" aria-label="Filter report findings">
+  </div>
+
+  <!-- TAB 1: OVERVIEW -->
+  <section id="tab-overview" class="panel-section active">
+    <div class="card">
+      <h2>End-to-End Architecture &amp; Trust Boundaries</h2>
+      <p class="card-sub">Every mutation flows strictly from browser HTTP/SSE → Spring Boot Gateway → JSSE TLS/TCP (7443) → Central Network Server → PostgreSQL. Plaintext NIO (7444) carries version-only invalidation hints.</p>
+      <div class="arch-box">
+        <svg viewBox="0 0 980 260" width="100%" style="min-width:680px;height:auto;" role="img" aria-label="ThogaMura network architecture diagram">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 1 L10 5 L0 9 z" fill="#0f766e"/>
+            </marker>
+            <marker id="arr-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 1 L10 5 L0 9 z" fill="#b45309"/>
+            </marker>
+          </defs>
+          <!-- Branch Zone -->
+          <rect x="12" y="16" width="410" height="224" rx="14" fill="#f0fdfa" stroke="#99f6e4" stroke-dasharray="6 4"/>
+          <text x="26" y="40" font-size="12" font-weight="700" fill="#115e59">BRANCH MACHINE (Next.js + Gateway)</text>
+          <rect x="28" y="64" width="150" height="84" rx="10" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="103" y="96" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Next.js 16 UI</text>
+          <text x="103" y="116" text-anchor="middle" font-size="11" fill="#475569">Port 3000 · App Router</text>
+          <text x="103" y="133" text-anchor="middle" font-size="10" fill="#0f766e">EventSource + Fetch</text>
+
+          <rect x="246" y="64" width="160" height="148" rx="10" fill="#fff" stroke="#0f766e" stroke-width="1.5"/>
+          <text x="326" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Spring Boot Gateway</text>
+          <text x="326" y="111" text-anchor="middle" font-size="11" fill="#475569">Port 8080 · HTTP/SSE</text>
+          <text x="326" y="135" text-anchor="middle" font-size="10" fill="#334155">TcpCommandClient (M1/M5)</text>
+          <text x="326" y="153" text-anchor="middle" font-size="10" fill="#334155">GatewayNioSubscriber (M3)</text>
+          <text x="326" y="171" text-anchor="middle" font-size="10" fill="#334155">PBKDF2 + HMAC v2 (M5)</text>
+          <text x="326" y="196" text-anchor="middle" font-size="10" font-weight="700" fill="#be123c">No Direct DB Access</text>
+
+          <!-- Warehouse Zone -->
+          <rect x="520" y="16" width="445" height="224" rx="14" fill="#fffbeb" stroke="#fde68a" stroke-dasharray="6 4"/>
+          <text x="536" y="40" font-size="12" font-weight="700" fill="#92400e">WAREHOUSE MACHINE (Central Server + DB + Mock)</text>
+          <rect x="540" y="64" width="210" height="148" rx="10" fill="#fff" stroke="#b45309" stroke-width="1.5"/>
+          <text x="645" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Java Network Server</text>
+          <text x="645" y="112" text-anchor="middle" font-size="10" fill="#334155">SSLServerSocket :7443 (M1/M5)</text>
+          <text x="645" y="130" text-anchor="middle" font-size="10" fill="#334155">NioNotificationServer :7444 (M3)</text>
+          <text x="645" y="148" text-anchor="middle" font-size="10" fill="#334155">InventoryWorkerPool (M4)</text>
+          <text x="645" y="166" text-anchor="middle" font-size="10" fill="#334155">HttpURLConnection Client (M2)</text>
+          <text x="645" y="192" text-anchor="middle" font-size="10" font-weight="700" fill="#0f766e">Sole PostgreSQL Writer</text>
+
+          <rect x="795" y="64" width="150" height="66" rx="10" fill="#fff" stroke="#334155" stroke-width="1.5"/>
+          <text x="870" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">PostgreSQL</text>
+          <text x="870" y="112" text-anchor="middle" font-size="10" fill="#475569">Port 5432 · V1–V4 Flyway</text>
+
+          <rect x="795" y="146" width="150" height="66" rx="10" fill="#fff" stroke="#64748b" stroke-width="1.5"/>
+          <text x="870" y="174" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Supplier Mock</text>
+          <text x="870" y="194" text-anchor="middle" font-size="10" fill="#475569">Port 8090 · Advisory HTTP</text>
+
+          <!-- Arrows -->
+          <line x1="178" y1="106" x2="244" y2="106" stroke="#0f766e" stroke-width="2" marker-end="url(#arr)"/>
+          <text x="211" y="97" text-anchor="middle" font-size="10" font-weight="600" fill="#0f766e">REST/SSE</text>
+
+          <line x1="406" y1="98" x2="538" y2="98" stroke="#0f766e" stroke-width="2" marker-end="url(#arr)"/>
+          <text x="472" y="88" text-anchor="middle" font-size="10" font-weight="700" fill="#0f766e">TLS/TCP :7443</text>
+
+          <line x1="540" y1="154" x2="408" y2="154" stroke="#b45309" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#arr-amber)"/>
+          <text x="474" y="144" text-anchor="middle" font-size="10" font-weight="700" fill="#b45309">NIO Hints :7444</text>
+
+          <line x1="750" y1="97" x2="793" y2="97" stroke="#0f766e" stroke-width="2" marker-end="url(#arr)"/>
+          <line x1="750" y1="179" x2="793" y2="179" stroke="#0f766e" stroke-width="2" marker-end="url(#arr)"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Delta Since the 23 November UX Audit</h2>
+      <p class="card-sub">Verified fixes vs. open and newly surfaced gaps in baseline <code>f44ddb1</code>.</p>
+      <div class="finding-grid">
+        <div class="finding">
+          <div class="finding-head"><span class="finding-title">Resolved in PRs #90–#94</span><span class="badge b-ok">Verified Fixed</span></div>
+          <div class="finding-body">
+            <span>• Mobile filter overlap fixed via CSS Grid container queries in <code>records.css</code> (<code>.records-tools</code>) and <code>globals.css</code> (<code>.list-filters</code>).</span>
+            <span>• Receiving receipt false-success prevented by <code>commandResult()</code> in <code>workspace.ts</code> validating <code>status</code>, <code>sku</code>, <code>quantity</code>, and <code>onHand - reserved === available</code>.</span>
+            <span>• Protected diagnostics in <code>ActivityStatusClient.tsx</code> now probes <code>/api/v2/products?limit=1</code> when workspace is active and links Supplier Inquiry to <code>/workspace?section=suppliers</code>.</span>
+            <span>• Mobile drawer in <code>Header.tsx</code> uses <code>h-dvh</code> with internal <code>overflow-y-auto</code> scroll container; <code>JdbcStockRequestRepository.findAll()</code> now sorts <code>DESC LIMIT 500</code>.</span>
+          </div>
+        </div>
+        <div class="finding" data-sev="high">
+          <div class="finding-head"><span class="finding-title">Still Broken / Newly Surfaced in Current Code</span><span class="badge b-high">Action Needed</span></div>
+          <div class="finding-body">
+            <span>• <code>JdbcStockMovementRepository.findAll()</code> was missed and still runs <code>ORDER BY id ASC LIMIT 500</code> (hides newest dispatches!).</span>
+            <span>• <code>BrandIntro.tsx</code> blocks <code>content.inert = true</code> for 2.4s on every reload; <code>NewRequestClient</code> &amp; <code>WorkspaceClient</code> deadlock forms if a pending attempt cannot confirm and user wants to discard it.</span>
+            <span>• <code>FollowUp</code> edit form never resets <code>editing=false</code> after update; <code>WorkspaceClient</code> puts Overview above nav tabs and Sign out at the bottom; <code>BalanceChange</code> mutates state during render.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: FRONTEND AUDIT -->
+  <section id="tab-frontend" class="panel-section">
+    <div class="card">
+      <h2>Inch-by-Inch Frontend UI, UX &amp; Accessibility Audit</h2>
+      <p class="card-sub">Every finding cites exact verified source paths and concrete fixes.</p>
+      <div class="chips" data-chip-group="frontend">
+        <button class="chip active" data-filter="all">All (13)</button>
+        <button class="chip" data-filter="critical">Critical / Blocker</button>
+        <button class="chip" data-filter="high">High Friction</button>
+        <button class="chip" data-filter="medium">Enhancement / Cleanup</button>
+      </div>
+      <div id="frontend-findings" class="finding-grid"></div>
+      <div class="empty-state" id="frontend-empty">No frontend findings match this filter.</div>
+    </div>
+  </section>
+
+  <!-- TAB 3: MOTION & MODERN UI -->
+  <section id="tab-motion" class="panel-section">
+    <div class="card">
+      <h2>Modern UI/UX &amp; Animation Comparison</h2>
+      <p class="card-sub">Interactive micro-prototypes comparing current ThogaMura behaviours against modern WMS/SaaS patterns (respecting <code>prefers-reduced-motion</code>).</p>
+      <div class="lab-grid">
+        <div class="demo-stage">
+          <strong>1. SSE Row-Update Pulse &amp; Stock Allocation Bar</strong>
+          <p style="font-size:0.83rem;color:var(--muted);margin:0.35rem 0 0;">Current inventory rows show plain numbers and an abrupt text delta. Modern WMS grids show a stacked proportion bar + subtle 1.4s row flash when SSE updates stock.</p>
+          <div id="demo-stock-row" class="demo-row">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div><strong>Organic Carrots</strong> <code style="font-size:0.75rem;">ITEM-007</code></div>
+              <span id="demo-avail-badge" class="badge b-ok">8 available</span>
+            </div>
+            <div class="alloc-track" aria-hidden="true">
+              <div id="demo-bar-avail" class="alloc-avail" style="width:80%"></div>
+              <div id="demo-bar-res" class="alloc-res" style="width:20%"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-top:0.35rem;">
+              <span id="demo-breakdown">10 on hand · 2 reserved · 8 available</span>
+              <span>80% free</span>
+            </div>
+          </div>
+          <div style="margin-top:0.65rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button type="button" class="btn-demo" onclick="simulateSseDrop()">Simulate SSE Reserve (-3)</button>
+            <button type="button" class="btn-demo secondary" onclick="resetSseDemo()">Reset</button>
+          </div>
+        </div>
+
+        <div class="demo-stage">
+          <strong>2. Skeleton Loader &amp; Floating Confirmation Toast</strong>
+          <p style="font-size:0.83rem;color:var(--muted);margin:0.35rem 0 0;">Current views replace content with <code>"Checking warehouse…"</code> text and render confirmations at the top of the page (off-screen when scrolled).</p>
+          <div id="demo-skel-area" class="demo-row">
+            <div class="skeleton" style="width:58%;margin-bottom:0.5rem;"></div>
+            <div class="skeleton" style="width:85%;height:10px;margin-bottom:0.4rem;"></div>
+            <div class="skeleton" style="width:40%;height:10px;"></div>
+          </div>
+          <div id="demo-toast" class="toast-preview" role="status">
+            <span>✓ Request <code>5a3e07fd</code> picked · Ready to dispatch</span>
+            <button type="button" class="btn-demo secondary" style="min-height:26px;padding:0.15rem 0.5rem;font-size:0.75rem;" onclick="document.getElementById('demo-toast').classList.remove('show')">Dismiss</button>
+          </div>
+          <div style="margin-top:0.65rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button type="button" class="btn-demo" onclick="document.getElementById('demo-toast').classList.add('show')">Trigger Floating Toast</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Design &amp; Motion Gap Breakdown</h2>
+      <div class="finding-grid" id="motion-findings"></div>
+    </div>
+  </section>
+
+  <!-- TAB 4: STAKEHOLDERS -->
+  <section id="tab-stakeholders" class="panel-section">
+    <div class="card">
+      <h2>Stakeholder Perspectives, Feelings &amp; Direct Feedback</h2>
+      <p class="card-sub">Synthesized first-person feedback across all operational, academic, security, and accessibility stakeholders.</p>
+      <div class="stakeholder-grid" id="stakeholder-grid"></div>
+    </div>
+  </section>
+
+  <!-- TAB 5: BACKEND & JAVA NET -->
+  <section id="tab-backend" class="panel-section">
+    <div class="card">
+      <h2>Backend &amp; Java Network Programming Deep Audit (M1–M5)</h2>
+      <p class="card-sub">Code-level defects, socket lifecycle bottlenecks, concurrency hazards, and security nuances verified across <code>protocol</code>, <code>api-gateway</code>, and <code>network-server</code>.</p>
+      <div class="chips" data-chip-group="backend">
+        <button class="chip active" data-filter="all">All Tracks</button>
+        <button class="chip" data-filter="M1">M1 · TCP</button>
+        <button class="chip" data-filter="M2">M2 · Supplier HTTP</button>
+        <button class="chip" data-filter="M3">M3 · Java NIO</button>
+        <button class="chip" data-filter="M4">M4 · Concurrency/DB</button>
+        <button class="chip" data-filter="M5">M5 · JSSE TLS</button>
+      </div>
+      <div id="backend-findings" class="finding-grid"></div>
+      <div class="empty-state" id="backend-empty">No backend findings match this track/filter.</div>
+    </div>
+  </section>
+
+  <!-- TAB 6: ENHANCEMENTS & VALIDITY GATE -->
+  <section id="tab-enhancements" class="panel-section">
+    <div class="card">
+      <h2>6-Point Validity &amp; Governance Gate ("Do That for Others Also")</h2>
+      <p class="card-sub">Interactive pre-flight checklist that every member (M1–M5) and AI assistant must verify before implementing any new feature or enhancement.</p>
+      <div class="gate-list">
+        <div class="gate-item"><label><input type="checkbox" checked> <span><strong>1. Contract &amp; ADR Check:</strong> Fits frozen v1/v2 specs, or has a numbered ADR + all 5 members' approval.</span></label></div>
+        <div class="gate-item"><label><input type="checkbox" checked> <span><strong>2. Socket Boundary Check:</strong> Crosses Browser → Gateway → Java Socket/TLS (:7443) → Network Server → PostgreSQL. Zero REST-to-DB shortcuts.</span></label></div>
+        <div class="gate-item"><label><input type="checkbox" checked> <span><strong>3. Security &amp; Scope Gate:</strong> No UDP discovery, no plaintext WAN NIO, no SSRF URL input, no auto-purchasing/ERP scope creep.</span></label></div>
+        <div class="gate-item"><label><input type="checkbox" checked> <span><strong>4. Concurrency &amp; Idempotency:</strong> Deterministic row lock order (<code>SELECT FOR UPDATE</code>) + UUID v4 <code>command_receipts</code>.</span></label></div>
+        <div class="gate-item"><label><input type="checkbox" checked> <span><strong>5. Individual Attribution:</strong> Cleanly assigned to one primary track (M1–M5) or Shared UI.</span></label></div>
+        <div class="gate-item"><label><input type="checkbox" checked> <span><strong>6. Proof Pair:</strong> Includes happy-path automated test + negative network failure test + cross-JVM demo.</span></label></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Validated Java Networking &amp; Product Enhancements</h2>
+      <p class="card-sub">Every proposal below was double-checked against <code>AGENTS.md</code>, frozen contracts, and ADRs 001–012.</p>
+      <div id="enhancement-findings" class="finding-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Explicitly Rejected Ideas (Failed Validity Check)</h2>
+      <p class="card-sub">Ideas intentionally excluded to preserve coursework integrity, security boundaries, and contract stability.</p>
+      <div class="finding-grid">
+        <div class="finding" data-sev="critical">
+          <div class="finding-head"><span class="finding-title">UDP Multicast / Broadcast Discovery · Offline IndexedDB Queue · Optimistic Stock Edits</span><span class="badge b-crit">Rejected</span></div>
+          <div class="finding-body">
+            <span>• <strong>UDP Discovery:</strong> Violates ADR-006 (browsers cannot use UDP; weakens TLS hostname/SAN pinning).</span>
+            <span>• <strong>Offline Browser Queue / Optimistic Stock:</strong> Violates <code>PROJECT_CONTEXT.md</code> &amp; <code>frontend.md</code> (central PostgreSQL is the sole inventory authority).</span>
+            <span>• <strong>Direct Gateway DB Reads / Arbitrary Supplier URLs / Auto-Purchasing:</strong> Violates <code>AGENTS.md</code> &amp; <code>SUPPLIER_HTTP_V1.md</code> (DB isolation, SSRF, and scope boundaries).</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Remediation &amp; Verification Status</h2>
+      <p class="card-sub">Contract-safe backend &amp; frontend fixes implemented and verified against Java 21 Maven &amp; Next.js 16 build/unit checks.</p>
+      <div class="finding-grid">
+        <div class="finding" data-sev="ok">
+          <div class="finding-head"><span class="finding-title">Backend Fixes &amp; Java Networking Upgrades (B-01, B-03..B-08)</span><span class="badge b-ok">369 / 369 Passed</span></div>
+          <div class="finding-body">
+            <span>• Fixed movement ordering (<code>ORDER BY id DESC</code>), joined <code>productName</code> in <code>WorkspaceQueries.movements()</code>, supported optional <code>estimatedRestockDays</code> + 250ms semaphore wait, and switched <code>TcpCommandServer</code> to <code>AbortPolicy</code>.</span>
+            <span>• Added persistent TLS/TCP connection pooling (<code>maxPooledConnections=8</code>, 20s TTL, transparent stale retry), non-blocking client <code>Selector</code> in <code>GatewayNioSubscriber</code>, and <code>serverTime</code> / <code>clockSkewMs</code> on <code>/api/v1/network-status</code>.</span>
+            <span>• <strong>Verified:</strong> <code>protocol</code> 24/24, <code>network-server</code> 205/205, <code>api-gateway</code> 140/140 (Java 21 + Testcontainers PostgreSQL).</span>
+          </div>
+        </div>
+        <div class="finding" data-sev="ok">
+          <div class="finding-head"><span class="finding-title">Frontend Modern UI, Motion, &amp; Full-Stack E2E Remediation</span><span class="badge b-ok">53 Unit + Live E2E Passed</span></div>
+          <div class="finding-body">
+            <span>• Added <code>@starting-style</code> drawer/dialog animations, shimmer skeletons, allocation bars, row-flash highlights, floating toasts, backdrop skip on <code>BrandIntro</code>, and offline-vs-paused badge precision.</span>
+            <span>• Added interactive <strong>Test TLS PING</strong> + clock-skew alert + <strong>Replay intro</strong> on <code>/activity</code>, quantity steppers + discard escape hatches, ARIA <code>combobox</code> on both <code>ProductPicker</code> and <code>SuppliersClient</code>, pinned Workspace tabs above Overview, <code>FollowUp</code> edit reset + Cancel, and 404/504/503 supplier classification.</span>
+            <span>• <strong>Verified Build &amp; Unit Tests:</strong> <code>npm test</code> 53/53 passed, <code>npm run typecheck</code> OK, <code>npm run lint</code> OK, <code>npm run build</code> compiled all 10 routes cleanly.</span>
+            <span>• <strong>Verified Live TLS Stack &amp; Playwright E2E:</strong> <code>verify-tls-runtime.sh</code> (6/6), <code>verify-network-load.py</code> (48/48 PONG, p50=5.9 ms, 12/12 SSE, dispatch race), <code>verify-full-stock-workflow.sh</code>, <code>verify-workspace.py</code>, <code>brand-intro.mjs</code>, <code>browser-smoke.mjs</code>, <code>workspace-browser.mjs</code>, and <code>workspace-stock-demo.mjs</code> all passed.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const frontendData = [
+  {
+    sev: "critical", badge: "Critical UX Blocker", badgeClass: "b-crit",
+    title: "2.4s BrandIntro splash locks the entire UI on every reload",
+    file: "frontend/src/components/BrandIntro.tsx#L10-L81 · brand-intro.css",
+    issue: "Initializes sequence=0 on every mount and applies content.inert = true for 2400ms. Pressing F5, opening a new tab, or opening a deep link freezes the screen; clicking the header logo replays it.",
+    fix: "Gate initial splash with a sessionStorage key (thogamura.introSeen) so it plays once per tab session, keeping reloads and deep links instant."
+  },
+  {
+    sev: "critical", badge: "Critical Workflow Deadlock", badgeClass: "b-crit",
+    title: "Unconfirmed attempt / pending command permanently locks write forms with no Discard option",
+    file: "frontend/src/app/requests/new/NewRequestClient.tsx#L274-L306 · WorkspaceClient.tsx#L275-L283",
+    issue: "When a request hits 500/503/504 (or 401/403 INVALID_CSRF in Workspace, which definitiveCommandFailure omits), lastAttempt / pending disables Reserve/Submit/Pick/Dispatch with no way to abandon the attempt if the operator decides not to retry.",
+    fix: "Add a secondary 'Discard saved attempt' button (with a warning to check Requests history first) so operators are never locked out."
+  },
+  {
+    sev: "high", badge: "High · Layout & Shared Terminal Risk", badgeClass: "b-high",
+    title: "Workspace Overview sits above navigation tabs; actor/branch identity sits at the bottom",
+    file: "frontend/src/app/workspace/WorkspaceClient.tsx#L254-L301",
+    issue: "On section=overview, the 4 metric cards and priority rows render ABOVE <nav aria-label='Workspace sections'>, shifting tabs down ~400px. Meanwhile session.name · session.branch and Sign out sit at the very bottom below 16–24 rows.",
+    fix: "Pin section tabs directly beneath WorkspaceHeading on every tab and move the Actor · Branch pill + Sign out button into the top header bar."
+  },
+  {
+    sev: "high", badge: "High · Broken Form State", badgeClass: "b-high",
+    title: "FollowUp edit form gets stuck open after update and lacks a Cancel button",
+    file: "frontend/src/app/workspace/OperatorDashboard.tsx#L80-L105",
+    issue: "Updating an existing follow-up keeps the same followUp key in WorkspaceClient, so FollowUp does not remount and editing remains true forever with no Cancel button.",
+    fix: "Reset editing(false) after submit resolves and add a Cancel button beside Save follow-up."
+  },
+  {
+    sev: "high", badge: "High · Missing Role Landing", badgeClass: "b-high",
+    title: "Pickers land on Overview instead of Fulfillment Queue; footer /warehouse link silently drops Operators",
+    file: "frontend/src/app/workspace/WorkspaceClient.tsx#L123 · layout.tsx#L37-L42",
+    issue: "PICKER role always lands on overview when ?section= is omitted. Clicking 'Fulfillment' in the global footer redirects an OPERATOR to ?section=queue, which silently falls back to overview.",
+    fix: "Default PICKER landing to 'queue'; render workspace-aware footer links or show a clear role-restriction banner."
+  },
+  {
+    sev: "high", badge: "High · Supplier UX Regression", badgeClass: "b-high",
+    title: "Workspace Supplier view collapses 404/503/504/502 into generic 'unknown', hides retry & loses SKU on follow-up",
+    file: "frontend/src/lib/api/workspace.ts#L137-L149 · WorkspaceViews.tsx#L223-L269",
+    issue: "workspaceSupplier throws a generic error for non-AVAILABLE states; SupplierResult omits 'Check again'; creating a follow-up navigates to sku: null, hiding the supplier numbers just retrieved.",
+    fix: "Mirror SuppliersClient status mapping (UNKNOWN, SUPPLIER_TIMEOUT, SUPPLIER_UNAVAILABLE), add 'Check again', and keep ?sku= alongside ?followUp=."
+  },
+  {
+    sev: "high", badge: "High · Missing Context", badgeClass: "b-high",
+    title: "Workspace Movements ledger omits productName and exports only the current 16-row page",
+    file: "frontend/src/app/workspace/WorkspaceViews.tsx#L192-L221 · WorkspaceQueries.java#L148",
+    issue: "Supervisors only see raw SKUs (e.g., ITEM-007) in Movements, and 'Export this page' only downloads the visible 16 items instead of the filtered date range.",
+    fix: "Join product_stock in WorkspaceQueries.movements to include productName, and add multi-page filtered CSV assembly (bounded safely)."
+  },
+  {
+    sev: "high", badge: "High · Double-Fetch Storm", badgeClass: "b-high",
+    title: "Workspace mutations trigger redundant double-refreshes (revision + SSE invalidation) and lose cache on tab switch",
+    file: "frontend/src/app/workspace/WorkspaceClient.tsx#L221 · useWarehouseQuery.ts#L14-L53",
+    issue: "Every write increments revision (triggering immediate refetch) AND receives an NIO/SSE stock-changed event ~50ms later (triggering a second refetch). Unmounting components on tab switch discards all cached data.",
+    fix: "Add a shared stale-while-revalidate query cache in StockEventsContext and coalesce revision + SSE invalidations."
+  },
+  {
+    sev: "medium", badge: "Medium · React & A11y", badgeClass: "b-med",
+    title: "BalanceChange mutates state during render and injects 16 empty role='status' nodes per page",
+    file: "frontend/src/app/workspace/OperatorDashboard.tsx#L22-L35",
+    issue: "Calling setPrevious/setChange during render triggers extra StrictMode synchronous passes and creates empty live regions on every inventory row.",
+    fix: "Move previous-value comparison to useRef + useEffect and announce changes via a single polite live region."
+  },
+  {
+    sev: "medium", badge: "Medium · Search Ergonomics", badgeClass: "b-med",
+    title: "ProductPicker requires typing before showing options and omits stock balance & ARIA combobox roles",
+    file: "frontend/src/app/workspace/StockForm.tsx#L19-L54 · SuppliersClient.tsx#L88-L93",
+    issue: "Operators cannot browse available SKUs on focus without knowing names; SuppliersClient uses inconsistent native <datalist>.",
+    fix: "Load top items on focus, display Availability badge per option, and implement ARIA combobox + ArrowUp/ArrowDown navigation."
+  },
+  {
+    sev: "medium", badge: "Medium · Network Diagnostics", badgeClass: "b-med",
+    title: "/activity does not expose interactive TLS PING probe despite gateway /api/v1/ping existing",
+    file: "frontend/src/app/activity/ActivityStatusClient.tsx · NetworkStatusController.java#L173",
+    issue: "Operators cannot manually trigger a live TLS PING -> PONG round-trip to verify serverTime, warehouseHost, requestId, and clock skew.",
+    fix: "Add a 'Test TLS PING' button on /activity showing latency, requestId, and gateway-vs-warehouse clock drift."
+  },
+  {
+    sev: "medium", badge: "Medium · Queue Safety", badgeClass: "b-med",
+    title: "Demo WarehouseQueueClient lacks tab counts, uses createdAt on Dispatch age, and has one-tap Pick",
+    file: "frontend/src/app/warehouse/WarehouseQueueClient.tsx#L100-L212",
+    issue: "Stage tabs omit counts; Dispatch tab says 'Requested X ago' instead of stage age; Pick fires without confirmation while Dispatch uses modal.",
+    fix: "Add badge counts to stage tabs, use updatedAt when present, and add subtle undo/confirmation or toast feedback."
+  },
+  {
+    sev: "medium", badge: "Medium · Cleanup", badgeClass: "b-med",
+    title: "Unused ScaffoldNotice.tsx component and dead portal transition in Header.tsx",
+    file: "frontend/src/components/ScaffoldNotice.tsx · Header.tsx#L97-L115",
+    issue: "ScaffoldNotice is dead code; Header mobile drawer mounts/unmounts conditionally so backdrop transition-opacity never runs.",
+    fix: "Delete ScaffoldNotice.tsx and animate drawer/dialogs with CSS @starting-style."
+  }
+];
+
+const motionData = [
+  {
+    sev: "medium", badge: "Motion Gap", badgeClass: "b-med",
+    title: "Dialogs and drawers snap abruptly without @starting-style transitions",
+    file: "frontend/src/components/records.css#L22 · ConfirmAction.tsx · Header.tsx",
+    issue: "While BrandIntro has a 2.4s choreographed SVG reveal, .record-drawer, ConfirmAction <dialog>, and the mobile Header drawer appear/disappear instantaneously.",
+    fix: "Use CSS @starting-style and transition-behavior: allow-discrete for smooth 180ms slide/fade transitions (disabled automatically under prefers-reduced-motion)."
+  },
+  {
+    sev: "medium", badge: "Visual Hierarchy", badgeClass: "b-med",
+    title: "No skeleton placeholders, floating toasts, or SSE row-update highlights",
+    file: "frontend/src/app/workspace/WorkspaceViews.tsx · page.tsx",
+    issue: "Loading flashes plain 'Checking warehouse…' text; feedback banners appear at page top out of viewport; SSE updates silently swap numbers without showing which row changed.",
+    fix: "Add shimmer skeletons matching table row geometry, a bottom-right live-region toast stack, and a 1.4s row flash on balance changes."
+  }
+];
+
+const stakeholderData = [
+  {
+    role: "Branch / Shop Operator", tag: "OPERATOR · Counter Staff", badge: "b-ok",
+    quote: "I just want to check stock and reserve 8 crates while the customer is at the counter—without waiting 2.4s on every refresh or getting locked out if Wi-Fi blips.",
+    pains: [
+      "2.4s BrandIntro blocks F5 reloads and deep links.",
+      "Signed-in branch name sits at the bottom of long tables—risky on shared counters.",
+      "Pending command banner locks all writes with no 'Discard' escape hatch.",
+      "Workspace Supplier view hides whether an item is unknown (404) or supplier is down (503)."
+    ]
+  },
+  {
+    role: "Warehouse Picker & Dispatcher", tag: "PICKER · Floor Tablet", badge: "b-med",
+    quote: "When I sign in, drop me straight into my picking queue! And please show me the product name in Movements instead of just SKU codes.",
+    pains: [
+      "Lands on Overview instead of Fulfillment Queue after sign-in.",
+      "Workspace navigation tabs jump vertically by 400px when leaving Overview.",
+      "Demo stage tabs don't show counts; Movements hides recent dispatches once >500 exist (ASC bug)."
+    ]
+  },
+  {
+    role: "Warehouse Supervisor", tag: "SUPERVISOR · Manager", badge: "b-high",
+    quote: "The receiving confirmation and follow-up ownership prevent costly mistakes, but the follow-up edit box stays stuck open after saving!",
+    pains: [
+      "FollowUp edit form never closes after update and has no Cancel button.",
+      "Movements ledger lacks productName and only exports the current 16-row page.",
+      "Needs low-stock threshold alerts and SLA wait-time visibility at a glance."
+    ]
+  },
+  {
+    role: "Lecturer / Coursework Grader", tag: "ASSESSMENT · M1–M5", badge: "b-slate",
+    quote: "Real java.net, Selector NIO, ExecutorService, HttpURLConnection, and JSSE TLS are all genuinely wired. Give me a one-click TLS PING button and prove v1 lists don't overflow 64 KB.",
+    pains: [
+      "/activity lacks an interactive button to trigger /api/v1/ping and inspect serverTime + latency.",
+      "Protocol v1 500-row cap collides with 64 KB MAX_FRAME_BYTES around ~360 requests.",
+      "Every new enhancement must stay strictly within M1–M5 ownership with negative network tests."
+    ]
+  },
+  {
+    role: "Security & Network Engineer", tag: "INFRA · TLS & LAN", badge: "b-crit",
+    quote: "Strong crypto hygiene (600k PBKDF2, HMAC assertions, SAN checks, SSRF allowlist), but watch out for >5s clock drift on two-laptop LAN demos and per-command TLS handshakes.",
+    pains: [
+      "WorkspaceAccess permits only 5s future clock skew—unsynced LAN laptops fail with 403 FORBIDDEN.",
+      "TcpCommandClient creates a brand-new TLS socket per command instead of pooling.",
+      "GatewayNioSubscriber relies on OS TCP_KEEPIDLE (~16s–2h) rather than app-level heartbeats."
+    ]
+  },
+  {
+    role: "Accessibility & UI Reviewer", tag: "WCAG 2.1 AA · Mobile", badge: "b-ok",
+    quote: "Container queries, 44px targets, and forced-colors are thoughtful—now fix ARIA comboboxes on ProductPicker and stop polluting rows with 16 empty status live regions.",
+    pains: [
+      "ProductPicker lacks role='combobox' and keyboard ArrowUp/ArrowDown selection.",
+      "BalanceChange mutates state in render and adds empty role='status' spans to every row.",
+      "Mobile portal drawer and <dialog> lack smooth reduced-motion-safe entrance transitions."
+    ]
+  }
+];
+
+const backendData = [
+  {
+    track: "M4", sev: "critical", badge: "B-01 · Confirmed Bug", badgeClass: "b-crit",
+    title: "JdbcStockMovementRepository.findAll() still sorts ASC, hiding newest dispatches >500",
+    file: "backend/network-server/.../persistence/JdbcStockMovementRepository.java#L79-L88",
+    issue: "Requests were updated to ORDER BY created_at DESC LIMIT 500, but movements still run ORDER BY id ASC LIMIT 500. Once >500 dispatches exist, recent movements vanish from demo /warehouse.",
+    fix: "Change query to ORDER BY id DESC LIMIT ? and remove client-side .reverse() in WarehouseQueueClient.tsx."
+  },
+  {
+    track: "M1", sev: "critical", badge: "B-02 · 64 KB Frame Bomb", badgeClass: "b-crit",
+    title: "Protocol v1 500-row queries exceed 65,536-byte MAX_FRAME_BYTES around ~360 rows",
+    file: "DefaultCommandDispatcher.java#L218 · StockFulfillmentCommandHandler.java#L132,L162",
+    issue: "MAX_QUERY_LIMIT is 500, but each serialized request/movement is ~170–220 bytes. Around ~350–400 records, the JSON frame exceeds 64 KB and returns INTERNAL_ERROR, breaking v1 /requests and /warehouse.",
+    fix: "Adopt an ADR to bring bounded keyset pagination (like v2 WorkspaceQueries, max 24 items/frame) into v1 list commands."
+  },
+  {
+    track: "M1", sev: "high", badge: "B-03 · Latency Bottleneck", badgeClass: "b-high",
+    title: "TcpCommandClient opens a fresh TCP + JSSE TLS handshake on every single command",
+    file: "TcpCommandClient.java#L210-L220 vs TcpCommandServer.java#L176",
+    issue: "TcpCommandServer.handleClient() already loops for multiple frames on one socket, yet TcpCommandClient closes the SSLSocket after 1 frame. Burst SSE refreshes cause dozens of redundant TLS handshakes.",
+    fix: "Add a bounded persistent TLS connection pool in TcpCommandClient with idle eviction and single transparent reconnect on stale EOF."
+  },
+  {
+    track: "M4", sev: "high", badge: "B-04 · Acceptor Starvation Risk", badgeClass: "b-high",
+    title: "InventoryWorkerPool uses CallerRunsPolicy on TcpCommandServer's single acceptor thread",
+    file: "InventoryWorkerPool.java#L55 · TcpCommandServer.java#L95,L130",
+    issue: "If activeSockets cleanup races with new connections and saturates the pool+queue, CallerRunsPolicy forces tcp-cmd-server-acceptor to run handleClient() synchronously, blocking all new accepts.",
+    fix: "Use AbortPolicy (with clean socket rejection on RejectedExecutionException) for the network accept pool."
+  },
+  {
+    track: "M2", sev: "high", badge: "B-05 · Contract Mismatch", badgeClass: "b-high",
+    title: "DefaultSupplierHttpClient rejects 200 OK if estimatedRestockDays is omitted; 0ms semaphore fail",
+    file: "DefaultSupplierHttpClient.java#L210-L225 · SupplierCommandHandler.java#L26,L54",
+    issue: "HTTP_API_V1.md and frontend treat estimatedRestockDays as optional, but DefaultSupplierHttpClient returns SUPPLIER_UNKNOWN if absent. Also, Semaphore(4).tryAcquire() fails immediately with 0ms wait on the 5th concurrent click.",
+    fix: "Make estimatedRestockDays optional when absent; use tryAcquire(250, MILLISECONDS) + brief SKU response caching."
+  },
+  {
+    track: "M3", sev: "high", badge: "B-06 · Slow Outage Detection", badgeClass: "b-high",
+    title: "GatewayNioSubscriber relies on OS TCP_KEEPIDLE (~16s–2h) and blocking SocketChannel.read()",
+    file: "GatewayNioSubscriber.java#L173-L204 · NioNotificationServer.java#L291",
+    issue: "A severed LAN cable takes ~16s on Linux—or up to 2 hours if ExtendedSocketOptions aren't supported—before the UI drops 'Live updates'.",
+    fix: "Emit NIO HEARTBEAT frames every 5s using Selector.select(5000) and switch GatewayNioSubscriber to non-blocking Selector + 12s deadline."
+  },
+  {
+    track: "M4", sev: "medium", badge: "B-07 · Missing Ledger Join", badgeClass: "b-med",
+    title: "WorkspaceQueries.movements() omits productName from SQL projection",
+    file: "backend/network-server/.../workspace/WorkspaceQueries.java#L148-L156",
+    issue: "Workspace requests join product_stock for productName, but movements only selects m.sku.",
+    fix: "Add JOIN product_stock p ON p.sku = m.sku and select left(p.name, 200) AS \"productName\"."
+  },
+  {
+    track: "M5", sev: "medium", badge: "B-08 · Two-Laptop LAN Hazard", badgeClass: "b-med",
+    title: "WorkspaceAccess allows only 5s clock skew with no drift warning in UI",
+    file: "backend/protocol/.../access/WorkspaceAccess.java#L73-L75",
+    issue: "Signed assertions expire in 30s with a +5s tolerance. Unsynced laptop clocks in the 2-machine physical LAN demo will fail all workspace calls with 403 FORBIDDEN.",
+    fix: "Measure gateway vs PING serverTime skew in NetworkStatusController and alert operators on /activity when drift > 3s."
+  },
+  {
+    track: "M3", sev: "medium", badge: "B-09 · Extra NIO Wakeups", badgeClass: "b-med",
+    title: "Rejected stock requests still broadcast NIO CHANGED notifications",
+    file: "DefaultStockReservationService.java#L183",
+    issue: "When stock is insufficient (REJECTED), product_stock did not change, yet all connected branch gateways receive a version bump and re-fetch inventory.",
+    fix: "Keep if live rejected-request tracking is desired, or tag version hints with a non-sensitive scope (e.g. 'REQUESTS')."
+  }
+];
+
+const enhancementData = [
+  {
+    sev: "medium", badge: "E-01 · M1 + M5 · Zero ADR Needed", badgeClass: "b-ok",
+    title: "Persistent Keep-Alive TLS Socket Pool in TcpCommandClient",
+    file: "TcpCommandClient.java + TcpCommandServer.java",
+    issue: "Mechanism: BlockingQueue<PooledSocket> reusing validated SSLSockets across commands (server already supports multi-frame loops). Validated: Wire protocol v1/v2 unchanged; SSLExceptions still fail closed.",
+    fix: "Proof: 20 commands reuse <=2 TLS handshakes; negative test kills idle socket mid-pool and confirms transparent reconnect with same requestId."
+  },
+  {
+    sev: "medium", badge: "E-02 · M3 · Minor ADR Recommended", badgeClass: "b-med",
+    title: "NIO Selector Heartbeat Frames & Non-Blocking Gateway Subscriber",
+    file: "NioNotificationServer.java + GatewayNioSubscriber.java",
+    issue: "Mechanism: selector.select(5000) emits {\"v\":1,\"type\":\"HEARTBEAT\",\"version\":n} (zero business/PII data); client uses non-blocking Selector with 12s read deadline.",
+    fix: "Proof: Cross-platform <=12s outage detection across macOS/Linux/Windows; negative test blackholes packets and confirms UI drops isLive cleanly."
+  },
+  {
+    sev: "medium", badge: "E-03 · M5 · Endorsed in ADR-004", badgeClass: "b-ok",
+    title: "Optional Mutual TLS (mTLS) Client Authentication on Port 7443",
+    file: "TlsServerSocketFactory.java + TlsSocketFactory.java",
+    issue: "Mechanism: SSLServerSocket.setNeedClientAuth(true) + KeyManagerFactory on gateway so rogue LAN hosts cannot even complete the TLS handshake.",
+    fix: "Proof: Trusted branch cert succeeds; rogue client with server CA but no client cert fails closed with SSLHandshakeException."
+  },
+  {
+    sev: "medium", badge: "E-04 · M2 · Minor Contract ADR", badgeClass: "b-med",
+    title: "Multi-Supplier Concurrent Fan-Out & Short-TTL Advisory Cache",
+    file: "DefaultSupplierHttpClient.java + SupplierCommandHandler.java",
+    issue: "Mechanism: Bounded ExecutorService querying allowlisted HTTPS origins via HttpURLConnection + custom CA truststore + 3s in-flight SKU cache.",
+    fix: "Proof: Partial availability shown when Supplier A returns 200 and Supplier B times out (504), strictly read-only."
+  },
+  {
+    sev: "medium", badge: "E-05 · M1 + M4 · Requires ADR-013", badgeClass: "b-high",
+    title: "Bounded Keyset Pagination for Protocol v1 List Commands",
+    file: "NETWORK_PROTOCOL_V1.md + HTTP_API_V1.md + JdbcStockRequestRepository",
+    issue: "Mechanism: Eliminates the 64 KB frame overflow above ~360 rows and fixes B-01 DESC movement sorting.",
+    fix: "Proof: 1,000 demo requests paginate inside <16 KB frames; tampered cursors return 400 VALIDATION_ERROR."
+  },
+  {
+    sev: "medium", badge: "E-06 · M4 · Requires ADR-013+", badgeClass: "b-high",
+    title: "Scheduled Reservation Expiry Sweeper (ScheduledExecutorService)",
+    file: "network-server/concurrent + inventory + Flyway V5",
+    issue: "Mechanism: Releases unpicked ACCEPTED reservations older than SLA TTL in a single atomic transaction (EXPIRED status) and emits NIO version hint.",
+    fix: "Proof: Restores available balance on expiry; concurrent MARK_PICKED vs sweeper serializes cleanly on SELECT FOR UPDATE."
+  },
+  {
+    sev: "medium", badge: "E-07 · M3 + M5 · Endorsed in Security Doc", badgeClass: "b-ok",
+    title: "Optional SSLEngine Encrypted NIO Feed for WAN Readiness",
+    file: "NioNotificationServer.java + GatewayNioSubscriber.java",
+    issue: "Mechanism: Wraps SocketChannel ByteBuffers with non-blocking javax.net.ssl.SSLEngine (wrap/unwrap + delegated tasks) for non-LAN deployments.",
+    fix: "Proof: 10 encrypted NIO subscribers receive hints; plaintext client rejected during TLS unwrap()."
+  },
+  {
+    sev: "medium", badge: "E-08 · Shared UI + M1/M5 · Zero Protocol Change", badgeClass: "b-ok",
+    title: "Interactive TLS PING Probe, Clock-Skew Meter & Modern UI Polish",
+    file: "ActivityStatusClient.tsx + BrandIntro.tsx + WorkspaceClient.tsx",
+    issue: "Mechanism: Calls existing GET /api/v1/ping for live round-trip ms + clock drift alert; fixes session-once intro, discardable pending state, combobox pickers, skeletons & toasts.",
+    fix: "Proof: Live PONG telemetry verified in browser; warehouse stop triggers clean 503 state without deadlocking forms."
+  }
+];
+
+function renderFindings(list, targetId, emptyId, filterFn) {
+  const container = document.getElementById(targetId);
+  const empty = emptyId ? document.getElementById(emptyId) : null;
+  const filtered = list.filter(filterFn);
+  container.innerHTML = filtered.map(item => `
+    <article class="finding" data-sev="${item.sev}">
+      <div class="finding-head">
+        <span class="finding-title">${item.title}</span>
+        <div class="finding-meta">
+          ${item.track ? `<span class="badge b-slate">${item.track}</span>` : ""}
+          <span class="badge ${item.badgeClass}">${item.badge}</span>
+        </div>
+      </div>
+      <div class="finding-body">
+        <div><code>${item.file}</code></div>
+        <div>${item.issue}</div>
+        <div class="fix-box"><strong>Solution / Proof:</strong> ${item.fix}</div>
+      </div>
+    </article>
+  `).join("");
+  if (empty) empty.style.display = filtered.length ? "none" : "block";
+}
+
+function renderStakeholders(query) {
+  const q = query.toLowerCase();
+  const grid = document.getElementById("stakeholder-grid");
+  const filtered = stakeholderData.filter(s =>
+    !q || JSON.stringify(s).toLowerCase().includes(q)
+  );
+  grid.innerHTML = filtered.map(s => `
+    <article class="persona">
+      <div class="persona-top">
+        <span class="persona-name">${s.role}</span>
+        <span class="badge ${s.badge}">${s.tag}</span>
+      </div>
+      <blockquote class="quote">“${s.quote}”</blockquote>
+      <ul>${s.pains.map(p => `<li>${p}</li>`).join("")}</ul>
+    </article>
+  `).join("");
+}
+
+let activeFilters = { frontend: "all", backend: "all" };
+function refreshAll() {
+  const q = document.getElementById("global-search").value.trim().toLowerCase();
+  renderFindings(frontendData, "frontend-findings", "frontend-empty", item =>
+    (activeFilters.frontend === "all" || item.sev === activeFilters.frontend) &&
+    (!q || JSON.stringify(item).toLowerCase().includes(q))
+  );
+  renderFindings(motionData, "motion-findings", null, item =>
+    !q || JSON.stringify(item).toLowerCase().includes(q)
+  );
+  renderStakeholders(q);
+  renderFindings(backendData, "backend-findings", "backend-empty", item =>
+    (activeFilters.backend === "all" || item.track === activeFilters.backend) &&
+    (!q || JSON.stringify(item).toLowerCase().includes(q))
+  );
+  renderFindings(enhancementData, "enhancement-findings", null, item =>
+    !q || JSON.stringify(item).toLowerCase().includes(q)
+  );
+}
+
+// Tab switching
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.setAttribute("aria-selected", "false"));
+    document.querySelectorAll(".panel-section").forEach(p => p.classList.remove("active"));
+    btn.setAttribute("aria-selected", "true");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+// Filter chips
+document.querySelectorAll(".chips").forEach(group => {
+  const key = group.dataset.chipGroup;
+  group.querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      group.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      activeFilters[key] = chip.dataset.filter;
+      refreshAll();
+    });
+  });
+});
+
+document.getElementById("global-search").addEventListener("input", refreshAll);
+
+// Interactive Motion Lab
+let demoAvail = 8;
+let demoRes = 2;
+function updateDemoRow(pulse) {
+  const row = document.getElementById("demo-stock-row");
+  const badge = document.getElementById("demo-avail-badge");
+  document.getElementById("demo-bar-avail").style.width = (demoAvail * 10) + "%";
+  document.getElementById("demo-bar-res").style.width = (demoRes * 10) + "%";
+  document.getElementById("demo-breakdown").textContent = `10 on hand · ${demoRes} reserved · ${demoAvail} available`;
+  badge.textContent = demoAvail === 0 ? "Out of stock" : `${demoAvail} available`;
+  badge.className = "badge " + (demoAvail === 0 ? "b-crit" : demoAvail <= 3 ? "b-high" : "b-ok");
+  if (pulse) {
+    row.classList.remove("pulse");
+    void row.offsetWidth;
+    row.classList.add("pulse");
+  }
+}
+function simulateSseDrop() {
+  if (demoAvail >= 3) { demoAvail -= 3; demoRes += 3; }
+  else { demoAvail = 0; demoRes = 10; }
+  updateDemoRow(true);
+}
+function resetSseDemo() {
+  demoAvail = 8; demoRes = 2;
+  updateDemoRow(false);
+}
+
+refreshAll();
+</script>
+</body>
+</html>

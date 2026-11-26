@@ -9,6 +9,8 @@ import { StockEventsProvider } from "@/lib/events/StockEventsContext";
 import { BrandIntro } from "@/components/BrandIntro";
 import { Header } from "@/components/Header";
 
+const workspaceEnabled = process.env.NEXT_PUBLIC_WORKSPACE_ENABLED === "true";
+
 export const metadata: Metadata = {
   title: { default: "ThogaMura | Branch-to-Warehouse Stock Coordination", template: "%s | ThogaMura" },
   description: "LAN-first branch-to-warehouse stock requests and supplier availability powered by real Java networking",
@@ -35,10 +37,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                   <p className="mt-1 text-xs text-slate-600">Branch and warehouse coordination.</p>
                 </div>
                 <nav aria-label="Footer navigation" className="flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-slate-600">
-                  <Link className="transition-colors hover:text-teal-800" href="/products">Inventory</Link>
-                  <Link className="transition-colors hover:text-teal-800" href="/requests">Requests</Link>
-                  <Link className="transition-colors hover:text-teal-800" href="/warehouse">Fulfillment</Link>
-                  <Link className="transition-colors hover:text-teal-800" href="/activity">Activity</Link>
+                  {workspaceEnabled ? (
+                    <>
+                      <Link className="transition-colors hover:text-teal-800" href="/workspace">Branch Workspace</Link>
+                      <Link className="transition-colors hover:text-teal-800" href="/activity">Activity</Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link className="transition-colors hover:text-teal-800" href="/products">Inventory</Link>
+                      <Link className="transition-colors hover:text-teal-800" href="/requests">Requests</Link>
+                      <Link className="transition-colors hover:text-teal-800" href="/warehouse">Fulfillment</Link>
+                      <Link className="transition-colors hover:text-teal-800" href="/activity">Activity</Link>
+                    </>
+                  )}
                 </nav>
               </div>
               <div className="border-t border-slate-200/70">

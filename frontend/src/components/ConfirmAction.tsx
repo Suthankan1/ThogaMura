@@ -22,7 +22,7 @@ export function ConfirmAction({ title, description, action, destructive = false,
 
   return <dialog ref={dialog} aria-labelledby="confirm-title" aria-describedby="confirm-description"
     onCancel={(event) => { event.preventDefault(); onClose(); }}
-    className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-200 bg-white p-6 text-slate-950 shadow-xl backdrop:bg-slate-950/60">
+    className="confirm-dialog m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-200 bg-white p-6 text-slate-950 shadow-xl backdrop:bg-slate-950/60">
     <h2 id="confirm-title" className="text-xl font-semibold">{title}</h2>
     <p id="confirm-description" className="mt-3 text-sm text-slate-700">{description}</p>
     <div className="mt-6 flex flex-wrap justify-end gap-2">

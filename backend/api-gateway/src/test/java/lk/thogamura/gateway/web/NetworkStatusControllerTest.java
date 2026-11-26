@@ -84,13 +84,16 @@ class NetworkStatusControllerTest {
 
         ObjectNode pong = OBJECT_MAPPER.createObjectNode();
         pong.put("status", "PONG");
+        pong.putObject("data").put("serverTime", java.time.Instant.now().toString());
         given(tcpCommandClient.pingOnce()).willReturn(pong);
 
         mockMvc.perform(get("/api/v1/network-status")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tlsCommand.status").value("OPERATIONAL"))
-                .andExpect(jsonPath("$.tlsCommand.owner").value("Member 5"));
+                .andExpect(jsonPath("$.tlsCommand.owner").value("Member 5"))
+                .andExpect(jsonPath("$.tlsCommand.serverTime").isString())
+                .andExpect(jsonPath("$.tlsCommand.clockSkewMs").isNumber());
     }
 
     @Test

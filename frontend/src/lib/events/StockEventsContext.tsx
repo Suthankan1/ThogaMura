@@ -24,6 +24,18 @@ const GATEWAY_URL =
 
 type InvalidationCallback = (version: number, source: InvalidationEvent["source"]) => void | Promise<void>;
 
+export interface ToastNotice {
+  id: number;
+  message: string;
+  tone?: "success" | "warning" | "error";
+}
+
+interface CacheEntry<T> {
+  data: T;
+  checkedAt: Date;
+  latencyMs: number;
+}
+
 interface StockEventsContextValue {
   /** Connection state of the browser's HTTP SSE stream to the gateway */
   sseStatus: SseConnectionStatus;
@@ -47,6 +59,12 @@ interface StockEventsContextValue {
   subscribeInvalidation: (callback: InvalidationCallback) => () => void;
   /** Detailed gateway network status if available */
   networkDetails: NetworkStatusResponse | null;
+  /** Read-through query cache cleared on invalidation */
+  readCache: <T>(key: string) => CacheEntry<T> | undefined;
+  /** Write confirmed query result to cache */
+  writeCache: <T>(key: string, entry: CacheEntry<T>) => void;
+  /** Show a brief accessible status toast notification */
+  notifyToast: (message: string, tone?: ToastNotice["tone"]) => void;
 }
 
 const StockEventsContext = createContext<StockEventsContextValue | null>(null);
@@ -59,12 +77,16 @@ export function StockEventsProvider({ children }: { children: React.ReactNode })
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [eventsLog, setEventsLog] = useState<InvalidationEvent[]>([]);
   const [networkDetails, setNetworkDetails] = useState<NetworkStatusResponse | null>(null);
+  const [toasts, setToasts] = useState<ToastNotice[]>([]);
 
   const listenersRef = useRef<Set<InvalidationCallback>>(new Set());
+  const cacheRef = useRef<Map<string, CacheEntry<unknown>>>(new Map());
+  const toastSeqRef = useRef(0);
   const versionRef = useRef(0);
   const [enqueueRefresh] = useState(() => createRefreshQueue<InvalidationEvent["source"]>(async (source) => {
     setIsRefreshing(true);
     try {
+      cacheRef.current.clear();
       const version = versionRef.current;
       const listeners = Array.from(listenersRef.current);
       await Promise.allSettled(listeners.map(async (listener) => listener(version, source)));
@@ -72,6 +94,21 @@ export function StockEventsProvider({ children }: { children: React.ReactNode })
       setIsRefreshing(false);
     }
   }));
+
+  const readCache = useCallback(<T,>(key: string) => cacheRef.current.get(key) as CacheEntry<T> | undefined, []);
+  const writeCache = useCallback(<T,>(key: string, entry: CacheEntry<T>) => {
+    cacheRef.current.set(key, entry as CacheEntry<unknown>);
+  }, []);
+  const dismissToast = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+  const notifyToast = useCallback((message: string, tone: ToastNotice["tone"] = "success") => {
+    const id = ++toastSeqRef.current;
+    setToasts((prev) => [...prev.slice(-2), { id, message, tone }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((item) => item.id !== id));
+    }, 3600);
+  }, []);
 
   const triggerRefresh = useCallback((source: InvalidationEvent["source"] = "MANUAL") => {
     return enqueueRefresh(source);
@@ -190,9 +227,36 @@ export function StockEventsProvider({ children }: { children: React.ReactNode })
         triggerRefresh,
         subscribeInvalidation,
         networkDetails,
+        readCache,
+        writeCache,
+        notifyToast,
       }}
     >
       {children}
+      {toasts.length > 0 && (
+        <div className="toast-region" aria-live="polite" aria-label="Notifications">
+          {toasts.map((toast) => {
+            const toneClass = toast.tone === "error"
+              ? "border-rose-300 bg-rose-50 text-rose-950"
+              : toast.tone === "warning"
+                ? "border-amber-300 bg-amber-50 text-amber-950"
+                : "border-teal-300 bg-white text-slate-900";
+            return (
+              <div key={toast.id} role="status" className={`toast-card flex items-start justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-sm shadow-lg ${toneClass}`}>
+                <p className="font-medium leading-snug">{toast.message}</p>
+                <button
+                  type="button"
+                  aria-label="Dismiss notification"
+                  onClick={() => dismissToast(toast.id)}
+                  className="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </StockEventsContext.Provider>
   );
 }

@@ -1,13 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { workspaceCall, workspacePage, WORKSPACE_ENABLED, WorkspaceError } from "@/lib/api/workspace";
+import { pingGateway, type PingResult } from "@/lib/api/network";
 import type { Product } from "@/lib/types/inventory";
 import { fetchProducts } from "@/lib/api/inventory";
+import { useBrandIntro } from "@/components/BrandIntro";
 import { useStockEvents } from "@/lib/events/useStockEvents";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
 import { formatFullDateTime } from "@/lib/formatters";
-import { Freshness, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
+import { Freshness, primaryAction, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
 
 async function readInventory() {
   if (!WORKSPACE_ENABLED) return { signIn: false, items: await fetchProducts() };
@@ -29,10 +32,30 @@ const demonstrations = [
 ];
 
 export function ActivityStatusClient() {
+  const startIntro = useBrandIntro();
   const { sseStatus, upstreamNioStatus, networkDetails, eventsLog, warningMessage } = useStockEvents();
   const catalog = useWarehouseQuery(readInventory);
+  const [pingResult, setPingResult] = useState<PingResult | null>(null);
+  const [pingError, setPingError] = useState<string | null>(null);
+  const [pinging, setPinging] = useState(false);
+
+  async function runPingTest() {
+    if (pinging) return;
+    setPinging(true);
+    setPingError(null);
+    try {
+      const res = await pingGateway();
+      setPingResult(res);
+    } catch (error) {
+      setPingError(error instanceof Error ? error.message : "Warehouse PING failed.");
+    } finally {
+      setPinging(false);
+    }
+  }
+
   const feed = networkDetails?.nioFeed;
   const tls = networkDetails?.tlsCommand?.status;
+  const clockSkewMs = networkDetails?.tlsCommand?.clockSkewMs;
   const transport = tls === "OPERATIONAL" ? "Verified TLS response"
     : tls === "DISABLED" ? "Local development · TLS disabled"
     : tls === "MISCONFIGURED" ? "TLS misconfigured"
@@ -48,9 +71,32 @@ export function ActivityStatusClient() {
   return (
     <div className="space-y-6">
       <WorkspaceHeading title="Network diagnostics" description="Check each connection in the stock workflow and inspect the change hints received by this browser."
-        action={<button type="button" className={secondaryAction} onClick={() => void catalog.refresh()}>Check inventory read</button>} />
+        action={
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={primaryAction} disabled={pinging} onClick={() => void runPingTest()}>
+              {pinging ? "Pinging warehouse…" : "Test TLS PING"}
+            </button>
+            <button type="button" className={secondaryAction} onClick={() => void catalog.refresh()}>Check inventory read</button>
+            <button type="button" className={secondaryAction} onClick={startIntro}>Replay intro</button>
+          </div>
+        } />
 
       {warningMessage && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{warningMessage}</p>}
+      {typeof clockSkewMs === "number" && clockSkewMs > 3000 && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          Clock skew detected between gateway and warehouse server ({clockSkewMs} ms). Timestamp relative ages may drift slightly.
+        </p>
+      )}
+      {pingError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">{pingError}</p>}
+      {pingResult && (
+        <div role="status" className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-sm text-teal-950 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            <strong>{pingResult.status}</strong> in <strong className="tabular-nums">{pingResult.latencyMs} ms</strong>
+            {pingResult.serverTime && <> · Warehouse time {formatFullDateTime(pingResult.serverTime)}</>}
+          </span>
+          {pingResult.requestId && <span className="font-mono text-xs text-teal-800">Ref {pingResult.requestId}</span>}
+        </div>
+      )}
 
       <section className={surface} aria-labelledby="connections">
         <h2 id="connections" className="border-b border-slate-200 p-4 text-lg font-semibold sm:p-5">Connections</h2>

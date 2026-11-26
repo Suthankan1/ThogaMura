@@ -46,6 +46,15 @@ public record SupplierStockResponse(
             int units,
             int restockDays,
             String checkedAt) {
+        return available(sku, supplier, units, Integer.valueOf(restockDays), checkedAt);
+    }
+
+    public static SupplierStockResponse available(
+            String sku,
+            String supplier,
+            int units,
+            Integer restockDays,
+            String checkedAt) {
         return new SupplierStockResponse(
                 sku,
                 ProtocolInfo.STATUS_AVAILABLE,

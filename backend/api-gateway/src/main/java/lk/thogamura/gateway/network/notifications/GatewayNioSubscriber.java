@@ -13,8 +13,12 @@ import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.net.SocketTimeoutException;
 import java.time.Duration;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -45,6 +49,7 @@ public class GatewayNioSubscriber implements AutoCloseable {
 
     private volatile SubscriberStatus status = SubscriberStatus.DISCONNECTED;
     private volatile SocketChannel currentChannel;
+    private volatile Selector currentSelector;
     private Thread subscriberThread;
 
     // Metrics & Observable State
@@ -170,16 +175,43 @@ public class GatewayNioSubscriber implements AutoCloseable {
                 logger.info("Connecting to warehouse NIO notification feed at {}:{}...",
                         config.host(), config.port());
 
+                Selector selector = Selector.open();
+                this.currentSelector = selector;
                 SocketChannel channel = SocketChannel.open();
                 this.currentChannel = channel;
+                channel.configureBlocking(false);
                 channel.setOption(StandardSocketOptions.TCP_NODELAY, true);
                 channel.setOption(StandardSocketOptions.SO_KEEPALIVE, true);
                 setIfSupported(channel, ExtendedSocketOptions.TCP_KEEPIDLE, 10);
                 setIfSupported(channel, ExtendedSocketOptions.TCP_KEEPINTERVAL, 2);
                 setIfSupported(channel, ExtendedSocketOptions.TCP_KEEPCOUNT, 3);
 
-                channel.socket().connect(new InetSocketAddress(config.host(), config.port()),
-                        Math.toIntExact(config.connectTimeout().toMillis()));
+                boolean connectedImmediately = channel.connect(new InetSocketAddress(config.host(), config.port()));
+                if (!connectedImmediately) {
+                    channel.register(selector, SelectionKey.OP_CONNECT);
+                    long deadlineNanos = System.nanoTime() + config.connectTimeout().toNanos();
+                    while (running.get() && !channel.isConnected()) {
+                        long remainingMs = Math.max(1L, java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime()));
+                        if (deadlineNanos - System.nanoTime() <= 0) {
+                            throw new SocketTimeoutException("NIO connect timed out");
+                        }
+                        selector.select(remainingMs);
+                        Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+                        while (keys.hasNext()) {
+                            SelectionKey key = keys.next();
+                            keys.remove();
+                            if (key.isValid() && key.isConnectable() && channel.finishConnect()) {
+                                key.interestOps(SelectionKey.OP_READ);
+                            }
+                        }
+                    }
+                } else {
+                    channel.register(selector, SelectionKey.OP_READ);
+                }
+
+                if (!running.get()) {
+                    break;
+                }
 
                 updateStatus(SubscriberStatus.CONNECTED);
                 logger.info("Connected to warehouse NIO notification feed at {}:{}",
@@ -192,14 +224,26 @@ public class GatewayNioSubscriber implements AutoCloseable {
                 NotificationFrameDecoder decoder = new NotificationFrameDecoder(config.maxFrameBytes());
 
                 while (running.get()) {
-                    int bytesRead = channel.read(buffer);
-                    if (bytesRead == -1) {
-                        throw new EOFException("Warehouse server closed notification channel (EOF)");
+                    selector.select();
+                    if (!running.get()) {
+                        break;
                     }
-                    if (bytesRead > 0) {
-                        buffer.flip();
-                        decoder.decode(buffer, this::handleRawFrame);
-                        buffer.compact();
+                    Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+                    while (keys.hasNext()) {
+                        SelectionKey key = keys.next();
+                        keys.remove();
+                        if (!key.isValid() || !key.isReadable()) {
+                            continue;
+                        }
+                        int bytesRead = channel.read(buffer);
+                        if (bytesRead == -1) {
+                            throw new EOFException("Warehouse server closed notification channel (EOF)");
+                        }
+                        if (bytesRead > 0) {
+                            buffer.flip();
+                            decoder.decode(buffer, this::handleRawFrame);
+                            buffer.compact();
+                        }
                     }
                 }
             } catch (ClosedByInterruptException e) {
@@ -286,6 +330,15 @@ public class GatewayNioSubscriber implements AutoCloseable {
     }
 
     private void closeChannel() {
+        Selector sel = this.currentSelector;
+        this.currentSelector = null;
+        if (sel != null && sel.isOpen()) {
+            try {
+                sel.wakeup();
+                sel.close();
+            } catch (IOException ignored) {
+            }
+        }
         SocketChannel ch = this.currentChannel;
         this.currentChannel = null;
         if (ch != null && ch.isOpen()) {

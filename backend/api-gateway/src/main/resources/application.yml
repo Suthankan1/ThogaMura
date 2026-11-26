@@ -36,6 +36,7 @@ thogamura:
       retry-backoff-ms: ${THOGAMURA_COMMAND_RETRY_BACKOFF_MS:100}
       retry-backoff-multiplier: ${THOGAMURA_COMMAND_RETRY_BACKOFF_MULTIPLIER:2.0}
       max-retry-backoff-ms: ${THOGAMURA_COMMAND_MAX_RETRY_BACKOFF_MS:1000}
+      max-pooled-connections: ${THOGAMURA_COMMAND_MAX_POOLED_CONNECTIONS:8}
   tls:
     client:
       # Validated JSSE TLS encryption for central warehouse command client (Member 5 - Issue #23)

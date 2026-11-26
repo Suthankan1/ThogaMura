@@ -28,6 +28,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -92,7 +94,7 @@ public class TcpCommandServer {
         running = true;
 
         int maxClients = config.getMaxClients();
-        workerPool = new InventoryWorkerPool(maxClients, maxClients, maxClients);
+        workerPool = new InventoryWorkerPool(maxClients, maxClients, maxClients, new ThreadPoolExecutor.AbortPolicy());
 
         acceptorThread = new Thread(this::acceptLoop, "tcp-cmd-server-acceptor");
         acceptorThread.setDaemon(true);
@@ -127,7 +129,13 @@ public class TcpCommandServer {
                 }
 
                 activeSockets.add(clientSocket);
-                workerPool.submit(() -> handleClient(clientSocket));
+                try {
+                    workerPool.submit(() -> handleClient(clientSocket));
+                } catch (RejectedExecutionException rejected) {
+                    activeSockets.remove(clientSocket);
+                    logger.warn("Worker pool saturated; rejecting connection from {}", clientSocket.getRemoteSocketAddress());
+                    closeQuietly(clientSocket);
+                }
             } catch (SocketException e) {
                 // Normal when serverSocket.close() is called during shutdown
                 if (!running) {

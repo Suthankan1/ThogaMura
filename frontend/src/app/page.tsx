@@ -6,22 +6,23 @@ import { fetchProducts, fetchStockRequests } from "@/lib/api/inventory";
 import { formatAge, formatFullDateTime, formatUnits } from "@/lib/formatters";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
 import { useStockEvents } from "@/lib/events/useStockEvents";
-import { Freshness, primaryAction, secondaryAction, RequestBadge, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
+import { Freshness, primaryAction, secondaryAction, RequestBadge, SkeletonRows, StockAllocationBar, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
 
 const readPicks = () => fetchStockRequests("ACCEPTED");
 const readDispatches = () => fetchStockRequests("PICKED");
 
 export default function Home() {
-  const products = useWarehouseQuery(fetchProducts);
-  const picks = useWarehouseQuery(readPicks);
-  const dispatches = useWarehouseQuery(readDispatches);
+  const products = useWarehouseQuery(fetchProducts, true, true, "demo:products");
+  const picks = useWarehouseQuery(readPicks, true, true, "demo:picks");
+  const dispatches = useWarehouseQuery(readDispatches, true, true, "demo:dispatches");
   const { warningMessage } = useStockEvents();
   const shortages = products.data?.filter((item) => item.available === 0);
   const lowStock = products.data?.filter((item) => item.available > 0 && item.available <= 3);
-  const pending = [
+  const allPending = [
     ...picks.data?.map((item) => ({ item, stage: "pick" })) ?? [],
     ...dispatches.data?.map((item) => ({ item, stage: "dispatch" })) ?? [],
-  ].sort((a, b) => (a.item.createdAt ?? "").localeCompare(b.item.createdAt ?? "")).slice(0, 6);
+  ].sort((a, b) => (a.item.createdAt ?? "").localeCompare(b.item.createdAt ?? ""));
+  const pending = allPending.slice(0, 6);
 
   return (
     <div className="space-y-7">
@@ -61,7 +62,12 @@ export default function Home() {
       <div className="grid items-start gap-5 min-[58rem]:grid-cols-2 xl:grid-cols-[5fr_7fr]">
         <section className={surface} aria-labelledby="pending-heading">
           <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
-            <h2 id="pending-heading" className="text-lg font-semibold">Fulfillment queue</h2>
+            <div>
+              <h2 id="pending-heading" className="text-lg font-semibold">Fulfillment queue</h2>
+              {allPending.length > 6 && (
+                <p className="text-xs text-slate-600">Showing oldest 6 of {allPending.length}</p>
+              )}
+            </div>
             <Link href="/warehouse" className={textAction}>View queue</Link>
           </header>
           {pending.length > 0 ? (
@@ -79,10 +85,12 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+          ) : (picks.loading || dispatches.loading) && !picks.error && !dispatches.error ? (
+            <SkeletonRows rows={3} />
           ) : (
             <p className="p-5 text-sm text-slate-600">
               {picks.error || dispatches.error ? "Some fulfillment work could not be checked."
-                : picks.loading || dispatches.loading ? "Checking warehouse queue…" : "No pending items in the loaded queues."}
+                : "No pending items in the loaded queues."}
             </p>
           )}
         </section>
@@ -96,9 +104,10 @@ export default function Home() {
             <ul className="divide-y divide-slate-100">
               {[...(shortages ?? []).slice(0, 3), ...[...(lowStock ?? [])].sort((a, b) => a.available - b.available).slice(0, 3)].map((item) => (
                 <li key={item.sku} className="exception-row">
-                  <div className="exception-product">
+                  <div className="exception-product space-y-1.5">
                     <p className="text-sm font-semibold">{item.name}</p>
-                    <p className="mt-1 font-mono text-xs text-slate-600">{item.sku}</p>
+                    <p className="font-mono text-xs text-slate-600">{item.sku}</p>
+                    <StockAllocationBar onHand={item.onHand} reserved={item.reserved} available={item.available} />
                   </div>
                   <span className={`stock-level rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${item.available === 0 ? "bg-rose-50 text-rose-900" : "bg-amber-50 text-amber-900"}`}>
                     {item.available === 0 ? <><span className="sr-only">0 available · </span>Out of stock</> : `${item.available} available`}
@@ -107,9 +116,11 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+          ) : products.loading && !products.error ? (
+            <SkeletonRows rows={3} />
           ) : (
             <p className="p-5 text-sm text-slate-600">
-              {products.error ? "Warehouse inventory could not be checked." : products.loading ? "Checking inventory…" : "No shortages in the loaded inventory."}
+              {products.error ? "Warehouse inventory could not be checked." : "No shortages in the loaded inventory."}
             </p>
           )}
         </section>

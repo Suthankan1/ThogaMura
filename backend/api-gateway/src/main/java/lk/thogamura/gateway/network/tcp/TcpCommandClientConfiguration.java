@@ -26,7 +26,8 @@ public class TcpCommandClientConfiguration {
             @Value("${thogamura.command.client.max-retries:2}") int maxRetries,
             @Value("${thogamura.command.client.retry-backoff-ms:100}") long retryBackoffMs,
             @Value("${thogamura.command.client.retry-backoff-multiplier:2.0}") double retryBackoffMultiplier,
-            @Value("${thogamura.command.client.max-retry-backoff-ms:1000}") long maxRetryBackoffMs) {
+            @Value("${thogamura.command.client.max-retry-backoff-ms:1000}") long maxRetryBackoffMs,
+            @Value("${thogamura.command.client.max-pooled-connections:8}") int maxPooledConnections) {
         return new TcpCommandClientConfig(
                 host,
                 port,
@@ -36,11 +37,12 @@ public class TcpCommandClientConfiguration {
                 maxRetries,
                 retryBackoffMs,
                 retryBackoffMultiplier,
-                maxRetryBackoffMs
+                maxRetryBackoffMs,
+                maxPooledConnections
         );
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean
     public TcpCommandClient tcpCommandClient(
             TcpCommandClientConfig config,

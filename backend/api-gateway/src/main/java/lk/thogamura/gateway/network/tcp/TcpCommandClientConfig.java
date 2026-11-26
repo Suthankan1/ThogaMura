@@ -16,6 +16,7 @@ public class TcpCommandClientConfig {
     public static final long DEFAULT_RETRY_BACKOFF_MS = 100L;
     public static final double DEFAULT_RETRY_BACKOFF_MULTIPLIER = 2.0;
     public static final long DEFAULT_MAX_RETRY_BACKOFF_MS = 1000L;
+    public static final int DEFAULT_MAX_POOLED_CONNECTIONS = 0;
 
     private final String host;
     private final int port;
@@ -26,6 +27,7 @@ public class TcpCommandClientConfig {
     private final long retryBackoffMs;
     private final double retryBackoffMultiplier;
     private final long maxRetryBackoffMs;
+    private final int maxPooledConnections;
 
     public TcpCommandClientConfig(
             String host,
@@ -37,6 +39,22 @@ public class TcpCommandClientConfig {
             long retryBackoffMs,
             double retryBackoffMultiplier,
             long maxRetryBackoffMs) {
+        this(host, port, connectTimeoutMs, readTimeoutMs, maxFrameBytes,
+                maxRetries, retryBackoffMs, retryBackoffMultiplier, maxRetryBackoffMs,
+                DEFAULT_MAX_POOLED_CONNECTIONS);
+    }
+
+    public TcpCommandClientConfig(
+            String host,
+            int port,
+            int connectTimeoutMs,
+            int readTimeoutMs,
+            int maxFrameBytes,
+            int maxRetries,
+            long retryBackoffMs,
+            double retryBackoffMultiplier,
+            long maxRetryBackoffMs,
+            int maxPooledConnections) {
         this.host = (host != null && !host.isBlank()) ? host.trim() : host;
         this.port = port;
         this.connectTimeoutMs = connectTimeoutMs;
@@ -46,6 +64,7 @@ public class TcpCommandClientConfig {
         this.retryBackoffMs = retryBackoffMs;
         this.retryBackoffMultiplier = retryBackoffMultiplier;
         this.maxRetryBackoffMs = maxRetryBackoffMs;
+        this.maxPooledConnections = maxPooledConnections;
     }
 
     public TcpCommandClientConfig(
@@ -96,6 +115,9 @@ public class TcpCommandClientConfig {
             throw new IllegalArgumentException("maxRetryBackoffMs must be >= retryBackoffMs: "
                     + maxRetryBackoffMs + " < " + retryBackoffMs);
         }
+        if (maxPooledConnections < 0) {
+            throw new IllegalArgumentException("maxPooledConnections must be non-negative: " + maxPooledConnections);
+        }
     }
 
     public String getHost() {
@@ -132,6 +154,10 @@ public class TcpCommandClientConfig {
 
     public long getMaxRetryBackoffMs() {
         return maxRetryBackoffMs;
+    }
+
+    public int getMaxPooledConnections() {
+        return maxPooledConnections;
     }
 
     @Override

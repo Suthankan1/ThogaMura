@@ -105,8 +105,13 @@ public class NetworkStatusController {
         status.put("sse", sse);
 
         Map<String, Object> tlsCommand = new LinkedHashMap<>();
-        tlsCommand.put("status", determineTlsStatus());
+        ProbeOutcome tlsOutcome = determineTlsStatus();
+        tlsCommand.put("status", tlsOutcome.status());
         tlsCommand.put("owner", "Member 5");
+        if (tlsOutcome.serverTime() != null) {
+            tlsCommand.put("serverTime", tlsOutcome.serverTime());
+            tlsCommand.put("clockSkewMs", tlsOutcome.clockSkewMs());
+        }
         status.put("tlsCommand", tlsCommand);
 
         return status;
@@ -115,51 +120,71 @@ public class NetworkStatusController {
     private final Object probeLock = new Object();
     private ProbeResult latestProbe;
 
-    private record ProbeResult(Path truststore, String status, long expiresNanos) {}
+    private record ProbeOutcome(String status, String serverTime, Long clockSkewMs) {
+        static ProbeOutcome of(String status) {
+            return new ProbeOutcome(status, null, null);
+        }
+    }
 
-    private String determineTlsStatus() {
+    private record ProbeResult(Path truststore, ProbeOutcome outcome, long expiresNanos) {}
+
+    private ProbeOutcome determineTlsStatus() {
         if (tlsProperties.isEmpty() || !tlsProperties.get().isEnabled()) {
-            return "DISABLED";
+            return ProbeOutcome.of("DISABLED");
         }
 
         TlsClientProperties props = tlsProperties.get();
         if (!props.isHostnameVerification()) {
-            return "MISCONFIGURED";
+            return ProbeOutcome.of("MISCONFIGURED");
         }
 
         String truststorePath = props.getTruststorePath();
         if (truststorePath == null || truststorePath.isBlank()) {
-            return "MISCONFIGURED";
+            return ProbeOutcome.of("MISCONFIGURED");
         }
         Path path = Path.of(truststorePath);
         if (!Files.exists(path) || !Files.isReadable(path)) {
-            return "MISCONFIGURED";
+            return ProbeOutcome.of("MISCONFIGURED");
         }
 
         if (tcpCommandClient.isEmpty()) {
-            return "UNREACHABLE";
+            return ProbeOutcome.of("UNREACHABLE");
         }
 
         TcpCommandClient client = tcpCommandClient.get();
         SocketFactory sf = client.getSocketFactory();
         if (sf != null && !(sf instanceof TlsSocketFactory)) {
-            return "MISCONFIGURED";
+            return ProbeOutcome.of("MISCONFIGURED");
         }
 
         synchronized (probeLock) {
             if (latestProbe != null && latestProbe.truststore().equals(path) && latestProbe.expiresNanos() - System.nanoTime() > 0) {
-                return latestProbe.status();
+                return latestProbe.outcome();
             }
-            String result;
+            ProbeOutcome outcome;
             try {
-                client.pingOnce();
-                result = "OPERATIONAL";
+                JsonNode pong = client.pingOnce();
+                String serverTime = pong != null ? pong.path("data").path("serverTime").textValue() : null;
+                Long clockSkewMs = computeClockSkewMs(serverTime);
+                outcome = new ProbeOutcome("OPERATIONAL", serverTime, clockSkewMs);
             } catch (CommandTransportException e) {
                 logger.debug("TLS diagnostic probe failed for {}", e.getRequestId());
-                result = "UNREACHABLE";
+                outcome = ProbeOutcome.of("UNREACHABLE");
             }
-            latestProbe = new ProbeResult(path, result, System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5));
-            return result;
+            latestProbe = new ProbeResult(path, outcome, System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5));
+            return outcome;
+        }
+    }
+
+    private static Long computeClockSkewMs(String serverTime) {
+        if (serverTime == null || serverTime.isBlank()) {
+            return null;
+        }
+        try {
+            long serverMs = java.time.Instant.parse(serverTime).toEpochMilli();
+            return Math.abs(System.currentTimeMillis() - serverMs);
+        } catch (Exception e) {
+            return null;
         }
     }
 

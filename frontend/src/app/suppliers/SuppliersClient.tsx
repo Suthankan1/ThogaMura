@@ -9,7 +9,7 @@ import { safeReturnTo } from "@/lib/returnTo";
 import type { SupplierAvailability, SupplierStatus } from "@/lib/types/inventory";
 import { isSku } from "@/lib/reservationAttempt";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
-import { field, Freshness, primaryAction, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
+import { Availability, field, Freshness, primaryAction, secondaryAction, surface, WorkspaceHeading } from "@/components/Workspace";
 
 const outcomes: Record<SupplierStatus, string> = {
   AVAILABLE: "Availability reported",
@@ -31,10 +31,17 @@ function SupplierInquiry({ initialSku, back }: { initialSku: string; back: strin
   const [lookup, setLookup] = useState<string | null>(null);
   const [result, setResult] = useState<SupplierAvailability | null>(null);
   const [validation, setValidation] = useState(false);
+  const [pickerFocused, setPickerFocused] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const revision = useRef(0);
   const invalidate = useCallback(() => { revision.current++; }, []);
-  const products = useWarehouseQuery(fetchProducts);
+  const products = useWarehouseQuery(fetchProducts, true, true, "demo:products");
   const product = products.data?.find((row) => row.sku === sku.trim());
+  const needle = sku.trim().toLowerCase();
+  const matchingProducts = (products.data ?? [])
+    .filter((row) => !needle || `${row.name} ${row.sku}`.toLowerCase().includes(needle))
+    .slice(0, 6);
+  const showSuggestions = pickerFocused && matchingProducts.length > 0 && !(matchingProducts.length === 1 && matchingProducts[0].sku === sku.trim());
 
   const inquire = useCallback(async (requested: string) => {
     const normalized = requested.trim();
@@ -84,13 +91,55 @@ function SupplierInquiry({ initialSku, back }: { initialSku: string; back: strin
 
       <div className="grid items-start gap-5 sm:grid-cols-2">
         <form onSubmit={submit} className={`${surface} space-y-4 p-5 sm:col-span-2`}>
-          <label htmlFor="supplier-sku" className="block text-sm font-semibold">Product SKU</label>
-          <input id="supplier-sku" type="search" list="supplier-products" value={sku} onChange={(event) => edit(event.target.value)}
-            className={field + " mt-1"}
-            aria-describedby={validation ? "supplier-error" : "supplier-help"} aria-invalid={validation} />
-          <datalist id="supplier-products">
-            {products.data?.map((item) => <option key={item.sku} value={item.sku}>{item.name}</option>)}
-          </datalist>
+          <div className="space-y-1.5" onFocus={() => setPickerFocused(true)} onBlur={(event) => {
+            if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) {
+              setPickerFocused(false);
+              setActiveIndex(-1);
+            }
+          }}>
+            <label htmlFor="supplier-sku" className="block text-sm font-semibold">Product SKU</label>
+            <input id="supplier-sku" type="search" value={sku} onChange={(event) => { edit(event.target.value); setActiveIndex(-1); }}
+              role="combobox" aria-autocomplete="list" aria-expanded={showSuggestions} aria-controls="supplier-sku-listbox"
+              aria-activedescendant={showSuggestions && activeIndex >= 0 ? `supplier-option-${activeIndex}` : undefined}
+              onKeyDown={(event) => {
+                if (!showSuggestions) return;
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setActiveIndex((prev) => (prev + 1) % matchingProducts.length);
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setActiveIndex((prev) => (prev <= 0 ? matchingProducts.length - 1 : prev - 1));
+                } else if (event.key === "Enter" && activeIndex >= 0 && matchingProducts[activeIndex]) {
+                  event.preventDefault();
+                  const chosen = matchingProducts[activeIndex].sku;
+                  edit(chosen);
+                  setPickerFocused(false);
+                  void inquire(chosen);
+                } else if (event.key === "Escape") {
+                  setPickerFocused(false);
+                }
+              }}
+              className={field + " mt-1"} autoComplete="off" placeholder="Search product or enter exact SKU"
+              aria-describedby={validation ? "supplier-error" : "supplier-help"} aria-invalid={validation} />
+            {showSuggestions && (
+              <ul id="supplier-sku-listbox" role="listbox" aria-label="Catalog products"
+                className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm">
+                {matchingProducts.map((item, idx) => (
+                  <li key={item.sku} id={`supplier-option-${idx}`} role="option" aria-selected={idx === activeIndex}>
+                    <button type="button"
+                      onClick={() => { edit(item.sku); setPickerFocused(false); void inquire(item.sku); }}
+                      className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-teal-50 ${idx === activeIndex ? "bg-teal-50" : ""}`}>
+                      <span className="min-w-0">
+                        <span className="block break-words font-semibold text-slate-900">{item.name}</span>
+                        <span className="block font-mono text-xs text-slate-600">{item.sku}</span>
+                      </span>
+                      <Availability units={item.available} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           {validation
             ? <p id="supplier-error" role="alert" className="text-sm text-rose-900">Enter a SKU with 1–64 letters, digits, hyphens or underscores.</p>
             : <p id="supplier-help" className="text-sm text-slate-600">Choose a warehouse item or enter its exact SKU.</p>}

@@ -71,4 +71,50 @@ class SupplierCommandHandlerTest {
         assertThat(responseNode.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_ERROR);
         assertThat(responseNode.get("error").get("code").asText()).isEqualTo(ProtocolInfo.ERROR_VALIDATION);
     }
+
+    @Test
+    @DisplayName("Should wait briefly for supplier permit before rejecting with overload")
+    void shouldWaitBrieflyForConcurrencySlotBeforeSucceeding() throws Exception {
+        java.util.concurrent.CountDownLatch firstFourEntered = new java.util.concurrent.CountDownLatch(4);
+        java.util.concurrent.CountDownLatch releaseHolders = new java.util.concurrent.CountDownLatch(1);
+
+        SupplierHttpClient gatedClient = sku -> {
+            if ("HOLD".equals(sku)) {
+                firstFourEntered.countDown();
+                try {
+                    releaseHolders.await(2, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return SupplierStockResponse.available(sku, "Demo Supplier", 10, null, "2026-11-19T00:00:00Z");
+        };
+
+        SupplierCommandHandler boundedHandler = new SupplierCommandHandler(gatedClient);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(5);
+        try {
+            var holders = new java.util.ArrayList<java.util.concurrent.Future<String>>();
+            for (int i = 0; i < 4; i++) {
+                JsonNode holdReq = TcpMessageCodec.parseJsonObject(TcpMessageCodec.formatRequest(
+                        ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK, UUID.randomUUID().toString(), Map.of("sku", "HOLD")));
+                holders.add(pool.submit(() -> boundedHandler.handle(holdReq)));
+            }
+            assertThat(firstFourEntered.await(2, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+            JsonNode queuedReq = TcpMessageCodec.parseJsonObject(TcpMessageCodec.formatRequest(
+                    ProtocolInfo.COMMAND_GET_SUPPLIER_STOCK, UUID.randomUUID().toString(), Map.of("sku", "SECOND")));
+            var queuedFuture = pool.submit(() -> boundedHandler.handle(queuedReq));
+            Thread.sleep(60);
+            releaseHolders.countDown();
+
+            for (var future : holders) {
+                JsonNode res = TcpMessageCodec.parseJsonObject(future.get(3, java.util.concurrent.TimeUnit.SECONDS));
+                assertThat(res.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_AVAILABLE);
+            }
+            JsonNode queuedRes = TcpMessageCodec.parseJsonObject(queuedFuture.get(3, java.util.concurrent.TimeUnit.SECONDS));
+            assertThat(queuedRes.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_AVAILABLE);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
 }

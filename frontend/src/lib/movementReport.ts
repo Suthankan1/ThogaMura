@@ -18,13 +18,30 @@ function quote(value: string | number) {
 }
 
 export function movementCsv(rows: (StockMovement | Movement)[]) {
-  const headers = ["Movement", "Request reference", "SKU", "Quantity change", "Reason", "Recorded time"];
   const extended = rows.some((row) => "receivingCommandId" in row);
+  const headers = extended
+    ? ["Movement", "Request reference", "SKU", "Product", "Quantity change", "Reason", "Recorded time", "Receiving command", "Branch", "Recorded by", "Receiving reference"]
+    : ["Movement", "Request reference", "SKU", "Quantity change", "Reason", "Recorded time"];
   return [
-    extended ? [...headers, "Receiving command", "Branch", "Recorded by", "Receiving reference"] : headers,
+    headers,
     ...rows.map((row) => {
-      const cells = [row.id, row.stockRequestId ?? "", row.sku, row.quantityDelta, row.reason, row.occurredAt];
-      return extended ? [...cells, ...("receivingCommandId" in row ? [row.receivingCommandId ?? "", row.branchId ?? "", row.recordedBy ?? "", row.note ?? ""] : ["", "", "", ""])] : cells;
+      if (!extended) {
+        return [row.id, row.stockRequestId ?? "", row.sku, row.quantityDelta, row.reason, row.occurredAt];
+      }
+      const ext = row as Movement;
+      return [
+        ext.id,
+        ext.stockRequestId ?? "",
+        ext.sku,
+        ext.productName ?? "",
+        ext.quantityDelta,
+        ext.reason,
+        ext.occurredAt,
+        ext.receivingCommandId ?? "",
+        ext.branchId ?? "",
+        ext.recordedBy ?? "",
+        ext.note ?? "",
+      ];
     }),
   ].map((row) => row.map(quote).join(",")).join("\r\n") + "\r\n";
 }

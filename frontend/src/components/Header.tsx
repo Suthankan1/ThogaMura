@@ -106,13 +106,13 @@ export function Header() {
       >
         {/* Full Backdrop */}
         <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-200"
+          className="drawer-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
           onClick={() => setOpenPath(null)}
           aria-hidden="true"
         />
 
         {/* Viewport-height Opaque Sheet */}
-        <div className="relative z-10 flex h-dvh w-4/5 max-w-xs flex-col overflow-hidden bg-white shadow-2xl">
+        <div className="drawer-sheet relative z-10 flex h-dvh w-4/5 max-w-xs flex-col overflow-hidden bg-white shadow-2xl">
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-2">
               <Link href={workspaceEnabled ? "/workspace" : "/"} onNavigate={() => { setOpenPath(null); startIntro(); }} className="flex items-center gap-2">

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { ConfirmAction } from "@/components/ConfirmAction";
-import { Availability, Field, field, Freshness, RequestBadge, requestStates, secondaryAction, stockFilters, surface, textAction, Warning } from "@/components/Workspace";
+import { Availability, Field, field, Freshness, RequestBadge, requestStates, secondaryAction, StockAllocationBar, stockFilters, surface, textAction, Warning } from "@/components/Workspace";
 import { exactProduct, UUID_V4, workspacePage, workspaceRequest, workspaceSupplier, type Movement, type Read, type Request, type Role, type Status } from "@/lib/api/workspace";
 import { formatAge, formatFullDateTime, formatUnits, localDateBounds } from "@/lib/formatters";
 import { downloadCsv, movementCsv } from "@/lib/movementReport";
@@ -43,6 +43,7 @@ export function Inventory({ view, onReserve, supplierHref, onSupplier }: {
         <div><p className="break-words font-semibold">{item.name}</p><p className="break-all font-mono text-xs text-slate-600">{item.sku}</p></div>
         <div className="space-y-2 text-sm"><Availability units={item.available} /><BalanceChange available={item.available} />
           <p className="text-slate-700">{item.onHand} on hand · {item.reserved} reserved</p>
+          <div className="max-w-44"><StockAllocationBar onHand={item.onHand} reserved={item.reserved} available={item.available} /></div>
         </div>
         <div className="flex flex-wrap gap-x-4 sm:col-span-2">
           {item.followUpId && <Link className={textAction} href={followHref(item.followUpId)}>Follow-up open</Link>}
@@ -202,7 +203,7 @@ export function Ledger({ view }: { view: View }) {
     <Paged<Movement> key={path} title="Movements ledger" path={path} view={view} filtered={!!(q || from || through || reason)} empty="No stock movements have been recorded."
       action={(items) => items.length ? <button className={secondaryAction} onClick={() => downloadCsv("warehouse-movements.csv", movementCsv(items))}>Export this page</button> : null}>
       {(items) => <ul className="divide-y divide-slate-200">{items.map((row) => <li key={row.id} className="grid min-w-0 gap-3 py-4 first:pt-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <div className="space-y-2"><p className="break-all font-semibold">{row.sku}</p>
+        <div className="space-y-2"><p className="break-all font-semibold">{row.productName ? `${row.productName} · ${row.sku}` : row.sku}</p>
           <span className={`inline-flex rounded-lg px-3 py-1 font-semibold tabular-nums ${row.reason === "RECEIVE" ? "bg-teal-50 text-teal-950" : "bg-amber-50 text-amber-950"}`}>
             {row.reason === "RECEIVE" ? "Received +" : "Dispatched "}{row.quantityDelta}
           </span>
@@ -252,7 +253,10 @@ function SupplierResult({ sku, view, repeat, submit, disabled }: { sku: string; 
   return <section aria-label="Supplier inquiry result" className={`${panel} max-w-2xl border-teal-200`} aria-busy={supplier.loading}>
     <h3 className="text-lg font-semibold">{sku}</h3>
     {supplier.loading ? <p role="status">Checking supplier…</p> : supplier.error ? <div className="space-y-2"><Warning>Supplier availability unknown. {supplier.error}</Warning>
-      <p>{stock.data && !stock.error ? formatUnits(stock.data.available) + " available in warehouse" : "Warehouse balance unavailable"}</p></div> :
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" className={secondaryAction} onClick={() => void refresh()}>Check again</button>
+        <p>{stock.data && !stock.error ? formatUnits(stock.data.available) + " available in warehouse" : "Warehouse balance unavailable"}</p>
+      </div></div> :
       item && <div className="space-y-4" role="status">
         <dl className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg bg-teal-50 p-4 text-teal-950"><dt className="text-sm">{item.supplier}</dt><dd className="text-xl font-semibold">{formatUnits(item.reportedQuantity)} reported by supplier</dd></div>

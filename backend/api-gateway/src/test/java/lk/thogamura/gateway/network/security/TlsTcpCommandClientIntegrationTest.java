@@ -395,5 +395,45 @@ class TlsTcpCommandClientIntegrationTest {
         assertThat(tlsCommand).isNotNull();
         assertThat(tlsCommand.get("status")).isEqualTo("OPERATIONAL");
         assertThat(tlsCommand.get("owner")).isEqualTo("Member 5");
+        assertThat(tlsCommand.get("serverTime")).isInstanceOf(String.class);
+        assertThat(tlsCommand.get("clockSkewMs")).isInstanceOf(Number.class);
+    }
+
+    @Test
+    @DisplayName("Pooled TLS client reuses a single authenticated TLS session across sequential commands and closes cleanly")
+    void testPooledTlsClientReusesSingleSessionAndClosesCleanly() throws Exception {
+        SSLServerSocket server = startTlsEchoServer(validBundle.serverKeystore(), validBundle.serverPassword());
+        int port = server.getLocalPort();
+
+        TlsSocketFactory socketFactory = TlsSocketFactory.fromTruststore(
+                validBundle.gatewayTruststore(),
+                validBundle.trustPassword(),
+                "PKCS12",
+                new String[]{"TLSv1.3", "TLSv1.2"},
+                true
+        );
+
+        TcpCommandClientConfig config = new TcpCommandClientConfig(
+                "127.0.0.1",
+                port,
+                ProtocolInfo.DEFAULT_CONNECT_TIMEOUT_MS,
+                ProtocolInfo.DEFAULT_READ_TIMEOUT_MS,
+                ProtocolInfo.MAX_FRAME_BYTES,
+                TcpCommandClientConfig.DEFAULT_MAX_RETRIES,
+                TcpCommandClientConfig.DEFAULT_RETRY_BACKOFF_MS,
+                TcpCommandClientConfig.DEFAULT_RETRY_BACKOFF_MULTIPLIER,
+                TcpCommandClientConfig.DEFAULT_MAX_RETRY_BACKOFF_MS,
+                4
+        );
+
+        try (TcpCommandClient client = new TcpCommandClient(config, socketFactory)) {
+            for (int i = 0; i < 5; i++) {
+                JsonNode pong = client.ping();
+                assertThat(pong.get("status").asText()).isEqualTo(ProtocolInfo.STATUS_PONG);
+            }
+            assertThat(client.getCreatedConnectionCount()).isEqualTo(1);
+            assertThat(client.getReusedConnectionCount()).isEqualTo(4);
+            assertThat(client.getPooledConnectionCount()).isEqualTo(1);
+        }
     }
 }

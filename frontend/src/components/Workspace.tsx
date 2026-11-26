@@ -66,3 +66,25 @@ export function Availability({ units }: { units: number }) {
     {new Intl.NumberFormat("en").format(units)} available{units === 0 ? " · Out of stock" : units <= 3 ? " · Low stock" : ""}
   </span>;
 }
+
+export function StockAllocationBar({ onHand, reserved, available }: { onHand: number; reserved: number; available: number }) {
+  const total = Math.max(onHand, reserved + available, 1);
+  const availPct = Math.round((Math.max(available, 0) / total) * 100);
+  const resPct = Math.min(100 - availPct, Math.round((Math.max(reserved, 0) / total) * 100));
+  return (
+    <div className="stock-alloc-track" aria-hidden="true" title={`${available} available, ${reserved} reserved of ${onHand} on hand`}>
+      {availPct > 0 && <div className="stock-alloc-available" style={{ width: `${availPct}%` }} />}
+      {resPct > 0 && <div className="stock-alloc-reserved" style={{ width: `${resPct}%` }} />}
+    </div>
+  );
+}
+
+export function SkeletonRows({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="space-y-3 p-4" aria-hidden="true">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="skeleton-shimmer h-10 rounded-xl" />
+      ))}
+    </div>
+  );
+}

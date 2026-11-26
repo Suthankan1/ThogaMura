@@ -216,4 +216,34 @@ describe("Audit Findings F01-F37 Verification Tests", () => {
       assert.equal(state, "CACHED_WITH_NOTICE");
     });
   });
+
+  describe("Gateway diagnostic PING & attempt discard behavior", () => {
+    it("measures round-trip PING latency and throws on failed status", async (t) => {
+      const { pingGateway } = await import("../src/lib/api/network.ts");
+      const mock = t.mock.method(globalThis, "fetch", async () =>
+        Response.json({ status: "PONG", requestId: "req-1", serverTime: "2026-11-26T00:00:00Z" }));
+      const ok = await pingGateway();
+      assert.equal(ok.status, "PONG");
+      assert.equal(ok.requestId, "req-1");
+      assert.equal(typeof ok.latencyMs, "number");
+
+      mock.mock.mockImplementation(async () => new Response("Unavailable", { status: 503 }));
+      await assert.rejects(pingGateway(), /503/);
+    });
+
+    it("clears only matching saved reservation attempts when discarding", async () => {
+      const { clearAttempt, getStoredAttempt, parseReservationAttempt, storeAttempt } = await import("../src/lib/reservationAttempt.ts");
+      const firstId = "10000000-0000-4000-8000-000000000001";
+      const secondId = "10000000-0000-4000-8000-000000000002";
+      (globalThis as unknown as { window?: { dispatchEvent: () => void; sessionStorage?: Map<string, string> } }).window = {
+        dispatchEvent: () => {},
+      };
+      storeAttempt({ sku: "ITEM-007", quantity: 3, idempotencyKey: firstId });
+      clearAttempt(secondId);
+      assert.equal(parseReservationAttempt(getStoredAttempt())?.idempotencyKey, firstId);
+      clearAttempt(firstId);
+      assert.equal(getStoredAttempt(), null);
+      delete (globalThis as unknown as { window?: unknown }).window;
+    });
+  });
 });

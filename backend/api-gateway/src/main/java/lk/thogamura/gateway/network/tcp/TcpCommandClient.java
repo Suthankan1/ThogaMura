@@ -25,7 +25,10 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Blocking Java TCP command client for the Spring Boot API Gateway.
@@ -39,11 +42,12 @@ import java.util.concurrent.TimeUnit;
  * allowing Member 5 to integrate validated JSSE TLS ({@code SSLSocketFactory}) seamlessly
  * without changing the application message format or client logic.</p>
  */
-public class TcpCommandClient {
+public class TcpCommandClient implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpCommandClient.class);
     private static final int COMMAND_BUDGET_MS = 12_000;
     private static final int SUPPLIER_RESPONSE_TIMEOUT_MS = 9_000;
+    private static final long POOL_IDLE_TTL_NANOS = TimeUnit.SECONDS.toNanos(20);
 
     private static int configuredTimeout(int limit) {
         return limit == 0 ? COMMAND_BUDGET_MS : limit;
@@ -52,6 +56,11 @@ public class TcpCommandClient {
     private final TcpCommandClientConfig config;
     private final SocketFactory socketFactory;
     private final Sleeper sleeper;
+    private final ConcurrentLinkedDeque<PooledConnection> connectionPool = new ConcurrentLinkedDeque<>();
+    private final AtomicInteger poolSize = new AtomicInteger(0);
+    private final AtomicLong createdConnectionCount = new AtomicLong(0);
+    private final AtomicLong reusedConnectionCount = new AtomicLong(0);
+    private volatile boolean closed = false;
 
     public TcpCommandClient(TcpCommandClientConfig config) {
         this(config, SocketFactory.getDefault(), Thread::sleep);
@@ -204,25 +213,39 @@ public class TcpCommandClient {
     private JsonNode executeSingleAttempt(int version, String type, String effectiveRequestId, String requestPayload,
                                           int responseTimeoutMs, long commandDeadline)
             throws CommandTransportException {
-        logger.debug("Dispatching TCP command attempt for '{}' (requestId: '{}') to {}:{}",
-                type, effectiveRequestId, config.getHost(), config.getPort());
+        PooledConnection conn = borrowConnection(effectiveRequestId, commandDeadline);
+        if (conn.reused()) {
+            try {
+                return executeOnConnection(conn, version, type, effectiveRequestId, requestPayload, responseTimeoutMs, commandDeadline);
+            } catch (ServerUnavailableException staleError) {
+                // Pooled socket was closed by server while idle; transparently open a fresh socket once
+                logger.debug("Pooled socket went stale for '{}' (requestId: '{}'), opening fresh connection", type, effectiveRequestId);
+                closePooledConnection(conn);
+                PooledConnection fresh = openFreshConnection(effectiveRequestId, commandDeadline);
+                return executeOnConnection(fresh, version, type, effectiveRequestId, requestPayload, responseTimeoutMs, commandDeadline);
+            }
+        }
+        return executeOnConnection(conn, version, type, effectiveRequestId, requestPayload, responseTimeoutMs, commandDeadline);
+    }
 
-        Socket socket = connectSocket(effectiveRequestId, commandDeadline);
+    private JsonNode executeOnConnection(PooledConnection conn, int version, String type, String effectiveRequestId,
+                                         String requestPayload, int responseTimeoutMs, long commandDeadline)
+            throws CommandTransportException {
+        logger.debug("Dispatching TCP command attempt for '{}' (requestId: '{}', reused={}) to {}:{}",
+                type, effectiveRequestId, conn.reused(), config.getHost(), config.getPort());
+
         long responseDeadline = Math.min(commandDeadline, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(responseTimeoutMs));
+        conn.setDeadline(responseDeadline);
+        boolean keepAlive = false;
 
-        try (socket;
-             OutputStream out = socket.getOutputStream();
-             InputStream in = withReadDeadline(socket, responseDeadline);
-             TcpFrameWriter writer = new TcpFrameWriter(out, config.getMaxFrameBytes());
-             TcpFrameReader reader = new TcpFrameReader(in, config.getMaxFrameBytes())) {
-
+        try {
             // Transmit framed request
-            writer.writeFrame(requestPayload);
+            conn.writer().writeFrame(requestPayload);
 
             // Await framed response with bounded SO_TIMEOUT
             String responsePayload;
             try {
-                responsePayload = reader.readNextFrameString();
+                responsePayload = conn.reader().readNextFrameString();
             } catch (SocketTimeoutException e) {
                 logger.warn("Response deadline expired for requestId '{}'", effectiveRequestId);
                 throw new CommandTimeoutException(
@@ -310,6 +333,7 @@ public class TcpCommandClient {
                 );
             }
 
+            keepAlive = config.getMaxPooledConnections() > 0 && !closed && !conn.socket().isClosed();
             return responseNode;
         } catch (CommandTransportException e) {
             throw e;
@@ -319,23 +343,154 @@ public class TcpCommandClient {
                     effectiveRequestId,
                     e
             );
+        } finally {
+            if (keepAlive) {
+                returnToPool(conn);
+            } else {
+                closePooledConnection(conn);
+            }
         }
     }
 
-    private InputStream withReadDeadline(Socket socket, long deadline) throws IOException {
-        return new FilterInputStream(socket.getInputStream()) {
-            @Override
-            public int read() throws IOException {
-                socket.setSoTimeout(remainingMillis(deadline, Integer.MAX_VALUE));
-                return in.read();
+    private PooledConnection borrowConnection(String requestId, long deadline) throws CommandTransportException {
+        if (config.getMaxPooledConnections() > 0 && !closed) {
+            long now = System.nanoTime();
+            PooledConnection candidate;
+            while ((candidate = connectionPool.pollFirst()) != null) {
+                poolSize.decrementAndGet();
+                if (!candidate.isUsable(now)) {
+                    closePooledConnection(candidate);
+                    continue;
+                }
+                reusedConnectionCount.incrementAndGet();
+                return candidate.asReused();
             }
+        }
+        return openFreshConnection(requestId, deadline);
+    }
 
-            @Override
-            public int read(byte[] bytes, int offset, int length) throws IOException {
-                socket.setSoTimeout(remainingMillis(deadline, Integer.MAX_VALUE));
-                return in.read(bytes, offset, length);
+    private PooledConnection openFreshConnection(String requestId, long deadline) throws CommandTransportException {
+        Socket socket = connectSocket(requestId, deadline);
+        try {
+            OutputStream out = socket.getOutputStream();
+            DeadlineInputStream in = new DeadlineInputStream(socket, socket.getInputStream());
+            TcpFrameWriter writer = new TcpFrameWriter(out, config.getMaxFrameBytes());
+            TcpFrameReader reader = new TcpFrameReader(in, config.getMaxFrameBytes());
+            createdConnectionCount.incrementAndGet();
+            return new PooledConnection(socket, in, writer, reader, false, System.nanoTime());
+        } catch (IOException e) {
+            closeQuietly(socket);
+            throw new CommandTransportException(
+                    "Socket stream initialization error for requestId: " + requestId + ": " + e.getMessage(),
+                    requestId,
+                    e
+            );
+        }
+    }
+
+    private void returnToPool(PooledConnection conn) {
+        if (closed || config.getMaxPooledConnections() <= 0 || conn.socket().isClosed()) {
+            closePooledConnection(conn);
+            return;
+        }
+        while (true) {
+            int current = poolSize.get();
+            if (current >= config.getMaxPooledConnections()) {
+                closePooledConnection(conn);
+                return;
             }
-        };
+            if (poolSize.compareAndSet(current, current + 1)) {
+                connectionPool.offerFirst(conn.touched(System.nanoTime()));
+                if (closed) {
+                    close();
+                }
+                return;
+            }
+        }
+    }
+
+    private void closePooledConnection(PooledConnection conn) {
+        if (conn == null) return;
+        try {
+            conn.writer().close();
+        } catch (IOException ignored) {}
+        try {
+            conn.reader().close();
+        } catch (IOException ignored) {}
+        closeQuietly(conn.socket());
+    }
+
+    @Override
+    public void close() {
+        closed = true;
+        PooledConnection conn;
+        while ((conn = connectionPool.pollFirst()) != null) {
+            poolSize.decrementAndGet();
+            closePooledConnection(conn);
+        }
+    }
+
+    public int getPooledConnectionCount() {
+        return Math.max(0, poolSize.get());
+    }
+
+    public long getCreatedConnectionCount() {
+        return createdConnectionCount.get();
+    }
+
+    public long getReusedConnectionCount() {
+        return reusedConnectionCount.get();
+    }
+
+    private static final class DeadlineInputStream extends FilterInputStream {
+        private final Socket socket;
+        private volatile long deadlineNanos;
+
+        DeadlineInputStream(Socket socket, InputStream in) {
+            super(in);
+            this.socket = socket;
+        }
+
+        void setDeadlineNanos(long deadlineNanos) {
+            this.deadlineNanos = deadlineNanos;
+        }
+
+        @Override
+        public int read() throws IOException {
+            socket.setSoTimeout(remainingMillis(deadlineNanos, Integer.MAX_VALUE));
+            return in.read();
+        }
+
+        @Override
+        public int read(byte[] bytes, int offset, int length) throws IOException {
+            socket.setSoTimeout(remainingMillis(deadlineNanos, Integer.MAX_VALUE));
+            return in.read(bytes, offset, length);
+        }
+    }
+
+    private record PooledConnection(
+            Socket socket,
+            DeadlineInputStream in,
+            TcpFrameWriter writer,
+            TcpFrameReader reader,
+            boolean reused,
+            long lastUsedNanos) {
+        void setDeadline(long deadlineNanos) {
+            in.setDeadlineNanos(deadlineNanos);
+        }
+
+        boolean isUsable(long nowNanos) {
+            return !socket.isClosed() && socket.isConnected() && !socket.isInputShutdown() && !socket.isOutputShutdown()
+                    && (nowNanos - lastUsedNanos) <= POOL_IDLE_TTL_NANOS;
+        }
+
+        PooledConnection asReused() {
+            return reused ? this : new PooledConnection(socket, in, writer, reader, true, lastUsedNanos);
+        }
+
+        PooledConnection touched(long nowNanos) {
+            return new PooledConnection(socket, in, writer, reader, true, nowNanos);
+        }
     }
 
     private static int remainingMillis(long deadline, int ceiling) throws SocketTimeoutException {

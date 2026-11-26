@@ -66,7 +66,12 @@ export function RequestsClient() {
   return <>
     <RecordList title="Stock requests" noun="request" count={rows.length} loaded={requests.data?.length}
       returnTo={returnTo} search={search} prompt="Search product, SKU or reference" label="Status"
-      filter={filter} filterKey="status" options={statuses} query={requests}>
+      filter={filter} filterKey="status" options={statuses} query={requests}
+      banner={requests.data?.length === 500 ? (
+        <p className="records-message border-t border-amber-200 bg-amber-50/80 text-amber-950">
+          Showing the newest 500 requests in demo mode. Filter by status or search by SKU to narrow results, or open a reference directly via URL.
+        </p>
+      ) : undefined}>
       {!!rows.length && <table className="records-table" aria-label="Stock requests">
         <thead><tr><th>Reference</th><th>Product</th><th className="number">Quantity</th><th>Status</th><th>Created <small>{Intl.DateTimeFormat().resolvedOptions().timeZone}</small></th></tr></thead>
         <tbody>{page.items.map(request => {

@@ -56,7 +56,12 @@ export function BrandIntro({ children }: { children: ReactNode }) {
   }, [sequence]);
 
   return <StartIntro.Provider value={start}>
-    {sequence !== null && <div key={sequence} ref={overlay} className="brand-intro">
+    {sequence !== null && <div key={sequence} ref={overlay} className="brand-intro"
+      onClick={(event) => {
+        if (!(event.target instanceof HTMLElement) || !event.target.closest("button")) {
+          setSequence(null);
+        }
+      }}>
       <span role="status" className="sr-only">Opening ThogaMura</span>
       <button type="button" className="intro-skip" onClick={() => setSequence(null)}>Skip intro</button>
       <svg aria-hidden="true" className="intro-reflection" viewBox="0 0 1200 600" preserveAspectRatio="none">

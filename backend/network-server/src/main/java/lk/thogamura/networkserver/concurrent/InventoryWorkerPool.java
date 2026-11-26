@@ -39,6 +39,14 @@ public class InventoryWorkerPool implements ExecutorService, AutoCloseable {
     private final int queueCapacity;
 
     public InventoryWorkerPool(int corePoolSize, int maxPoolSize, int queueCapacity) {
+        this(corePoolSize, maxPoolSize, queueCapacity, new ThreadPoolExecutor.CallerRunsPolicy());
+    }
+
+    public InventoryWorkerPool(
+            int corePoolSize,
+            int maxPoolSize,
+            int queueCapacity,
+            RejectedExecutionHandler rejectionHandler) {
         if (corePoolSize < 1) {
             throw new IllegalArgumentException("corePoolSize must be at least 1: " + corePoolSize);
         }
@@ -48,11 +56,11 @@ public class InventoryWorkerPool implements ExecutorService, AutoCloseable {
         if (queueCapacity < 1) {
             throw new IllegalArgumentException("queueCapacity must be at least 1: " + queueCapacity);
         }
+        Objects.requireNonNull(rejectionHandler, "rejectionHandler must not be null");
 
         this.queueCapacity = queueCapacity;
         BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(queueCapacity);
         ThreadFactory threadFactory = new InventoryWorkerThreadFactory();
-        RejectedExecutionHandler rejectionHandler = new ThreadPoolExecutor.CallerRunsPolicy();
 
         this.executor = new ThreadPoolExecutor(
                 corePoolSize,

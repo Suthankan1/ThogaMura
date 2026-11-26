@@ -14,6 +14,7 @@ import { Inventory, Ledger, Requests, Supplier, type View } from "./WorkspaceVie
 import { StockForm, emptyDraft, type Draft } from "./StockForm";
 
 import { FollowUp, Overview, followHref } from "./OperatorDashboard";
+import { useStockEvents } from "@/lib/events/useStockEvents";
 
 const roles: Record<Role, string> = { OPERATOR: "Branch operator", PICKER: "Warehouse picker", SUPERVISOR: "Warehouse supervisor" };
 const sections = [
@@ -95,6 +96,7 @@ export type Submit = (action: Omit<Command, "key">) => Promise<void>;
 
 function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: () => void; onExpire: (name: string) => void }) {
   const params = useSearchParams();
+  const { notifyToast } = useStockEvents();
   const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState<{ text: string; error: boolean; reference?: string; followUp?: string; shortage?: Command["body"] }>();
   const [busy, setBusy] = useState(false);
@@ -208,6 +210,7 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
         body: JSON.stringify(command.assignment ?? command.body),
       }));
       setNotice({ text: command.label + " confirmed.", error: false, reference: result.reference });
+      notifyToast("Confirmed · " + command.label);
       if (command.path === "/requests" || command.path === "/receiving") {
         const kind = command.path === "/requests" ? "reserve" : "receiving";
         const saved = drafts.current[kind];
@@ -252,13 +255,19 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
   }
 
   return <div className="space-y-5">
-    <WorkspaceHeading title="Branch workspace" description={roles[session.role]} />
-    {section === "overview" && <Overview view={view} />}
+    <WorkspaceHeading title="Branch workspace" description={roles[session.role]}
+      action={
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+          <p className="break-words font-medium">{session.name} · {session.branch}</p>
+          <button className={secondaryAction} disabled={busy} onClick={signOut}>Sign out</button>
+        </div>
+      } />
     <nav aria-label="Workspace sections" className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
       {allowed.map(([id, label]) => <Link key={id} href={sectionHref(id)} aria-current={id === section ? "page" : undefined}
         className={`${secondaryAction} ${id === section ? "border-teal-600 bg-teal-50 text-teal-950" : ""}`}
         onNavigate={(event) => { event.preventDefault(); navigate(id); }}>{label}</Link>)}
     </nav>
+    {section === "overview" && <Overview view={view} />}
     {notice && <div role={notice.error ? "alert" : "status"} className={`space-y-2 rounded-lg border p-3 text-sm ${notice.error ? "border-amber-300 bg-amber-50 text-amber-950" : "border-teal-300 bg-teal-50 text-teal-950"}`}>
       <p>{notice.text}</p>
       <div className="flex flex-wrap gap-x-4">
@@ -279,7 +288,12 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
       {pending.path === "/requests" && <p className="break-all">Request {pending.key}</p>}
       <p className="break-all">Command {pending.key}</p>
       <p>Stock actions are paused until this command is confirmed. You can keep browsing.</p>
-      {!busy && <button className={secondaryAction} onClick={() => void submit(pending)}>Retry saved action</button>}
+      {!busy && (
+        <div className="flex flex-wrap gap-2">
+          <button className={secondaryAction} onClick={() => void submit(pending)}>Retry saved action</button>
+          <button type="button" className={secondaryAction} onClick={() => save(null)}>Discard saved action</button>
+        </div>
+      )}
     </div>}
     {section === "inventory" && <div className={`grid items-start gap-5 ${session.role === "OPERATOR" ? "lg:grid-cols-[20rem_minmax(0,1fr)]" : ""}`}>
       {session.role === "OPERATOR" && <StockForm draft={reserve} saveDraft={(draft) => saveDraft("reserve", draft)} view={view} disabled={busy || !!pending}
@@ -295,9 +309,5 @@ function Desk({ session, onSignOut, onExpire }: { session: Session; onSignOut: (
     {section === "suppliers" && current.get("followUp") && !current.get("sku") ?
       <FollowUp key={current.get("followUp")} id={current.get("followUp")!} view={view} submit={submit} disabled={busy || !!pending} /> :
       section === "suppliers" && <Supplier view={view} submit={submit} disabled={busy || !!pending} returnToDraft={session.role === "OPERATOR" && !!reserve.sku ? () => navigate("inventory") : undefined} />}
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3 text-sm text-slate-700">
-      <p className="break-words">{session.name} · {session.branch}</p>
-      <button className={secondaryAction} disabled={busy} onClick={signOut}>Sign out</button>
-    </div>
   </div>;
 }

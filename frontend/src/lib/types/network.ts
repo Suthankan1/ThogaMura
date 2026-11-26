@@ -31,6 +31,8 @@ export interface SseStatusInfo {
 export interface TlsCommandStatusInfo {
   status: string;
   owner: string;
+  serverTime?: string;
+  clockSkewMs?: number;
 }
 
 export interface NetworkStatusResponse {

@@ -55,7 +55,17 @@ export function ConnectionIndicator({ compact = false }: ConnectionIndicatorProp
         className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-semibold text-slate-800 ${compactBg} transition-colors hover:shadow-xs focus:outline-hidden focus:ring-2 focus:ring-teal-600`}
       >
         <span className={`inline-block h-2.5 w-2.5 rounded-full ${dotStyle}`} aria-hidden="true" />
-        <span>{isRefreshing ? "Syncing" : isLive ? "Live" : sseStatus === "CONNECTING" ? "Connecting" : "Paused"}</span>
+        <span>
+          {isRefreshing
+            ? "Syncing"
+            : isLive
+              ? "Live"
+              : sseStatus === "CONNECTING"
+                ? "Connecting"
+                : sseStatus === "DISCONNECTED" || sseStatus === "ERROR"
+                  ? "Offline"
+                  : "Paused"}
+        </span>
       </Link>
     );
   }

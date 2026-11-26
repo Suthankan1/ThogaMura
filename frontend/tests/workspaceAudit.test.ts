@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { commandResult, definitiveCommandFailure, WorkspaceError, type Command } from "../src/lib/api/workspace.ts";
+import { classifyWorkspaceSupplierError, commandResult, definitiveCommandFailure, WorkspaceError, type Command } from "../src/lib/api/workspace.ts";
 import { parseQuantity } from "../src/lib/reservationAttempt.ts";
 import { filterMovements, movementCsv } from "../src/lib/movementReport.ts";
 
@@ -50,4 +50,40 @@ test("follow-up confirmations match the target, assignment and status", () => {
   assert.throws(() => commandResult(create, { ...result, dueDate: "2026-12-02" }));
   assert.throws(() => commandResult(create, { ...result, id: "other" }));
   assert.ok(definitiveCommandFailure(new WorkspaceError("Already open", 409, key, "FOLLOWUP_OPEN")));
+});
+
+test("workspace supplier errors classify 404, 504, and 503 into distinct actionable states", () => {
+  const unknown = classifyWorkspaceSupplierError(new WorkspaceError("Not found", 404));
+  assert.equal(unknown.status, 404);
+  assert.equal(unknown.code, "SUPPLIER_UNKNOWN");
+
+  const timeout = classifyWorkspaceSupplierError(new WorkspaceError("Timed out", 504));
+  assert.equal(timeout.status, 504);
+  assert.equal(timeout.code, "SUPPLIER_TIMEOUT");
+
+  const unavailable = classifyWorkspaceSupplierError(new WorkspaceError("Down", 503));
+  assert.equal(unavailable.status, 503);
+  assert.equal(unavailable.code, "SUPPLIER_UNAVAILABLE");
+
+  const fallback = classifyWorkspaceSupplierError(new Error("Unexpected payload"));
+  assert.equal(fallback.status, 502);
+});
+
+test("workspace movement CSV export includes Product column when extended movement fields exist", () => {
+  const row = {
+    id: "12",
+    stockRequestId: null,
+    receivingCommandId: key,
+    branchId: null,
+    recordedBy: "supervisor",
+    sku: "ITEM-010",
+    productName: "Organic Carrots",
+    reason: "RECEIVE" as const,
+    note: "Morning receipt",
+    quantityDelta: 5,
+    occurredAt: "2026-11-26T00:00:00Z",
+  };
+  const csv = movementCsv([row]);
+  assert.match(csv, /"Product"/);
+  assert.match(csv, /"Organic Carrots"/);
 });

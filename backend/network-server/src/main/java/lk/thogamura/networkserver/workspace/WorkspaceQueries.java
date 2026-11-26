@@ -147,15 +147,18 @@ final class WorkspaceQueries {
         String[] seek = decode(cursor, scope, 1);
         StringBuilder sql = new StringBuilder("""
                 SELECT m.id::text AS id, m.stock_request_id AS "stockRequestId",
-                    m.receiving_command_id AS "receivingCommandId", m.sku, m.quantity_delta AS "quantityDelta",
+                    m.receiving_command_id AS "receivingCommandId", m.sku, left(p.name, 200) AS "productName",
+                    m.quantity_delta AS "quantityDelta",
                     m.reason, to_char(m.occurred_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "occurredAt",
                     m.recorded_by AS "recordedBy", m.note,
                     r.branch_id AS "branchId"
-                FROM stock_movements m LEFT JOIN stock_requests r ON r.request_id = m.stock_request_id
+                FROM stock_movements m
+                JOIN product_stock p ON p.sku = m.sku
+                LEFT JOIN stock_requests r ON r.request_id = m.stock_request_id
                 WHERE (m.reason = 'RECEIVE' OR r.branch_id IS NOT NULL)
                 """);
         List<Object> parameters = new ArrayList<>();
-        contains(sql, parameters, search, "m.sku", "m.id::text", "m.stock_request_id::text",
+        contains(sql, parameters, search, "m.sku", "p.name", "m.id::text", "m.stock_request_id::text",
                 "m.receiving_command_id::text", "m.recorded_by", "m.note", "r.branch_id");
         if (!reason.isEmpty()) {
             sql.append(" AND m.reason = ?");

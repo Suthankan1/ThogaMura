@@ -10,7 +10,7 @@ import { useStockEvents } from "@/lib/events/useStockEvents";
 import { formatOperationalTime, formatUnits } from "@/lib/formatters";
 import { clearAttempt, getStoredAttempt, isSku, newRequestId, parseQuantity, parseReservationAttempt,
   storeAttempt, subscribeToStoredAttempt, type ReservationAttempt } from "@/lib/reservationAttempt";
-import { primaryAction } from "@/components/Workspace";
+import { primaryAction, secondaryAction } from "@/components/Workspace";
 import { safeReturnTo } from "@/lib/returnTo";
 
 const getServerAttempt = () => null;
@@ -298,6 +298,23 @@ export function NewRequestClient() {
             >
               {submitting ? "Retrying..." : "Retry same request"}
             </button>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                clearAttempt(lastAttempt.idempotencyKey);
+                setAttemptError(null);
+              }}
+              className={secondaryAction}
+            >
+              Discard saved attempt
+            </button>
+            <Link
+              href={`/requests?ref=${encodeURIComponent(lastAttempt.idempotencyKey)}`}
+              className="text-xs font-semibold text-amber-950 underline underline-offset-4 hover:text-amber-800"
+            >
+              Check request history
+            </Link>
             <span className="text-[11px] text-amber-800">
               Replays the exact original key without creating duplicate reservations.
             </span>
@@ -422,24 +439,57 @@ export function NewRequestClient() {
             Enter a whole number of units to hold for customer order fulfillment.
           </p>
 
-          <input
-            ref={qtyInputRef}
-            id={qtyId}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            required
-            value={quantityStr}
-            onChange={(e) => handleQtyChange(e.target.value)}
-            placeholder="e.g. 5"
-            aria-describedby={`${qtyHelpId} ${fieldErrors.quantity ? qtyErrorId : ""} ${exceedsStock ? shortageWarningId : ""}`}
-            aria-invalid={!!fieldErrors.quantity}
-            className={`mt-2 block w-32 min-h-11 rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
-              fieldErrors.quantity || exceedsStock
-                ? "border-rose-500 bg-rose-50/30"
-                : "border-slate-300"
-            }`}
-          />
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              aria-label="Subtract one unit"
+              onClick={() => {
+                const next = Math.max(1, (parsedQty ?? 1) - 1);
+                handleQtyChange(String(next));
+              }}
+              className={secondaryAction + " !px-3.5 font-mono"}
+            >
+              −
+            </button>
+            <input
+              ref={qtyInputRef}
+              id={qtyId}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              required
+              value={quantityStr}
+              onChange={(e) => handleQtyChange(e.target.value)}
+              placeholder="e.g. 5"
+              aria-describedby={`${qtyHelpId} ${fieldErrors.quantity ? qtyErrorId : ""} ${exceedsStock ? shortageWarningId : ""}`}
+              aria-invalid={!!fieldErrors.quantity}
+              className={`block w-32 min-h-11 rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-hidden focus:ring-1 focus:ring-teal-600 font-mono ${
+                fieldErrors.quantity || exceedsStock
+                  ? "border-rose-500 bg-rose-50/30"
+                  : "border-slate-300"
+              }`}
+            />
+            <button
+              type="button"
+              aria-label="Add one unit"
+              onClick={() => {
+                const next = (parsedQty ?? 0) + 1;
+                handleQtyChange(String(next));
+              }}
+              className={secondaryAction + " !px-3.5 font-mono"}
+            >
+              +
+            </button>
+            {matchingProduct && matchingProduct.available > 0 && (
+              <button
+                type="button"
+                onClick={() => handleQtyChange(String(matchingProduct.available))}
+                className={secondaryAction + " text-xs"}
+              >
+                Max ({matchingProduct.available})
+              </button>
+            )}
+          </div>
 
           {fieldErrors.quantity && (
             <p id={qtyErrorId} role="alert" className="mt-1 text-xs font-semibold text-rose-600">

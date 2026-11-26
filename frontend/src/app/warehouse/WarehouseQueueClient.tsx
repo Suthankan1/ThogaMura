@@ -10,6 +10,7 @@ import { formatAge, formatFullDateTime, formatUnits } from "@/lib/formatters";
 import type { StockRequest } from "@/lib/types/inventory";
 import { downloadCsv, filterMovements, movementCsv } from "@/lib/movementReport";
 import { useWarehouseQuery } from "@/lib/useWarehouseQuery";
+import { useStockEvents } from "@/lib/events/useStockEvents";
 import { field, Freshness, primaryAction, RequestBadge, secondaryAction, surface, textAction, WorkspaceHeading } from "@/components/Workspace";
 
 const readPicks = () => fetchStockRequests("ACCEPTED");
@@ -28,15 +29,16 @@ export function WarehouseQueueClient() {
   const preferredStage = params.get("stage")?.toLowerCase();
   const stage = preferredStage === "dispatch" || preferredStage === "movements" ? preferredStage : "pick";
   const search = params.get("q") ?? "";
-  const picks = useWarehouseQuery(readPicks);
-  const dispatches = useWarehouseQuery(readDispatches);
-  const catalog = useWarehouseQuery(fetchProducts);
-  const movements = useWarehouseQuery(fetchStockMovements, stage === "movements");
+  const { notifyToast } = useStockEvents();
+  const picks = useWarehouseQuery(readPicks, true, true, "demo:picks");
+  const dispatches = useWarehouseQuery(readDispatches, true, true, "demo:dispatches");
+  const catalog = useWarehouseQuery(fetchProducts, true, true, "demo:products");
+  const movements = useWarehouseQuery(fetchStockMovements, stage === "movements", true, "demo:movements");
   const [movementSku, setMovementSku] = useState("");
   const [movementFrom, setMovementFrom] = useState("");
   const [movementThrough, setMovementThrough] = useState("");
   const filteredMovements = filterMovements(movements.data ?? [], movementSku, movementFrom, movementThrough)
-    .filter((row) => !target || target === row.stockRequestId).reverse();
+    .filter((row) => !target || target === row.stockRequestId);
   const movementPage = listPage(filteredMovements, params.get("page"));
   const [review, setReview] = useState<StockRequest | null>(null);
   const [working, setWorking] = useState<string | null>(null);
@@ -71,7 +73,11 @@ export function WarehouseQueueClient() {
     try {
       if (action === "pick") await pickStockRequest(request.requestId);
       else await dispatchStockRequest(request.requestId);
-      setFeedback({ id: request.requestId, text: action === "pick" ? "Pickup confirmed. The request is ready to dispatch." : "Dispatch confirmed. The stock movement is recorded." });
+      const confirmationText = action === "pick"
+        ? "Pickup confirmed. The request is ready to dispatch."
+        : "Dispatch confirmed. The stock movement is recorded.";
+      setFeedback({ id: request.requestId, text: confirmationText });
+      notifyToast(action === "pick" ? "Picked · Queue updated" : "Dispatched · Ledger updated");
       await Promise.all([picks.refresh(), dispatches.refresh(), catalog.refresh(), movements.refresh()]);
     } catch (error) {
       const confirmed = error instanceof ApiError && error.status < 500;
@@ -98,13 +104,21 @@ export function WarehouseQueueClient() {
         action={<button className={secondaryAction} onClick={() => void (stage === "movements" ? movements.refresh() : query.refresh())}>Refresh view</button>} />
 
       <nav aria-label="Warehouse views" className="flex flex-wrap gap-2">
-        {stages.map((item) => (
-          <button key={item.key} type="button" aria-pressed={stage === item.key}
-            onClick={() => updateListParams({ stage: item.key, page: null, q: null, requestId: null })}
-            className={`${secondaryAction} ${stage === item.key ? "border-teal-600 bg-teal-50 text-teal-950" : ""}`}>
-            {item.label}
-          </button>
-        ))}
+        {stages.map((item) => {
+          const badgeCount = item.key === "pick" ? picks.data?.length : item.key === "dispatch" ? dispatches.data?.length : undefined;
+          return (
+            <button key={item.key} type="button" aria-pressed={stage === item.key} aria-label={item.label}
+              onClick={() => updateListParams({ stage: item.key, page: null, q: null, requestId: null })}
+              className={`${secondaryAction} ${stage === item.key ? "border-teal-600 bg-teal-50 text-teal-950" : ""}`}>
+              <span>{item.label}</span>
+              {typeof badgeCount === "number" && (
+                <span aria-hidden="true" className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-700">
+                  {badgeCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       {feedback && (

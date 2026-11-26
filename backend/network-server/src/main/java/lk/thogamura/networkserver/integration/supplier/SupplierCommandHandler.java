@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.Objects;
 
 /**
@@ -51,7 +52,13 @@ public class SupplierCommandHandler implements CommandHandler {
         logger.debug("Dispatching GET_SUPPLIER_STOCK inquiry for SKU '{}' (requestId: '{}')", sku, requestId);
 
         SupplierStockResponse response;
-        if (supplierSlots.tryAcquire()) {
+        boolean acquired = false;
+        try {
+            acquired = supplierSlots.tryAcquire(250, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        if (acquired) {
             try {
                 response = supplierClient.checkAvailability(sku);
             } finally {
